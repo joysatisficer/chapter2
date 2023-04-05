@@ -18,7 +18,7 @@ class Author:
 class Message:
     author: Author
     message: str
-    timestamp: float  # sent messages use timestamp to represent time delay
+    timestamp: float = 0  # sent messages use timestamp to represent time delay
 
 
 Action = Union[Message]
