@@ -23,4 +23,4 @@ class Message:
 
 Action = Union[Message]
 MessageHistory = AsyncIterable[Message]
-GenerateResponse = Callable[[UserID, MessageHistory], Awaitable[List[Action]]]
+GenerateResponse = Callable[[UserID, MessageHistory], AsyncIterable[Action]]
