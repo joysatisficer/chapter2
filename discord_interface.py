@@ -45,7 +45,7 @@ class DiscordInterface(discord.Client):
     async def discord_message_to_message(self, message: discord.Message) -> Message:
         return Message(
             Author(
-                discord_user_to_user_id(message.author),
+                UserID(message.author.id, 'discord'),
                 message.author.name
             ),
             await parse_discord_content(message),
@@ -80,9 +80,6 @@ async def wait_until_timestamp(timestamp, coroutine):
         async with coroutine():
             await asyncio.sleep(timestamp - current_time)
 
-
-def discord_user_to_user_id(user: discord.User) -> UserID:
-    return UserID(user.id, 'discord')
 
 
 T = TypeVar('T')
