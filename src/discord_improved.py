@@ -3,6 +3,7 @@ import re
 
 import discord
 import discord.context_managers
+import discord.utils
 
 
 class ScheduleTyping(discord.context_managers.Typing):
@@ -25,11 +26,11 @@ async def parse_discord_content(self: discord.Message) -> str:
     if self.guild:
 
         def resolve_member(id: int) -> str:
-            m = self.guild.get_member(id) or utils.get(self.mentions, id=id)  # type: ignore
+            m = self.guild.get_member(id) or discord.utils.get(self.mentions, id=id)  # type: ignore
             return f'@{m.name}' if m else '@deleted-user'
 
         def resolve_role(id: int) -> str:
-            r = self.guild.get_role(id) or utils.get(self.role_mentions, id=id)  # type: ignore
+            r = self.guild.get_role(id) or discord.utils.get(self.role_mentions, id=id)  # type: ignore
             return f'@{r.name}' if r else '@deleted-role'
 
         def resolve_channel(id: int) -> str:
