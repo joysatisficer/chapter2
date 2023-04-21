@@ -28,7 +28,7 @@ class DiscordInterface(discord.Client):
         if not await self.should_reply(message):
             return
         async with self.handle_exceptions(message):
-            my_user_id = discord_user_to_user_id(self.user)
+            my_user_id = UserID(self.user.id, 'discord')
             response_messages = self.generate_response(
                 my_user_id,
                 map_async_iterator(
