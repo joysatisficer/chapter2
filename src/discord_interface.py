@@ -25,9 +25,9 @@ class DiscordInterface(discord.Client):
 
     async def on_message(self, message: discord.Message) -> None:
         # check if we should respond to the message
-        if not await self.should_reply(message):
-            return
         async with self.handle_exceptions(message):
+            if not await self.should_reply(message):
+                return
             my_user_id = UserID(self.user.id, 'discord')
             response_messages = self.generate_response(
                 my_user_id,
@@ -53,7 +53,13 @@ class DiscordInterface(discord.Client):
         )
 
     async def should_reply(self, message: discord.Message):
-        return message.author != self.user
+        if message.author == self.user:
+            return False
+        if isinstance(message.channel, discord.abc.GuildChannel):
+            if message.channel.permissions_for(message.guild.me).send_messages:
+                return True
+            else:
+                return False
 
     def shutdown(self, sig, frame):
         self.pending_shutdown = True
@@ -67,6 +73,7 @@ class DiscordInterface(discord.Client):
                 yield None
         except Exception as e:
             await message.add_reaction('⚠')
+            print('exception in channel ', message.channel)
             raise
         finally:
             if self.pending_shutdown and self.message_semaphore._value == self.MAX_CONCURRENT_MESSAGES:
