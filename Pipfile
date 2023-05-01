@@ -10,6 +10,8 @@ tiktoken = "*"
 more-itertools = "*"
 aioitertools = "*"
 pyvespa = "*"
+nltk = "*"
+pyyaml = "*"
 
 [dev-packages]
 
