@@ -1,3 +1,4 @@
 __pycache__/
 .idea/
 doc/todo.md
+.pyre/pyre.stderr
