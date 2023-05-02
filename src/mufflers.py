@@ -71,5 +71,5 @@ def sentence_tokenize(s):
         if re.match(r"^[\.\!\?\s]+$", sentence):
             sentences[-1] += sentence
         else:
-            sentences.append(sentence)
+            sentences.extend(sentence.splitlines())
     return sentences
