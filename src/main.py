@@ -1,20 +1,72 @@
 import os
+import re
 import time
 
 import aioitertools.more_itertools
+from openai import Completion
 
-from declarations import Message, UserID, MessageHistory, Author
-from discord_interface import DiscordInterface
+from declarations import Message, UserID, MessageHistory, Author, JSON
+from message_formats import irc_message_format, MessageFormat
+from discord_interface import DiscordInterface, get_channel_metadata_from_topic_as_yaml
+from mufflers import repeats_prompt_sentence, has_http
 
 
-async def generate_response(my_user_id: UserID, history: MessageHistory):
-    my_external_name = "Chapter2"
-    author = Author(my_user_id, my_external_name)
+async def generate_response(
+    my_user_id: UserID, history: MessageHistory, metadata: JSON
+):
+    my_name = "sercy"
+    author = Author(my_user_id, my_name)
     recent_messages = await aioitertools.more_itertools.take(20, history)
-    yield Message(author, recent_messages[0].message)
-    yield Message(author, 'hello')
-    yield Message(author, 'world', time.time() + 4)
+    completion_prefix = irc_message_format.name_prefix(my_name)
+    prompt = (
+        format_message_section(irc_message_format, recent_messages) + completion_prefix
+    )
+    active_mufflers = [repeats_prompt_sentence, has_http]
+    has_valid_reply = False
+    tries = 0
+    while not has_valid_reply and tries < 6:
+        tries += 1
+        replies = []
+        has_valid_reply = True
+        async for reply in get_replies(prompt, completion_prefix, my_name, author):
+            if any((muffler(reply.message, prompt)) for muffler in active_mufflers):
+                has_valid_reply = False
+                print("Muffled", reply)
+            else:
+                replies.append(reply)
+    for reply in replies:
+        yield reply
 
 
-interface = DiscordInterface(generate_response)
-interface.run(os.environ['DISCORD_TOKEN'])
+async def get_replies(
+    prompt: str, completion_prefix: str, my_name: str, author: Author
+):
+    completion = Completion.create(
+        prompt=prompt,
+        temperature=1.0,
+        max_tokens=50,
+        frequency_penalty=0.3,
+        presence_penalty=1.5,
+        model="davinci:ft-academics-illinois-2022-12-26-04-18-37",
+    )["choices"][0]["text"]
+    print("Completion", completion, "<<Completion")
+    for name, message in irc_message_format.parse(completion_prefix + completion):
+        if name == my_name:
+            yield Message(author, message.strip())
+        else:
+            break
+
+
+def format_message_section(
+    message_format: MessageFormat, messages: list[Message]
+) -> str:
+    prompt = ""
+    for message in messages[::-1]:
+        prompt += message_format.wrap(message.author.name, message.message)
+    return prompt
+
+
+interface = DiscordInterface(
+    "sercy", generate_response, get_channel_metadata_from_topic_as_yaml
+)
+interface.run(os.environ["DISCORD_TOKEN"])
