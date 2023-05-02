@@ -10,14 +10,18 @@ import yaml
 from discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON
 
-GetDiscordMetadata = Callable[['discord.abc.MessageableChannel'], Awaitable[JSON]]
+GetDiscordMetadata = Callable[["discord.abc.MessageableChannel"], Awaitable[JSON]]
 
 
 class DiscordInterface(discord.Client):
     MAX_CONCURRENT_MESSAGES = 100_000
 
-    def __init__(self, agent_name: str, generate_response: GenerateResponse,
-                 get_discord_metadata: GetDiscordMetadata) -> None:
+    def __init__(
+        self,
+        agent_name: str,
+        generate_response: GenerateResponse,
+        get_discord_metadata: GetDiscordMetadata,
+    ) -> None:
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(intents=intents)
@@ -29,34 +33,38 @@ class DiscordInterface(discord.Client):
         signal.signal(signal.SIGINT, self.shutdown)
 
     async def on_message(self, message: discord.Message) -> None:
-        # check if we should respond to the message
         async with self.handle_exceptions(message):
+            if message.content.startswith("m continue"):
+                command_message = message
+            else:
+                command_message = None
             metadata = await self.get_metadata(message.channel)
             if not await self.should_reply(message, metadata):
                 return
-            my_user_id = UserID(self.user.id, 'discord')
+            my_user_id = UserID(self.user.id, "discord")
             response_messages = self.generate_response(
                 my_user_id,
                 map_async_iterator(
-                    message.channel.history(limit=None),
-                    self.discord_message_to_message
+                    message.channel.history(limit=None, before=command_message),
+                    self.discord_message_to_message,
                 ),
-                metadata
+                metadata,
             )
             async with ScheduleTyping(message.channel):
                 async for reply_message in response_messages:
                     if reply_message.author.user_id == my_user_id:
-                        await wait_until_timestamp(reply_message.timestamp, message.channel.typing)
+                        await wait_until_timestamp(
+                            reply_message.timestamp, message.channel.typing
+                        )
                         await message.channel.send(reply_message.message)
+            if command_message is not None:
+                await command_message.delete()
 
     async def discord_message_to_message(self, message: discord.Message) -> Message:
         return Message(
-            Author(
-                UserID(message.author.id, 'discord'),
-                message.author.name
-            ),
+            Author(UserID(message.author.id, "discord"), message.author.name),
             await parse_discord_content(message),
-            message.created_at.timestamp()
+            message.created_at.timestamp(),
         )
 
     async def should_reply(self, message: discord.Message, metadata: JSON) -> bool:
@@ -67,8 +75,8 @@ class DiscordInterface(discord.Client):
                 or message.channel.permissions_for(message.guild.me).send_messages
             )
             and not (
-                metadata['discord_mute'] is True
-                or metadata['discord_mute'] == self.agent_name
+                metadata["discord_mute"] is True
+                or metadata["discord_mute"] == self.agent_name
             )
         )
 
@@ -83,7 +91,7 @@ class DiscordInterface(discord.Client):
             async with self.message_semaphore:
                 yield None
         except Exception:
-            await message.add_reaction('⚠')
+            await message.add_reaction("⚠")
             print(
                 "exception in channel",
                 format_cli_link(
@@ -93,21 +101,24 @@ class DiscordInterface(discord.Client):
             )
             raise
         finally:
-            if self.pending_shutdown and self.message_semaphore._value == self.MAX_CONCURRENT_MESSAGES:
+            if (
+                self.pending_shutdown
+                and self.message_semaphore._value == self.MAX_CONCURRENT_MESSAGES
+            ):
                 await self.close()
 
 
-async def get_channel_metadata_from_topic_as_yaml(channel: 'discord.abc.MessageableChannel') -> dict:
+async def get_channel_metadata_from_topic_as_yaml(
+    channel: "discord.abc.MessageableChannel",
+) -> dict:
     """
     Reads a channel description, extracting yaml metadata from it.
     """
-    if channel.topic and '---' in channel.topic:
-        metadata = yaml.safe_load(channel.topic.split('---')[1])
+    if channel.topic and "---" in channel.topic:
+        metadata = yaml.safe_load(channel.topic.split("---")[1])
     else:
         metadata = {}
-    defaults = {
-        'discord_mute': False
-    }
+    defaults = {"discord_mute": False}
     return override_with(defaults, metadata)
 
 
@@ -137,11 +148,13 @@ async def wait_until_timestamp(timestamp, coroutine):
             await asyncio.sleep(timestamp - current_time)
 
 
-T = TypeVar('T')
-R = TypeVar('R')
+T = TypeVar("T")
+R = TypeVar("R")
 
 
-async def map_async_iterator(async_iterator: AsyncIterable[T], fn: Callable[[T], Awaitable[R]]) -> AsyncIterable[R]:
+async def map_async_iterator(
+    async_iterator: AsyncIterable[T], fn: Callable[[T], Awaitable[R]]
+) -> AsyncIterable[R]:
     """
     Calls a function on each item returned by an async iterator
     :param fn:
@@ -155,9 +168,9 @@ async def map_async_iterator(async_iterator: AsyncIterable[T], fn: Callable[[T],
 def format_cli_link(uri, label=None):
     if label is None:
         label = uri
-    parameters = ''
+    parameters = ""
 
     # OSC 8 ; params ; URI ST <name> OSC 8 ;; ST
-    escape_mask = '\033]8;{};{}\033\\{}\033]8;;\033\\'
+    escape_mask = "\033]8;{};{}\033\\{}\033]8;;\033\\"
 
     return escape_mask.format(parameters, uri, label)
