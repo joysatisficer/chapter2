@@ -34,7 +34,7 @@ class DiscordInterface(discord.Client):
 
     async def on_message(self, message: discord.Message) -> None:
         async with self.handle_exceptions(message):
-            if message.content.startswith("m continue"):
+            if await self.parse_continue_command(message):
                 command_message = message
             else:
                 command_message = None
@@ -42,11 +42,17 @@ class DiscordInterface(discord.Client):
             if not await self.should_reply(message, metadata):
                 return
             my_user_id = UserID(self.user.id, "discord")
+            # PyCharm's type checker incorrectly infers an async-for generator
+            # as a Generator when it is an AsyncIterable
+            # noinspection PyTypeChecker
             response_messages = self.generate_response(
                 my_user_id,
-                map_async_iterator(
-                    message.channel.history(limit=None, before=command_message),
-                    self.discord_message_to_message,
+                (
+                    await self.discord_message_to_message(message)
+                    async for message in message.channel.history(
+                        limit=None, before=command_message
+                    )
+                    if not await self.parse_continue_command(message)
                 ),
                 metadata,
             )
@@ -65,6 +71,11 @@ class DiscordInterface(discord.Client):
             Author(UserID(message.author.id, "discord"), message.author.name),
             await parse_discord_content(message),
             message.created_at.timestamp(),
+        )
+
+    async def parse_continue_command(self, message):
+        return message.content.strip() == "/continue" or message.content.startswith(
+            "m continue"
         )
 
     async def should_reply(self, message: discord.Message, metadata: JSON) -> bool:
@@ -150,19 +161,6 @@ async def wait_until_timestamp(timestamp, coroutine):
 
 T = TypeVar("T")
 R = TypeVar("R")
-
-
-async def map_async_iterator(
-    async_iterator: AsyncIterable[T], fn: Callable[[T], Awaitable[R]]
-) -> AsyncIterable[R]:
-    """
-    Calls a function on each item returned by an async iterator
-    :param fn:
-    :param async_iterator:
-    :return:
-    """
-    async for item in async_iterator:
-        yield await fn(item)
 
 
 def format_cli_link(uri, label=None):
