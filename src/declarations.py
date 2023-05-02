@@ -23,4 +23,5 @@ class Message:
 
 Action = Union[Message]
 MessageHistory = AsyncIterable[Message]
-GenerateResponse = Callable[[UserID, MessageHistory], AsyncIterable[Action]]
+JSON = dict[str, Union[str, int, float, bool, list, dict]]
+GenerateResponse = Callable[[UserID, MessageHistory, JSON], AsyncIterable[Action]]
