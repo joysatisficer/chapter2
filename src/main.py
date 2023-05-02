@@ -1,5 +1,4 @@
 import os
-import re
 import time
 
 import aioitertools.more_itertools
@@ -24,7 +23,7 @@ async def generate_response(
     active_mufflers = [repeats_prompt_sentence, has_http]
     has_valid_reply = False
     tries = 0
-    while not has_valid_reply and tries < 6:
+    while not has_valid_reply and tries < 3:
         tries += 1
         replies = []
         has_valid_reply = True
@@ -51,7 +50,8 @@ async def get_replies(
     )["choices"][0]["text"]
     print("Completion", completion, "<<Completion")
     for name, message in irc_message_format.parse(completion_prefix + completion):
-        if name == my_name:
+        # accept messages from myself or without prefixes
+        if name == my_name or name == "":
             yield Message(author, message.strip())
         else:
             break
@@ -63,7 +63,7 @@ def format_message_section(
     prompt = ""
     for message in messages[::-1]:
         prompt += message_format.wrap(message.author.name, message.message)
-    return prompt
+    return prompt + "\n"
 
 
 interface = DiscordInterface(
