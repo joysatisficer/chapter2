@@ -58,7 +58,9 @@ class DiscordInterface(discord.Client):
             )
             async with ScheduleTyping(message.channel):
                 async for reply_message in response_messages:
-                    if reply_message.author.user_id == my_user_id:
+                    if reply_message.author.user_id == my_user_id and not isempty(
+                        reply_message.message
+                    ):
                         await wait_until_timestamp(
                             reply_message.timestamp, message.channel.typing
                         )
@@ -106,7 +108,8 @@ class DiscordInterface(discord.Client):
             print(
                 "exception in channel",
                 format_cli_link(
-                    message.jump_url,  # if the message is deleted, the url will still head to the channel
+                    message.jump_url,
+                    # if the message is deleted, the url will still head to the channel
                     f"#{message.channel.name}",
                 ),
             )
@@ -165,8 +168,8 @@ async def wait_until_timestamp(timestamp, coroutine):
             await asyncio.sleep(timestamp - current_time)
 
 
-T = TypeVar("T")
-R = TypeVar("R")
+def isempty(string):
+    return string == "" or string.isspace()
 
 
 def format_cli_link(uri, label=None):
