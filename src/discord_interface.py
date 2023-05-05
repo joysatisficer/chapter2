@@ -125,7 +125,13 @@ async def get_channel_metadata_from_topic_as_yaml(
     """
     Reads a channel description, extracting yaml metadata from it.
     """
-    if channel.topic and "---" in channel.topic:
+    if hasattr(channel, "topic"):
+        topic = channel.topic
+    elif hasattr(channel, "parent"):
+        topic = channel.parent.topic
+    else:
+        topic = None
+    if topic is not None and "---" in topic:
         metadata = yaml.safe_load(channel.topic.split("---")[1])
     else:
         metadata = {}
