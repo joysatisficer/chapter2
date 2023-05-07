@@ -90,6 +90,10 @@ class DiscordInterface(discord.Client):
             and not (
                 metadata["discord_mute"] is True
                 or metadata["discord_mute"] == self.agent_name
+                or (
+                    isinstance(metadata["discord_mute"], list)
+                    and self.agent_name in metadata["discord_mute"]
+                )
             )
         )
 
