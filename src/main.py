@@ -1,5 +1,6 @@
 import os
 import time
+from typing import TypeVar, Iterable
 
 import aioitertools.more_itertools
 from openai import Completion
