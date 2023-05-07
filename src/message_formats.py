@@ -22,5 +22,5 @@ irc_message_format = MessageFormat(
     name_prefix=lambda name: f"<{name}>",
     # match `<name> string`, `string` but not `<name`, which usually occurs
     # because of a length cutoff
-    parse=lambda line: re.findall(r"(?:<([^\n]+)>)?([^<].*)$", line, re.MULTILINE),
+    parse=lambda line: re.findall(r"^(?:<([^\n]+)>)?([^<].*)$", line, re.MULTILINE),
 )
