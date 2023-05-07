@@ -12,6 +12,8 @@ aioitertools = "*"
 pyvespa = "*"
 nltk = "*"
 pyyaml = "*"
+embedapi = {path = "./../modules/embedapi"}
+intermodel = {path = "./../intermodel"}
 
 [dev-packages]
 black = "*"
