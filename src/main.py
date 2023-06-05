@@ -23,7 +23,7 @@ async def generate_response(
         format_message_section(irc_message_format, recent_messages) + completion_prefix
     )
     stop_sequences = unique(
-        irc_message_format.name_prefix(message.author.name)
+        "\n" + irc_message_format.name_prefix(message.author.name)
         for message in recent_messages
         if message.author.name != my_name
     )
