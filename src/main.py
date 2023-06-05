@@ -59,8 +59,8 @@ async def get_replies(
             temperature=1.0,
             max_tokens=50,
             frequency_penalty=0.3,
-            presence_penalty=1.5,
-            model="davinci:ft-academics-illinois-2022-12-26-04-18-37",
+            presence_penalty=1.0,
+            model="davinci:ft-academics-illinois-2022-12-26-08-27-33",
             stop=stop_sequences[:3] if stop_sequences is not None else None,
         )
     )["completions"][0]["text"]
