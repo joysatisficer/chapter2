@@ -95,6 +95,10 @@ class DiscordInterface(discord.Client):
                     and self.agent_name in metadata["discord_mute"]
                 )
             )
+            and not (
+                metadata["thread_mute"] is True
+                and message.channel.type == discord.ChannelType.public_thread
+            )
         )
 
     def shutdown(self, sig, frame):
@@ -142,7 +146,10 @@ async def get_channel_metadata_from_topic_as_yaml(
         metadata = yaml.safe_load(channel.topic.split("---")[1])
     else:
         metadata = {}
-    defaults = {"discord_mute": False}
+    defaults = {
+        "discord_mute": False,
+        "thread_mute": True,
+    }
     return override_with(defaults, metadata)
 
 
