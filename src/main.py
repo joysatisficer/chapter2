@@ -36,9 +36,15 @@ async def generate_response(
         async for reply in get_replies(
             prompt, completion_prefix, my_name, author, stop_sequences
         ):
-            if any((muffler(reply.message, prompt)) for muffler in active_mufflers):
+            muffler_results = list(
+                filter(
+                    lambda x: x is not False,
+                    [muffler(reply.message, prompt) for muffler in active_mufflers],
+                )
+            )
+            if len(muffler_results) > 0:
                 has_valid_reply = False
-                print("Muffled", reply)
+                print("Muffled>>", reply, "<<Muffled", muffler_results, sep="")
             else:
                 replies.append(reply)
     for reply in replies:
