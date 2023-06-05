@@ -3,7 +3,6 @@ import time
 from typing import TypeVar, Iterable
 
 import aioitertools.more_itertools
-from openai import Completion
 
 from declarations import Message, UserID, MessageHistory, Author, JSON
 from message_formats import irc_message_format, MessageFormat
@@ -64,7 +63,7 @@ async def get_replies(
             stop=stop_sequences[:3] if stop_sequences is not None else None,
         )
     )["completions"][0]["text"]
-    print("Completion>>", completion, "<<Completion")
+    print("Completion>>", completion.replace("\n", r"\n"), "<<Completion", sep="")
     for name, message in irc_message_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes
         if name == my_name or name == "":
