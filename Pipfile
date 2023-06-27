@@ -13,12 +13,19 @@ pyvespa = "*"
 nltk = "*"
 pyyaml = "*"
 embedapi = {path = "./../modules/embedapi"}
-intermodel = {path = "./../intermodel"}
 python-dotenv = "*"
+thundersvm = "*"
+pydantic = ">=2.0a1"
+intermodel = {path = "./../intermodel"}
 
 [dev-packages]
 black = "*"
 pre-commit = "*"
+streamlit = "*"
+pytest = "*"
 
 [requires]
 python_version = "3.9"
+
+[pipenv]
+allow_prereleases = true
