@@ -2,15 +2,16 @@ import asyncio
 import contextlib
 import signal
 import time
-from typing import AsyncIterable, TypeVar, Callable, Awaitable
+from typing import Callable, Awaitable
 
 import discord
 import yaml
 
-from discord_improved import ScheduleTyping, parse_discord_content
-from declarations import GenerateResponse, Message, UserID, Author, JSON
+import resolve_config
+from util.discord_improved import ScheduleTyping, parse_discord_content
+from declarations import GenerateResponse, Message, UserID, Author, Config, JSON
 
-GetDiscordMetadata = Callable[["discord.abc.MessageableChannel"], Awaitable[JSON]]
+GetDiscordConfig = Callable[["discord.abc.MessageableChannel"], Awaitable[Config]]
 
 
 class DiscordInterface(discord.Client):
@@ -20,14 +21,14 @@ class DiscordInterface(discord.Client):
         self,
         agent_name: str,
         generate_response: GenerateResponse,
-        get_discord_metadata: GetDiscordMetadata,
+        get_discord_config: GetDiscordConfig,
     ) -> None:
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(intents=intents)
         self.agent_name = agent_name
         self.generate_response: GenerateResponse = generate_response
-        self.get_metadata: GetDiscordMetadata = get_discord_metadata
+        self.get_config: GetDiscordConfig = get_discord_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
         self.pending_shutdown = False
         signal.signal(signal.SIGINT, self.shutdown)
@@ -38,8 +39,8 @@ class DiscordInterface(discord.Client):
                 command_message = message
             else:
                 command_message = None
-            metadata = await self.get_metadata(message.channel)
-            if not await self.should_reply(message, metadata):
+            config = await self.get_config(message.channel)
+            if not await self.should_reply(message, config):
                 return
             my_user_id = UserID(self.user.id, "discord")
             # PyCharm's type checker incorrectly infers an async-for generator
@@ -54,7 +55,7 @@ class DiscordInterface(discord.Client):
                     )
                     if not await self.parse_continue_command(message)
                 ),
-                metadata,
+                config,
             )
             async with ScheduleTyping(message.channel):
                 async for reply_message in response_messages:
@@ -69,8 +70,12 @@ class DiscordInterface(discord.Client):
                 await command_message.delete()
 
     async def discord_message_to_message(self, message: discord.Message) -> Message:
+        if message.author.id == self.user.id:
+            author_name = self.agent_name
+        else:
+            author_name = message.author.name
         return Message(
-            Author(UserID(message.author.id, "discord"), message.author.name),
+            Author(UserID(message.author.id, "discord"), author_name),
             await parse_discord_content(message),
             message.created_at.timestamp(),
         )
@@ -80,7 +85,7 @@ class DiscordInterface(discord.Client):
             "m continue"
         )
 
-    async def should_reply(self, message: discord.Message, metadata: JSON) -> bool:
+    async def should_reply(self, message: discord.Message, config: Config) -> bool:
         return (
             message.author != self.user
             and (
@@ -88,15 +93,15 @@ class DiscordInterface(discord.Client):
                 or message.channel.permissions_for(message.guild.me).send_messages
             )
             and not (
-                metadata["discord_mute"] is True
-                or metadata["discord_mute"] == self.agent_name
+                config.discord_mute is True
+                or config.discord_mute == self.agent_name
                 or (
-                    isinstance(metadata["discord_mute"], list)
-                    and self.agent_name in metadata["discord_mute"]
+                    isinstance(config.discord_mute, list)
+                    and self.agent_name in config.discord_mute
                 )
             )
             and not (
-                metadata["thread_mute"] is True
+                config.thread_mute is True
                 and message.channel.type == discord.ChannelType.public_thread
             )
         )
@@ -130,11 +135,11 @@ class DiscordInterface(discord.Client):
                 await self.close()
 
 
-async def get_channel_metadata_from_topic_as_yaml(
+async def get_yaml_from_channel(
     channel: "discord.abc.MessageableChannel",
-) -> dict:
+) -> JSON:
     """
-    Reads a channel description, extracting yaml metadata from it.
+    Reads a channel description, extracting yaml from it.
     """
     if hasattr(channel, "topic"):
         topic = channel.topic
@@ -143,32 +148,16 @@ async def get_channel_metadata_from_topic_as_yaml(
     else:
         topic = None
     if topic is not None and "---" in topic:
-        metadata = yaml.safe_load(channel.topic.split("---")[1])
+        yml = yaml.safe_load(channel.topic.split("---")[1])
     else:
-        metadata = {}
-    defaults = {
-        "discord_mute": False,
-        "thread_mute": True,
-    }
-    return override_with(defaults, metadata)
+        yml = {}
+    return yml
 
 
-def override_with(items: dict, updates: dict):
-    """
-    Updates a dict, if a value is a dict, uses recursion.
-
-    Returns:
-        dict: a new dictionary with updated values
-    """
-    result = dict(items)
-    for key, value in updates.items():
-        if isinstance(value, dict):
-            if key not in result:
-                result[key] = {}
-            result[key] = override_with(result[key], value)
-        else:
-            result[key] = value
-    return result
+async def get_channel_config_from_topic_as_yaml(
+    channel: "discord.abc.MessageableChannel",
+) -> Config:
+    return resolve_config.load_config_from_kv(get_yaml_from_channel(channel))
 
 
 async def wait_until_timestamp(timestamp, coroutine):

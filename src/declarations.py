@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Callable, List, Union, AsyncIterable, Awaitable
+from resolve_config import Config
 
 
 @dataclass
@@ -24,4 +25,4 @@ class Message:
 Action = Union[Message]
 MessageHistory = AsyncIterable[Message]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
-GenerateResponse = Callable[[UserID, MessageHistory, JSON], AsyncIterable[Action]]
+GenerateResponse = Callable[[UserID, MessageHistory, Config], AsyncIterable[Action]]

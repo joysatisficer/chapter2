@@ -3,16 +3,18 @@ import time
 from typing import TypeVar, Iterable
 
 import aioitertools.more_itertools
+import yaml
 
-from declarations import Message, UserID, MessageHistory, Author, JSON
+import resolve_config
+from declarations import Message, UserID, MessageHistory, Author, Config
 from message_formats import irc_message_format, MessageFormat
-from discord_interface import DiscordInterface, get_channel_metadata_from_topic_as_yaml
+from discord_interface import DiscordInterface, get_yaml_from_channel
 from mufflers import repeats_prompt_sentence, has_http
 from intermodel import callgpt
 
 
 async def generate_response(
-    my_user_id: UserID, history: MessageHistory, metadata: JSON
+    my_user_id: UserID, history: MessageHistory, config: Config
 ):
     my_name = "sercy"
     author = Author(my_user_id, my_name)
@@ -26,7 +28,6 @@ async def generate_response(
         for message in recent_messages
         if message.author.name != my_name
     )
-    active_mufflers = [repeats_prompt_sentence, has_http]
     has_valid_reply = False
     tries = 0
     while not has_valid_reply and tries < 3:
@@ -34,16 +35,15 @@ async def generate_response(
         replies = []
         has_valid_reply = True
         async for reply in get_replies(
-            prompt, completion_prefix, my_name, author, stop_sequences
+            config, prompt, completion_prefix, my_name, author, stop_sequences
         ):
-            muffler_results = [
-                result
-                for result in [
-                    muffler(reply.message, prompt) for muffler in active_mufflers
-                ]
-                if result != False
-            ]
-            if len(muffler_results) > 0:
+            muffler_results = {
+                "repeats_prompt_sentence": repeats_prompt_sentence(
+                    reply.message, prompt
+                ),
+                "has_http": has_http(reply.message, prompt),
+            }
+            if any(filter(lambda n: not n, muffler_results.keys())):
                 has_valid_reply = False
                 print("Muffled>>", reply, "<<Muffled", muffler_results, sep="")
             else:
@@ -53,6 +53,7 @@ async def generate_response(
 
 
 async def get_replies(
+    config: Config,
     prompt: str,
     completion_prefix: str,
     my_name: str,
@@ -62,12 +63,13 @@ async def get_replies(
     completion = (
         await callgpt.complete(
             prompt=prompt,
-            temperature=1.0,
-            max_tokens=50,
-            frequency_penalty=0.3,
-            presence_penalty=1.0,
-            model="davinci:ft-academics-illinois-2022-12-26-08-27-33",
+            temperature=config.temperature,
+            max_tokens=config.continuation_max_tokens,
+            frequency_penalty=config.frequency_penalty,
+            presence_penalty=config.presence_penalty,
+            model=config.continuation_model,
             stop=stop_sequences[:3] if stop_sequences is not None else None,
+            vendor_config=config.vendors,
         )
     )["completions"][0]["text"]
     print("Completion>>", completion.replace("\n", r"\n"), "<<Completion", sep="")
@@ -95,8 +97,26 @@ def unique(iterable: Iterable[T]) -> list[T]:
     return list(dict.fromkeys(iterable))
 
 
+def get_config_getter(bot_config: Config):
+    async def get_config(channel: "discord.abc.MessageableChannel") -> Config:
+        return resolve_config.load_config_from_kv(
+            await get_yaml_from_channel(channel),
+            bot_config,
+        )
+
+    return get_config
+
+
 if __name__ == "__main__":
+    agent_name = "sercy"
+    with open(f"people/{agent_name}/config.yaml") as file:
+        kv = yaml.safe_load(file)
+    with open("people/vendors.yaml") as file:
+        kv = {**kv, **yaml.safe_load(file)}
+    with open(f"people/{agent_name}/discord_token") as file:
+        kv["discord_token"] = file.read()
+    config = resolve_config.load_config_from_kv(kv)
     interface = DiscordInterface(
-        "sercy", generate_response, get_channel_metadata_from_topic_as_yaml
+        agent_name, generate_response, get_config_getter(config)
     )
-    interface.run(os.environ["DISCORD_TOKEN"])
+    interface.run(config.discord_token)
