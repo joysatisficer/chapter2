@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "chapter2"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+"discord.py" = "*"
+openai = "*"
+tiktoken = "*"
+more-itertools = "*"
+aioitertools = "*"
+pyvespa = "*"
+nltk = "*"
+pyyaml = "*"
+embedapi = {path = "./../modules/embedapi"}
+python-dotenv = "*"
+pydantic = ">=2.0a1"
+intermodel = {path = "./../intermodel"}
+thundersvm-cpu = "^0.3.3"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+pre-commit = "*"
+streamlit = "*"
+pytest = "*"
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
