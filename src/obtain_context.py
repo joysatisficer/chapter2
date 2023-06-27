@@ -1,6 +1,5 @@
 import os
-import time
-import chatgpt
+from util import chatgpt
 from typing import TypeVar, Iterable
 
 import aioitertools.more_itertools
@@ -70,8 +69,6 @@ async def get_replies(
     author: Author,
     stop_sequences: list[str] = None,
 ):
-    import tiktoken
-
     model = metadata.get("engines.complete", "gpt-3.5-turbo")
     discouraged = [
         " language",
@@ -119,6 +116,10 @@ async def get_replies(
         temperature=metadata.get("temperature", 1.25),
         max_tokens=200,
         messages=[
+            {
+                "role": "system",
+                "content": "Ask the user questions to obtain context. Be curious.",
+            },
             *[
                 {
                     "role": "assistant"
@@ -138,10 +139,6 @@ async def get_replies(
                 }
                 for message in recent_messages[::-1]
             ],
-            {
-                "role": "system",
-                "content": "Ask the user questions to obtain context. Be curious.",
-            }
             #            {
             #                "role": "assistant",
             #                "content": "Thanks for sharing. Can you tell me a little more about what's been going on?"
