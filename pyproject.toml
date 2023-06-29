@@ -6,7 +6,7 @@ authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python =  ">=3.8,<3.9.7 || >3.9.7,<4.0"
 "discord.py" = "*"
 openai = "*"
 tiktoken = "*"
@@ -15,11 +15,13 @@ aioitertools = "*"
 pyvespa = "*"
 nltk = "*"
 pyyaml = "*"
-embedapi = {path = "./../modules/embedapi"}
+embedapi = {path = "../modules/embedapi"}
 python-dotenv = "*"
 pydantic = ">=2.0a1"
 intermodel = {path = "./../intermodel"}
 thundersvm-cpu = "^0.3.3"
+streamlit = "^1.24.0"
+scikit-learn = "^1.2.2"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -27,6 +29,7 @@ black = "*"
 pre-commit = "*"
 streamlit = "*"
 pytest = "*"
+faiss-cpu = "^1.7.4"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
