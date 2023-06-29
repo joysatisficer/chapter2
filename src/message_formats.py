@@ -15,12 +15,24 @@ class MessageFormat:
 
 irc_message_format = MessageFormat(
     wrap=lambda name, message: reduce(
-        lambda acc, line: acc + "\n" + line,
+        lambda acc, line: acc + "\n" + line if acc != "" else line,
         [f"<{name}> {message}" for line in message.splitlines() if not line.isspace()],
         "",  # initial value
     ),
     name_prefix=lambda name: f"<{name}>",
     # match `<name> string`, `string` but not `<name`, which usually occurs
     # because of a length cutoff
-    parse=lambda line: re.findall(r"^(?:<([^\n]+)>)?([^<].*)$", line, re.MULTILINE),
+    parse=lambda line: re.findall(r"^(?:<([^\n]+)>)? ([^<].*)$", line, re.MULTILINE),
+)
+
+colon_message_format = MessageFormat(
+    wrap=lambda name, message: reduce(
+        lambda acc, line: acc + "\n" + line if acc != "" else line,
+        [f"{name}: {line}" for line in message.splitlines() if not line.isspace()],
+        "",  # initial value
+    ),
+    name_prefix=lambda name: f"{name}:",
+    # match `name: string`, `string` but not `name`, which usually occurs
+    # because of a length cutoff
+    parse=lambda line: re.findall(r"^(?:([^\n]+):)? ([^:].*)$", line, re.MULTILINE),
 )
