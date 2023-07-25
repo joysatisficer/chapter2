@@ -2,3 +2,6 @@ __pycache__/
 .idea/
 doc/todo.md
 .pyre/pyre.stderr
+people/vendors.yml
+people/*/discord_token
+people/*/*/*
