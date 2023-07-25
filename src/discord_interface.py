@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import signal
 import time
-from typing import Callable, Awaitable
+from typing import Callable, Awaitable, Optional
 
 import discord
 import yaml
@@ -39,35 +39,41 @@ class DiscordInterface(discord.Client):
                 command_message = message
             else:
                 command_message = None
-            config = await self.get_config(message.channel)
-            if not await self.should_reply(message, config):
-                return
-            my_user_id = UserID(self.user.id, "discord")
-            # PyCharm's type checker incorrectly infers an async-for generator
-            # as a Generator when it is an AsyncIterable
-            # noinspection PyTypeChecker
-            response_messages = self.generate_response(
-                my_user_id,
-                (
-                    await self.discord_message_to_message(message)
-                    async for message in message.channel.history(
-                        limit=None, before=command_message
-                    )
-                    if not await self.parse_continue_command(message)
-                ),
-                config,
-            )
-            async with ScheduleTyping(message.channel):
-                async for reply_message in response_messages:
-                    if reply_message.author.user_id == my_user_id and not isempty(
-                        reply_message.message
-                    ):
-                        await wait_until_timestamp(
-                            reply_message.timestamp, message.channel.typing
+            try:
+                try:
+                    config = await self.get_config(message.channel)
+                except ValueError as exc:
+                    raise ConfigError() from exc
+                if not await self.should_reply(message, config):
+                    command_message = None
+                    return
+                my_user_id = UserID(self.user.id, "discord")
+                # PyCharm's type checker incorrectly infers an async-for
+                # generator as a Generator when it is an AsyncIterable
+                # noinspection PyTypeChecker
+                response_messages = self.generate_response(
+                    my_user_id,
+                    (
+                        await self.discord_message_to_message(message)
+                        async for message in message.channel.history(
+                            limit=None, before=command_message
                         )
-                        await message.channel.send(reply_message.message)
-            if command_message is not None:
-                await command_message.delete()
+                        if not await self.parse_continue_command(message)
+                    ),
+                    config,
+                )
+                async with ScheduleTyping(message.channel):
+                    async for reply_message in response_messages:
+                        if reply_message.author.user_id == my_user_id and not isempty(
+                            reply_message.message
+                        ):
+                            await wait_until_timestamp(
+                                reply_message.timestamp, message.channel.typing
+                            )
+                            await message.channel.send(reply_message.message)
+            finally:
+                if command_message is not None:
+                    await command_message.delete()
 
     async def discord_message_to_message(self, message: discord.Message) -> Message:
         if message.author.id == self.user.id:
@@ -116,13 +122,26 @@ class DiscordInterface(discord.Client):
         try:
             async with self.message_semaphore:
                 yield None
-        except Exception:
+        except ConfigError as exc:
+            await message.add_reaction("⚙️")
+            # if the message is deleted, the url will still head to the channel
+            print(
+                "bad config in channel",
+                format_cli_link(
+                    message.jump_url,
+                    f"#{message.channel.name}",
+                ),
+                get_channel_topic(message.channel),
+            )
+            raise exc.__cause__
+        except Exception as exc:
             await message.add_reaction("⚠")
+            if isinstance(exc, ConnectionError):
+                await message.add_reaction("📵")
             print(
                 "exception in channel",
                 format_cli_link(
                     message.jump_url,
-                    # if the message is deleted, the url will still head to the channel
                     f"#{message.channel.name}",
                 ),
             )
@@ -141,23 +160,22 @@ async def get_yaml_from_channel(
     """
     Reads a channel description, extracting yaml from it.
     """
-    if hasattr(channel, "topic"):
-        topic = channel.topic
-    elif hasattr(channel, "parent"):
-        topic = channel.parent.topic
-    else:
-        topic = None
+    topic = get_channel_topic(channel)
     if topic is not None and "---" in topic:
-        yml = yaml.safe_load(channel.topic.split("---")[1])
+        return yaml.safe_load(channel.topic.split("---")[1])
     else:
-        yml = {}
-    return yml
+        return {}
 
 
-async def get_channel_config_from_topic_as_yaml(
+def get_channel_topic(
     channel: "discord.abc.MessageableChannel",
-) -> Config:
-    return resolve_config.load_config_from_kv(get_yaml_from_channel(channel))
+) -> Optional[str]:
+    if hasattr(channel, "topic"):
+        return channel.topic
+    elif hasattr(channel, "parent"):
+        return channel.parent.topic
+    else:
+        return None
 
 
 async def wait_until_timestamp(timestamp, coroutine):
@@ -181,3 +199,7 @@ def format_cli_link(uri, label=None):
     escape_mask = "\033]8;{};{}\033\\{}\033]8;;\033\\"
 
     return escape_mask.format(parameters, uri, label)
+
+
+class ConfigError(ValueError):
+    pass
