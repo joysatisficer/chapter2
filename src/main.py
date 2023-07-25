@@ -73,6 +73,7 @@ async def get_replies(
         )
     )["completions"][0]["text"]
     print("Completion>>", completion.replace("\n", r"\n"), "<<Completion", sep="")
+    # TODO: Truncate last 512 tokens
     for name, message in irc_message_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes
         if name == my_name or name == "":
@@ -108,15 +109,13 @@ def get_config_getter(bot_config: Config):
 
 
 if __name__ == "__main__":
-    agent_name = "sercy"
-    with open(f"people/{agent_name}/config.yaml") as file:
+    name = "sercy"
+    with open(f"people/{name}/config.yaml") as file:
         kv = yaml.safe_load(file)
     with open("people/vendors.yaml") as file:
         kv = {**kv, **yaml.safe_load(file)}
-    with open(f"people/{agent_name}/discord_token") as file:
-        kv["discord_token"] = file.read()
+    with open(f"people/{name}/discord_token") as file:
+        kv["discord_token"] = file.read().strip()
     config = resolve_config.load_config_from_kv(kv)
-    interface = DiscordInterface(
-        agent_name, generate_response, get_config_getter(config)
-    )
+    interface = DiscordInterface(name, generate_response, get_config_getter(config))
     interface.run(config.discord_token)
