@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "type": "python",
+            "name": "main.py (fleet)",
+            "arguments": ["src/main.py"],
+        },
+        
+    ]
+}
