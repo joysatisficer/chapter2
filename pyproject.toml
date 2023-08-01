@@ -6,7 +6,7 @@ authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python =  ">=3.8,<3.9.7 || >3.9.7,<4.0"
+python =  ">=3.10,<4.0"
 "discord.py" = "*"
 openai = "*"
 tiktoken = "*"
@@ -24,6 +24,7 @@ streamlit = "^1.24.0"
 scikit-learn = "^1.2.2"
 structlog = "^23.1.0"
 pytest-structlog = "^0.6"
+fire = "^0.5.0"
 
 
 [tool.poetry.group.dev.dependencies]
