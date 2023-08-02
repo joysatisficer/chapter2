@@ -3,7 +3,8 @@
         {
             "type": "python",
             "name": "main.py (fleet)",
-            "arguments": ["src/main.py"],
+            "module": "src.main",
+            "arguments": ["january"],
         },
         
     ]

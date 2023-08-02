@@ -6,6 +6,7 @@ import pydantic
 
 
 class Config(pydantic.BaseModel):
+    name: str = ""
     continuation_model: str = "code-davinci-002"
     continuation_max_tokens: pydantic.PositiveInt = 120
     discord_mute: Union[str, bool] = False
