@@ -3,5 +3,7 @@ __pycache__/
 doc/todo.md
 .pyre/pyre.stderr
 people/vendors.yaml
-people/*/discord_token
-people/*/*/*
+ems/*/discord_token
+ems/*
+ems/*/*
+ems/*/*/*

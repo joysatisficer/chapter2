@@ -1,5 +1,0 @@
-continuation-model: "davinci:ft-academics-illinois-2022-12-26-08-27-33"
-continuation-max-tokens: 50
-temperature: 1.0
-frequency-penalty: 0.3
-presence-penalty: 1.0
