@@ -1,6 +1,10 @@
 from dataclasses import dataclass
-from typing import Callable, List, Union, AsyncIterable, Awaitable
+from typing import Callable, Union, AsyncIterator, AsyncIterable, TYPE_CHECKING, TypeVar
+from abc import ABC
 from resolve_config import Config
+
+if TYPE_CHECKING:
+    from message_formats import MessageFormat
 
 
 @dataclass
@@ -18,11 +22,19 @@ class Author:
 @dataclass
 class Message:
     author: Author
-    message: str
+    content: str
     timestamp: float = 0  # sent messages use timestamp to represent time delay
 
 
 Action = Union[Message]
-MessageHistory = AsyncIterable[Message]
+MessageHistory = AsyncIterator[Message]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
 GenerateResponse = Callable[[UserID, MessageHistory, Config], AsyncIterable[Action]]
+
+
+class Faculty(ABC):
+    def __init__(self, config: Config):
+        pass
+
+    async def fetch(self) -> list[Message]:
+        pass

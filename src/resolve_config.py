@@ -1,42 +1,72 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Union, Dict, List, Optional
 
+from pathlib import Path
+from typing import Annotated
+import copy
+
+from annotated_types import Gt, Ge, Interval
 
 import pydantic
 
 
 class Config(pydantic.BaseModel):
-    name: str = ""
+    name: str
     continuation_model: str = "code-davinci-002"
-    continuation_max_tokens: pydantic.PositiveInt = 120
-    discord_mute: Union[str, bool] = False
-    thread_mute: bool = True
-    recency_window: pydantic.PositiveInt = 20
-    temperature: pydantic.PositiveFloat = 0.9
-    top_p: pydantic.PositiveFloat = 0.7
+    continuation_max_tokens: Annotated[int, Ge(0)] = 120
+    representation_model: str = "intfloat/e5-large-v2"
+    message_history_header: str | None = None  # todo: rename
+    prompt_separator: str = "***"
+    recency_window: Annotated[int, Gt(0)] = 20
+    message_format: str = (
+        "irc"  # todo: validate this and make it a MessageFormat object
+    )
+
+    temperature: Annotated[float, Ge(0)] = 0.9
+    top_p: Annotated[float, Interval(gt=0, le=1)] = 0.97
     frequency_penalty: float = 0.75
     presence_penalty: float = 2.0
-    vendors: Dict[str, SingleVendorConfig] = {}
-    discord_token: Optional[str] = None
+    stop_sequences: list[str] = []
+
+    discord_mute: str | bool = False
+    thread_mute: bool = True
+    vendors: dict[str, SingleVendorConfig] = {}
+    discord_token: str | None = None
+    em_folder: Path
+
+
+class LegacyConfig(Config):
+    representation_model: str = "sentence-transformers/all-mpnet-base-v2"
+    top_p: Annotated[float, Interval(gt=0, le=1)] = 0.7
+    prompt_separator: str = "###"
 
 
 class SingleVendorConfig(pydantic.BaseModel):
     config: dict = {}
-    provides: List[str] = []
+    provides: list[str] = []
 
     def __getitem__(self, item):
         return getattr(self, item)
+
+
+def get_defaults(model):
+    defaults = {}
+    for field in model.model_json_schema()["properties"].values():
+        if "default" in field:
+            defaults[field["title"]] = field["default"]
+    return defaults
 
 
 ALIASES = {
     "engines.complete": "continuation-model",
     "sampling": {
         "temperature": "temperature",
-        "top_p": "top-p",
+        "top_p": "top_p",
     },
+    "chat.context": "message_history_header",
 }
 
-DEFAULTS = Config()
+DEFAULTS = get_defaults(Config)
+LEGACY_DEFAULTS = {**copy.deepcopy(DEFAULTS), **get_defaults(LegacyConfig)}
 
 
 def override_with(items: dict, updates: dict):
@@ -70,7 +100,7 @@ def rename_keys(kv: dict, aliases: dict):
             if value in new_kv:
                 raise ValueError(f"Duplicate config keys: {value} and {key} both set")
             elif isinstance(value, str):
-                new_kv[value] = new_kv.pop(key)
+                new_kv[value.replace("-", "_")] = new_kv.pop(key)
             elif isinstance(value, dict):
                 new_kv = override_with(new_kv, rename_keys(new_kv[key], value))
             else:
@@ -78,10 +108,10 @@ def rename_keys(kv: dict, aliases: dict):
     return new_kv
 
 
-if rename_keys(DEFAULTS.model_dump(), ALIASES) != DEFAULTS.model_dump():
+if rename_keys(DEFAULTS, ALIASES) != DEFAULTS:
     raise ValueError("Default config keys shouldn't use aliases")
 
 
-def load_config_from_kv(kv: dict, defaults: Config = DEFAULTS) -> Config:
-    dictionary = override_with(defaults.model_dump(), rename_keys(kv, ALIASES))
+def load_config_from_kv(kv: dict, defaults: dict = DEFAULTS) -> Config:
+    dictionary = override_with(defaults, rename_keys(kv, ALIASES))
     return Config(**dictionary)

@@ -8,7 +8,7 @@ from thundersvm import SVC
 from sklearn import svm
 from message_formats import irc_message_format, colon_message_format
 
-from ego_loader import load_ego
+from chr_loader import load_chr
 
 
 class AbstractIndex(ABC):
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     index.add_data(
         [
             s
-            for s in (load_ego)(f"people/{character}/{character}.ego")
+            for s in load_chr(f"people/{character}/{character}.ego")
             if s != "" and not s.isspace() and AbstractIndex.process_string(s) != ""
         ]
     )
