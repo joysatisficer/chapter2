@@ -5,7 +5,7 @@ import yaml
 import glob
 
 
-def load_ego(dir):
+def load_chr(dir):
     chunks = []
     for file_contents in load_directory(dir):
         chunks.extend(process_file(file_contents, make_fixed_size_chunks)[1])

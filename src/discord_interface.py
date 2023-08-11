@@ -2,7 +2,8 @@ import asyncio
 import contextlib
 import signal
 import time
-from typing import Callable, Awaitable, Optional
+import urllib.parse
+from typing import Callable, Awaitable, Optional, AsyncIterable
 
 import discord
 import yaml
@@ -48,29 +49,37 @@ class DiscordInterface(discord.Client):
                     command_message = None
                     return
                 my_user_id = UserID(self.user.id, "discord")
+
                 # PyCharm's type checker incorrectly infers an async-for
                 # generator as a Generator when it is an AsyncIterable
                 # noinspection PyTypeChecker
+                class MessageHistoryIterable:
+                    def __aiter__(_) -> AsyncIterable:
+                        async def inner():
+                            nonlocal message
+                            async for message in message.channel.history(
+                                limit=None, before=command_message
+                            ):
+                                if not await self.parse_continue_command(message):
+                                    yield await self.discord_message_to_message(message)
+
+                        return inner()
+
+                # noinspection PyTypeChecker
                 response_messages = self.generate_response(
                     my_user_id,
-                    (
-                        await self.discord_message_to_message(message)
-                        async for message in message.channel.history(
-                            limit=None, before=command_message
-                        )
-                        if not await self.parse_continue_command(message)
-                    ),
+                    MessageHistoryIterable(),
                     config,
                 )
                 async with ScheduleTyping(message.channel):
                     async for reply_message in response_messages:
                         if reply_message.author.user_id == my_user_id and not isempty(
-                            reply_message.message
+                            reply_message.content
                         ):
                             await wait_until_timestamp(
                                 reply_message.timestamp, message.channel.typing
                             )
-                            await message.channel.send(reply_message.message)
+                            await message.channel.send(reply_message.content)
             finally:
                 if command_message is not None:
                     await command_message.delete()
@@ -152,6 +161,17 @@ class DiscordInterface(discord.Client):
                 and self.message_semaphore._value == self.MAX_CONCURRENT_MESSAGES
             ):
                 await self.close()
+
+    async def on_ready(self):
+        if len(self.guilds) == 0:
+            print(f"Invite the bot: {self.get_invite_link()}")
+
+    def get_invite_link(self):
+        if self.user.id is None:
+            raise ValueError("Tried to get invite link before bot user ID is known")
+        return "https://discord.com/api/oauth2/authorize?" + urllib.parse.urlencode(
+            {"client_id": self.user.id, "permissions": 536879168, "scope": "bot"}
+        )
 
 
 async def get_yaml_from_channel(

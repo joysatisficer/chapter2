@@ -2,8 +2,8 @@ from retriever import SVMIndex
 
 
 class TestSVMIndex:
-    def setup(self):
-        self.index = SVMIndex()
+    def setup_method(self):
+        self.index = SVMIndex("intfloat/e5-large-v2")
 
     def test_retrieval(self):
         self.index.add_data(["hello", "world"])
