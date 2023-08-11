@@ -124,7 +124,7 @@ def get_config_getter(bot_config: Config):
 
 def run_em(name):
     parent_dir = Path(__file__).resolve().parents[1]
-    em_folder = parent_dir / "people" / name
+    em_folder = parent_dir / "ems" / name
     try:
         with open(em_folder / "config.yaml") as file:
             kv = yaml.safe_load(file)
@@ -134,7 +134,7 @@ def run_em(name):
         # warning, loading dhall is not memory safe
         with open(em_folder / "config.dhall") as file:
             kv = dhall.load(file)
-    with open(parent_dir / "people/vendors.yaml") as file:
+    with open(parent_dir / "ems/vendors.yaml") as file:
         kv = {**kv, **yaml.safe_load(file)}
     kv["em_folder"] = em_folder
     for subpath in em_folder.iterdir():
