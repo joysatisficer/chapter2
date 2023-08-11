@@ -34,7 +34,12 @@ async def generate_response(
     stop_sequences = unique(
         config.stop_sequences
         + [
-            message_format.name_prefix(message.author.name)
+            # if the completion prefix is an empty string,
+            # it's possible for a stop sequence to be generated
+            # immediately. if that's the case, we don't want to
+            # prepend a newline to author-based stop sequences
+            ("" if completion_prefix == "" else "\n")
+            + message_format.name_prefix(message.author.name)
             for message in recent_messages
             if message.author.name != config.name
         ]
