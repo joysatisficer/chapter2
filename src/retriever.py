@@ -25,12 +25,7 @@ class AbstractIndex(ABC):
 
     @staticmethod
     def process_string(string: str):
-        messages = []
-        for message in irc_message_format.parse(string):
-            # many embedding models perform poorly with IRC format
-            messages.append(colon_message_format.wrap(message[0], message[1]))
-        # many embedding models perform poorly with newlines
-        return " ".join(messages)
+        return string
 
 
 class SVMIndex(AbstractIndex):

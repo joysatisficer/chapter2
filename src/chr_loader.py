@@ -1,11 +1,11 @@
 import re
 from copy import deepcopy
-from typing import Callable, List
+from typing import Callable
 import yaml
 import glob
 
 
-def load_chr(dir):
+def load_chr(dir) -> list[str]:
     chunks = []
     for file_contents in load_directory(dir):
         chunks.extend(process_file(file_contents, make_fixed_size_chunks)[1])

@@ -1,36 +1,55 @@
 import os
 import time
-from typing import TypeVar, Iterable
+import dataclasses
+from typing import TypeVar, Iterable, Callable
+from pathlib import Path
 
-import aioitertools.more_itertools
 import yaml
 import dhall
+from aioitertools.more_itertools import take as async_take
 
 import resolve_config
+from intermodel import callgpt
 from declarations import Message, UserID, MessageHistory, Author, Config
-from message_formats import irc_message_format, MessageFormat, MESSAGE_FORMAT_REGISTRY
+from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY
 from discord_interface import DiscordInterface, get_yaml_from_channel
 from mufflers import repeats_prompt_sentence, has_http
-from intermodel import callgpt
-from pathlib import Path
+from character_faculty import CharacterFaculty
 
 
 async def generate_response(
     my_user_id: UserID, history: MessageHistory, config: Config
 ):
     message_format = MESSAGE_FORMAT_REGISTRY[config.message_format]
-    author = Author(my_user_id, config.name)
-    recent_messages = await aioitertools.more_itertools.take(
-        config.recency_window, history
-    )
+    author = Author(config.name, my_user_id)
+    recent_messages = await async_take(config.recency_window, history)
     completion_prefix = message_format.name_prefix(config.name)
-    prompt = (
+    message_history_ensemble = (
         ""
         if config.message_history_header is None
         else (config.message_history_header + "\n")
         + format_message_section(message_format, recent_messages)
         + completion_prefix
     )
+    if "character" in config.enabled_faculties:
+        character_faculty = CharacterFaculty(config)
+        fetched = await character_faculty.fetch(history, config)
+
+        def token_limit_not_reached(s):
+            return len(callgpt.tokenize(config.continuation_model, s)) < (
+                callgpt.max_token_length(config.continuation_model)
+                - config.continuation_max_tokens
+            )
+
+        faculty_text = format_message_section(
+            message_format,
+            fetched,
+            separator=config.scene_break,
+            while_=token_limit_not_reached,
+        )
+    else:
+        faculty_text = ""
+    prompt = faculty_text + message_history_ensemble
     stop_sequences = unique(
         config.stop_sequences
         + [
@@ -76,7 +95,15 @@ async def get_replies(
     author: Author,
     stop_sequences: list[str] = None,
 ):
-    print(prompt.replace("\n", "\\n"))
+    if config.prevent_scene_break:
+        logit_bias = {
+            callgpt.tokenize(config.continuation_model, config.scene_break.strip("\n"))[
+                0
+            ]: -100
+        }
+    else:
+        logit_bias = {}
+    print(logit_bias)
     completion = (
         await callgpt.complete(
             prompt=prompt,
@@ -87,26 +114,33 @@ async def get_replies(
             model=config.continuation_model,
             stop=stop_sequences[:3] if stop_sequences is not None else None,
             vendor_config=config.vendors,
+            logit_bias=logit_bias,
         )
     )["completions"][0]["text"]
     print("Completion>>", completion.replace("\n", r"\n"), "<<Completion", sep="")
     # Todo: Client-side stop sequences
-    for name, message in MESSAGE_FORMAT_REGISTRY[config.message_format].parse(
+    for message in MESSAGE_FORMAT_REGISTRY[config.message_format].parse(
         completion_prefix + completion
     ):
         # accept messages from myself or without prefixes
-        if name == my_name or name == "":
-            yield Message(author, message.strip())
+        if message.author.name in (my_name, ""):
+            yield dataclasses.replace(message, author=author)
         else:
             break
 
 
 def format_message_section(
-    message_format: MessageFormat, messages: list[Message]
+    message_format: MessageFormat,
+    messages: list[Message],
+    separator: str = "",
+    while_: Callable[[str], bool] = lambda _: True,
 ) -> str:
     prompt = ""
     for message in messages[::-1]:
-        prompt += message_format.render(message)
+        new_prompt = prompt + separator + message_format.render(message)
+        if not while_(new_prompt):
+            break
+        prompt = new_prompt
     return prompt
 
 

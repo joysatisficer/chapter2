@@ -2,8 +2,6 @@ import re
 from re import sub, match, compile as re_compile, I, M
 from typing import Callable, Union, Literal
 
-import nltk
-
 __all__ = ["Muffler", "repeats_prompt_sentence", "has_http"]
 
 Muffler = Callable[[str, str], Union[Literal[False], str]]
@@ -65,6 +63,8 @@ def divide_sentences(prompt):
 
 
 def sentence_tokenize(s):
+    import nltk
+
     nltk_sentences = nltk.sent_tokenize(s)
     sentences = []
     for sentence in nltk_sentences:
