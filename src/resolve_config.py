@@ -15,10 +15,17 @@ class Config(pydantic.BaseModel):
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     representation_model: str = "intfloat/e5-large-v2"
     message_history_header: str | None = None  # todo: rename
-    prompt_separator: str = "***"
+    scene_break: str = "***\n"  # todo: rename to scene_break_string
     recency_window: Annotated[int, Gt(0)] = 20
     message_format: str = (
         "irc"  # todo: validate this and make it a MessageFormat object
+    )
+    # todo: allow multiple instances of the same faculty
+    # faculties: dict[str, dict[str, Any]] = {}
+    enabled_faculties: list[str] = []
+    character_faculty_recent_message_attention: int = 7
+    prevent_scene_break: bool = (
+        False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )
 
     temperature: Annotated[float, Ge(0)] = 0.9
@@ -37,7 +44,7 @@ class Config(pydantic.BaseModel):
 class LegacyConfig(Config):
     representation_model: str = "sentence-transformers/all-mpnet-base-v2"
     top_p: Annotated[float, Interval(gt=0, le=1)] = 0.7
-    prompt_separator: str = "###"
+    scene_break: str = "###\n"
 
 
 class SingleVendorConfig(pydantic.BaseModel):
@@ -63,6 +70,7 @@ ALIASES = {
         "top_p": "top_p",
     },
     "chat.context": "message_history_header",
+    "lookup_msg_cache": "character_faculty_recent_message_attention",
 }
 
 DEFAULTS = get_defaults(Config)

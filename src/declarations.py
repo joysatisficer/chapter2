@@ -15,8 +15,8 @@ class UserID:
 
 @dataclass
 class Author:
-    user_id: UserID
     name: str
+    user_id: UserID | None = None
 
 
 @dataclass
@@ -36,5 +36,6 @@ class Faculty(ABC):
     def __init__(self, config: Config):
         pass
 
-    async def fetch(self) -> list[Message]:
+    # todo: make this an async iterator
+    async def fetch(self, history: MessageHistory, config: Config) -> list[Message]:
         pass

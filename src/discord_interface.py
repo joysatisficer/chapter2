@@ -1,5 +1,7 @@
 import asyncio
 import contextlib
+import os
+import sys
 import signal
 import time
 import urllib.parse
@@ -35,11 +37,15 @@ class DiscordInterface(discord.Client):
         signal.signal(signal.SIGINT, self.shutdown)
 
     async def on_message(self, message: discord.Message) -> None:
-        async with self.handle_exceptions(message):
-            if await self.parse_continue_command(message):
-                command_message = message
-            else:
-                command_message = None
+        if await self.parse_continue_command(message):
+            command_message = message
+            message_to_respond_to = [
+                message async for message in message.channel.history(limit=2)
+            ][1]
+        else:
+            command_message = None
+            message_to_respond_to = message
+        async with self.handle_exceptions(message_to_respond_to):
             try:
                 try:
                     config = await self.get_config(message.channel)
@@ -90,7 +96,7 @@ class DiscordInterface(discord.Client):
         else:
             author_name = message.author.name
         return Message(
-            Author(UserID(message.author.id, "discord"), author_name),
+            Author(author_name, UserID(message.author.id, "discord")),
             await parse_discord_content(message),
             message.created_at.timestamp(),
         )
@@ -165,6 +171,12 @@ class DiscordInterface(discord.Client):
     async def on_ready(self):
         if len(self.guilds) == 0:
             print(f"Invite the bot: {self.get_invite_link()}")
+        await self.change_presence(
+            activity=discord.Streaming(
+                name="Chapter 2", url="https://www.youtube.com/watch?v=ESx_hy1n7HA"
+            )
+        )
+        import nltk
 
     def get_invite_link(self):
         if self.user.id is None:

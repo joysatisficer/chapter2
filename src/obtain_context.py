@@ -27,7 +27,7 @@ async def generate_response(
     if metadata.get("mystiqa") != True:
         return
     my_name = "allison"
-    author = Author(my_user_id, my_name)
+    author = Author(my_name, my_user_id)
     recent_messages = await aioitertools.more_itertools.take(50, history)
     completion_prefix = irc_message_format.name_prefix(my_name)
     prompt = (
