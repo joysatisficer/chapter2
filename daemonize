@@ -1,0 +1,21 @@
+#!/bin/bash
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+EM_NAME="$1"
+echo "[Unit]
+Description=Language model simulacrum based on Chapter 2
+After=network.target
+Wants=network-online.target
+
+[Service]
+Restart=always
+RestartSec=3
+Type=simple
+WorkingDirectory=$SCRIPT_DIR
+ExecStart=/usr/bin/poetry run ./src/main.py $EM_NAME
+
+[Install]
+WantedBy=default.target" > ~/.config/systemd/user/"$EM_NAME"-em.service
+systemctl --user daemon-reload
+systemctl --user enable --now "$EM_NAME"-em.service
+sleep 3
+systemctl --user status "$EM_NAME"-em.service

@@ -1,3 +1,4 @@
+#!/usr/bin/env -S python -u
 import os
 import time
 import dataclasses
@@ -25,9 +26,11 @@ async def generate_response(
     recent_messages = await async_take(config.recency_window, history)
     completion_prefix = message_format.name_prefix(config.name)
     message_history_ensemble = (
-        ""
-        if config.message_history_header is None
-        else (config.message_history_header + "\n")
+        (
+            ""
+            if config.message_history_header is None
+            else (config.message_history_header + "\n")
+        )
         + format_message_section(message_format, recent_messages)
         + completion_prefix
     )
@@ -38,6 +41,11 @@ async def generate_response(
         def token_limit_not_reached(s):
             return len(callgpt.tokenize(config.continuation_model, s)) < (
                 callgpt.max_token_length(config.continuation_model)
+                - len(
+                    callgpt.tokenize(
+                        config.continuation_model, message_history_ensemble
+                    )
+                )
                 - config.continuation_max_tokens
             )
 

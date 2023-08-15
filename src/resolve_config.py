@@ -64,6 +64,7 @@ def get_defaults(model):
 
 
 ALIASES = {
+    "NAME": "name",
     "engines.complete": "continuation-model",
     "sampling": {
         "temperature": "temperature",
