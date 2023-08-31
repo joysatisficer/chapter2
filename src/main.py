@@ -170,6 +170,8 @@ def get_config_getter(bot_config: Config):
 
 
 async def rehearse_em(config):
+    """Rehearsal runs an em in mock mode when it awakens to populate caches"""
+
     async def mock_message_history_iterator():
         messages = [
             Message(Author("alice"), "hello"),
@@ -190,7 +192,7 @@ async def rehearse_em(config):
         pass
 
 
-def run_em(name):
+async def run_em(name):
     parent_dir = Path(__file__).resolve().parents[1]
     em_folder = parent_dir / "ems" / name
     try:
@@ -215,18 +217,22 @@ def run_em(name):
         del kv["legacy"]
     else:
         defaults = resolve_config.DEFAULTS
-    asyncio.run(
-        rehearse_em(
-            resolve_config.load_config_from_kv(
-                kv, {**defaults, **resolve_config.REHEARSAL_CONFIG}
-            )
-        )
-    )
     config = resolve_config.load_config_from_kv(kv, defaults)
     interface = DiscordInterface(
         kv["name"], generate_response, get_config_getter(config)
     )
-    interface.run(config.discord_token)
+
+    await asyncio.gather(
+        asyncio.create_task(
+            rehearse_em(
+                resolve_config.load_config_from_kv(
+                    kv, {**defaults, **resolve_config.REHEARSAL_CONFIG}
+                )
+            )
+        ),
+        # todo: set up logging
+        asyncio.create_task(interface.start(config.discord_token)),
+    )
 
 
 if __name__ == "__main__":
@@ -235,4 +241,4 @@ if __name__ == "__main__":
     install(show_locals=True)
     import fire
 
-    fire.Fire(run_em)
+    fire.Fire(lambda name: asyncio.run(run_em(name)))

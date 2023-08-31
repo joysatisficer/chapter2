@@ -176,7 +176,7 @@ class DiscordInterface(discord.Client):
                 name="Chapter 2", url="https://www.youtube.com/watch?v=ESx_hy1n7HA"
             )
         )
-        import nltk
+        print("Discord interface ready")
 
     def get_invite_link(self):
         if self.user.id is None:
