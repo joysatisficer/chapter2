@@ -194,7 +194,7 @@ async def get_yaml_from_channel(
     """
     topic = get_channel_topic(channel)
     if topic is not None and "---" in topic:
-        return yaml.safe_load(channel.topic.split("---")[1])
+        return yaml.safe_load(topic.split("---")[1])
     else:
         return {}
 
