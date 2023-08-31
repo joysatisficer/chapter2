@@ -1,8 +1,9 @@
 #!/usr/bin/env -S python -u
+import asyncio
 import os
 import time
 import dataclasses
-from typing import TypeVar, Iterable, Callable
+from typing import TypeVar, Iterable, Callable, AsyncIterable
 from pathlib import Path
 
 import yaml
@@ -111,7 +112,6 @@ async def get_replies(
         }
     else:
         logit_bias = {}
-    print(logit_bias)
     completion = (
         await callgpt.complete(
             prompt=prompt,
@@ -169,6 +169,27 @@ def get_config_getter(bot_config: Config):
     return get_config
 
 
+async def rehearse_em(config):
+    async def mock_message_history_iterator():
+        messages = [
+            Message(Author("alice"), "hello"),
+            Message(Author("bob"), "hi alice!"),
+            Message(Author(config.name), "hi bob!"),
+            Message(Author("alice"), f"hi {config.name}!"),
+        ][::-1]
+        for message in messages:
+            yield message
+
+    class MockMessageHistoryIterable(AsyncIterable):
+        def __aiter__(self):
+            return mock_message_history_iterator()
+
+    async for response in generate_response(
+        UserID(0, "rehearsal"), MockMessageHistoryIterable(), config
+    ):
+        pass
+
+
 def run_em(name):
     parent_dir = Path(__file__).resolve().parents[1]
     em_folder = parent_dir / "ems" / name
@@ -190,10 +211,18 @@ def run_em(name):
     if "name" not in kv:
         kv["name"] = name
     if kv.get("legacy", False):
-        config = resolve_config.load_config_from_kv(kv, resolve_config.LEGACY_DEFAULTS)
+        defaults = resolve_config.LEGACY_DEFAULTS
         del kv["legacy"]
     else:
-        config = resolve_config.load_config_from_kv(kv, resolve_config.DEFAULTS)
+        defaults = resolve_config.DEFAULTS
+    asyncio.run(
+        rehearse_em(
+            resolve_config.load_config_from_kv(
+                kv, {**defaults, **resolve_config.REHEARSAL_CONFIG}
+            )
+        )
+    )
+    config = resolve_config.load_config_from_kv(kv, defaults)
     interface = DiscordInterface(
         kv["name"], generate_response, get_config_getter(config)
     )

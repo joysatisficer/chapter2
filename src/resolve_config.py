@@ -24,6 +24,7 @@ class Config(pydantic.BaseModel):
     # faculties: dict[str, dict[str, Any]] = {}
     enabled_faculties: list[str] = []
     character_faculty_recent_message_attention: int = 7
+    metaphor_search_faculty_recent_message_attention: int = 5
     prevent_scene_break: bool = (
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )
@@ -55,11 +56,14 @@ class SingleVendorConfig(pydantic.BaseModel):
         return getattr(self, item)
 
 
+REHEARSAL_CONFIG = {"vendors": {"fake-local": SingleVendorConfig(provides=[".*"])}}
+
+
 def get_defaults(model):
     defaults = {}
-    for field in model.model_json_schema()["properties"].values():
+    for name, field in model.model_json_schema()["properties"].items():
         if "default" in field:
-            defaults[field["title"]] = field["default"]
+            defaults[name] = field["default"]
     return defaults
 
 
