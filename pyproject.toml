@@ -15,7 +15,6 @@ aioitertools = "*"
 pyvespa = "*"
 nltk = "*"
 pyyaml = "*"
-embedapi = {path = "../modules/embedapi"}
 python-dotenv = "*"
 pydantic = ">=2.0a1"
 intermodel = {path = "./../intermodel"}
