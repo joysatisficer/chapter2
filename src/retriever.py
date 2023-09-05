@@ -6,7 +6,7 @@ import embedapi
 import numpy as np
 from thundersvm import SVC
 from sklearn import svm
-from message_formats import irc_message_format, colon_message_format
+from asgiref.sync import sync_to_async
 
 from chr_loader import load_chr
 
@@ -16,11 +16,11 @@ class AbstractIndex(ABC):
         pass
 
     @abstractmethod
-    def add_data(self, data: List[str]):
+    async def add_data(self, data: list[str]):
         pass
 
     @abstractmethod
-    def query(self, query: str, k: int) -> List[str]:
+    async def query(self, query: str, k: int) -> list[str]:
         pass
 
     @staticmethod
@@ -73,6 +73,9 @@ class KNNIndex(AbstractIndex):
         self.strings = []
         self.index = None
 
+    # https://github.com/facebookresearch/faiss/wiki/Threads-and-asynchronous-calls
+    # thread_sensitive=False is valid if locks are implemented properly
+    @sync_to_async
     def add_data(self, data: List[str]):
         processed = [self.process_string(s) for s in data]
         self.strings.extend(data)
@@ -85,6 +88,7 @@ class KNNIndex(AbstractIndex):
             )
         self.index.add(embeddings)
 
+    @sync_to_async
     def query(self, query: str, k: int) -> List[str]:
         vec_query = np.array([embedapi.encode_query(self.transformer, query)])
         faiss.normalize_L2(vec_query)

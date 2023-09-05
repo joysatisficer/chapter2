@@ -30,12 +30,6 @@ Action = Union[Message]
 MessageHistory = AsyncIterable[Message]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
 GenerateResponse = Callable[[UserID, MessageHistory, Config], AsyncIterable[Action]]
-
-
-class Faculty(ABC):
-    def __init__(self, config: Config):
-        pass
-
-    # todo: make this an async iterator
-    async def fetch(self, history: MessageHistory, config: Config) -> list[Message]:
-        pass
+Faculty = Callable[
+    [MessageHistory, Config], list[Message]
+]  # AsyncIterable[Message] in the future
