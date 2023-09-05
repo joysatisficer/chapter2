@@ -1,8 +1,7 @@
 #!/usr/bin/env -S python -u
 import asyncio
-import os
-import time
 import dataclasses
+from datetime import datetime
 from typing import TypeVar, Iterable, Callable, AsyncIterable
 from pathlib import Path
 
@@ -13,10 +12,11 @@ from aioitertools.more_itertools import take as async_take
 import resolve_config
 from intermodel import callgpt
 from declarations import Message, UserID, MessageHistory, Author, Config
-from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY
+from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY, web_document_format
 from discord_interface import DiscordInterface, get_yaml_from_channel
 from mufflers import repeats_prompt_sentence, has_http
-from character_faculty import CharacterFaculty
+from character_faculty import character_faculty
+from metaphor_search_faculty import metaphor_search_faculty
 
 
 async def generate_response(
@@ -26,39 +26,53 @@ async def generate_response(
     author = Author(config.name, my_user_id)
     recent_messages = await async_take(config.recency_window, history)
     completion_prefix = message_format.name_prefix(config.name)
+    # todo: config options for header and footer for every ensemble
     message_history_ensemble = (
         (
             ""
             if config.message_history_header is None
-            else (config.message_history_header + "\n")
+            else (config.message_history_header.format(now=datetime.now()) + "\n")
         )
         + format_message_section(message_format, recent_messages)
         + completion_prefix
     )
+    if "metaphor-search" in config.enabled_faculties:
+        web_results = await metaphor_search_faculty(history, config)
+        # todo: make sure it's in the correct order
+        metaphor_search_ensemble = format_message_section(
+            web_document_format,
+            web_results,
+            # todo: configurable scene breaks for all faculties
+            separator=config.scene_break,
+            while_=has_not_reached_token_limit(
+                config.continuation_model, config.metaphor_search_faculty_max_tokens
+            ),
+        )
+    else:
+        metaphor_search_ensemble = ""
     if "character" in config.enabled_faculties:
-        character_faculty = CharacterFaculty(config)
-        fetched = await character_faculty.fetch(history, config)
-
-        def token_limit_not_reached(s):
-            return len(callgpt.tokenize(config.continuation_model, s)) < (
-                callgpt.max_token_length(config.continuation_model)
-                - len(
-                    callgpt.tokenize(
-                        config.continuation_model, message_history_ensemble
-                    )
-                )
-                - config.continuation_max_tokens
-            )
-
-        faculty_text = format_message_section(
+        # todo: token limits for all faculties
+        fetched = await character_faculty(history, config)
+        character_ensemble = format_message_section(
             message_format,
             fetched,
             separator=config.scene_break,
-            while_=token_limit_not_reached,
+            while_=has_not_reached_token_limit(
+                config.continuation_model,
+                callgpt.max_token_length(config.continuation_model)
+                - callgpt.count_tokens(
+                    config.continuation_model, message_history_ensemble
+                )
+                - callgpt.count_tokens(
+                    config.continuation_model, metaphor_search_ensemble
+                )
+                - config.continuation_max_tokens,
+            ),
         )
     else:
-        faculty_text = ""
-    prompt = faculty_text + message_history_ensemble
+        character_ensemble = ""
+    # todo: make order of faculties configurable
+    prompt = metaphor_search_ensemble + character_ensemble + message_history_ensemble
     stop_sequences = unique(
         config.stop_sequences
         + [
@@ -112,6 +126,7 @@ async def get_replies(
         }
     else:
         logit_bias = {}
+    print(prompt)
     completion = (
         await callgpt.complete(
             prompt=prompt,
@@ -135,6 +150,13 @@ async def get_replies(
             yield dataclasses.replace(message, author=author)
         else:
             break
+
+
+def has_not_reached_token_limit(continuation_model: str, token_limit: int):
+    def token_limit_not_reached(s: str) -> bool:
+        return len(callgpt.tokenize(continuation_model, s)) < token_limit
+
+    return token_limit_not_reached
 
 
 def format_message_section(
@@ -221,6 +243,9 @@ async def run_em(name):
     interface = DiscordInterface(
         kv["name"], generate_response, get_config_getter(config)
     )
+    import discord
+
+    discord.utils.setup_logging()
 
     await asyncio.gather(
         asyncio.create_task(
@@ -233,6 +258,7 @@ async def run_em(name):
         # todo: set up logging
         asyncio.create_task(interface.start(config.discord_token)),
     )
+    interface.run
 
 
 if __name__ == "__main__":

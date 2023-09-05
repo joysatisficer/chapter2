@@ -2,6 +2,7 @@ import re
 from dataclasses import dataclass
 from functools import reduce
 from typing import Callable
+from datetime import datetime
 
 from declarations import Message, Author
 
@@ -69,6 +70,17 @@ colon_message_format = _register["colon"] = MessageFormat(
     ],
 )
 
+web_document_format = _register["web_document"] = MessageFormat(
+    render=lambda message: ""
+    if message.timestamp is None
+    else (datetime.utcfromtimestamp(message.timestamp).strftime("%Y-%m-%d - "))
+    + message.author.name
+    + "\n"
+    + message.content,
+    name_prefix=NotImplemented,
+    parse=NotImplemented,
+)
+
 # contrib
 
 
@@ -122,6 +134,22 @@ python_repl_message_format = _register["python_repl"] = MessageFormat(
     parse=lambda continuation: [
         Message(Author(name), content) for name, content in parse_repl_log(continuation)
     ],
+)
+
+faux_chat_message_format = _register["faux_chat"] = MessageFormat(
+    render=lambda message: "[{role}](#{type})\n{content}".format(
+        role=message.author.name,
+        type="instructions" if message.author.name == "system" else "message",
+        content=message.content,
+    ),
+    name_prefix=lambda name: "[{role}](#{type})\n".format(
+        role=name,
+        type="instructions" if name == "system" else "message",
+    ),
+    # (?:\[(\w+)\]\(#(\w+)\)\n(.*)\s*)+
+    parse=lambda continuation: re.match(
+        "(?:\[(\w+)\]\(#(\w+)\)\n(.*))+", continuation
+    ).groups(),
 )
 
 MESSAGE_FORMAT_REGISTRY = _register

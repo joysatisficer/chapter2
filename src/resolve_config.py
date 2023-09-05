@@ -25,6 +25,7 @@ class Config(pydantic.BaseModel):
     enabled_faculties: list[str] = []
     character_faculty_recent_message_attention: int = 7
     metaphor_search_faculty_recent_message_attention: int = 5
+    metaphor_search_faculty_max_tokens: int = 4000
     prevent_scene_break: bool = (
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )
@@ -39,6 +40,7 @@ class Config(pydantic.BaseModel):
     thread_mute: bool = True
     vendors: dict[str, SingleVendorConfig] = {}
     discord_token: str | None = None
+    metaphor_search_api_key: str | None = None
     em_folder: Path
 
 

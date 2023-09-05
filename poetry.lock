@@ -210,6 +210,23 @@ test = ["anyio[trio]", "coverage[toml] (>=7)", "hypothesis (>=4.0)", "psutil (>=
 trio = ["trio (>=0.22)"]
 
 [[package]]
+name = "asgiref"
+version = "3.7.2"
+description = "ASGI specs, helper code, and adapters"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "asgiref-3.7.2-py3-none-any.whl", hash = "sha256:89b2ef2247e3b562a16eef663bc0e2e703ec6468e2fa8a5cd61cd449786d4f6e"},
+    {file = "asgiref-3.7.2.tar.gz", hash = "sha256:9e0ce3aa93a819ba5b45120216b23878cf6e8525eb3848653452b4192b92afed"},
+]
+
+[package.dependencies]
+typing-extensions = {version = ">=4", markers = "python_version < \"3.11\""}
+
+[package.extras]
+tests = ["mypy (>=0.800)", "pytest", "pytest-asyncio"]
+
+[[package]]
 name = "async-timeout"
 version = "4.0.3"
 description = "Timeout context manager for asyncio programs"
@@ -952,7 +969,7 @@ files = [
 
 [[package]]
 name = "intermodel"
-version = "0.0.4"
+version = "0.0.8"
 description = ""
 optional = false
 python-versions = "*"
@@ -1222,6 +1239,20 @@ files = [
     {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
     {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
 ]
+
+[[package]]
+name = "metaphor-python"
+version = "0.1.16"
+description = "A Python package for the Metaphor API."
+optional = false
+python-versions = "*"
+files = [
+    {file = "metaphor-python-0.1.16.tar.gz", hash = "sha256:c26c3e8a37ef1b195073d556c929180c2b1acf7590a801da8d1b9afbdd82dd8f"},
+    {file = "metaphor_python-0.1.16-py3-none-any.whl", hash = "sha256:f3989a679f888cc0374593ab5e5a82b0f121c90b14d6eb5b813e861990dbb13b"},
+]
+
+[package.dependencies]
+requests = "*"
 
 [[package]]
 name = "more-itertools"
@@ -3149,4 +3180,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4.0"
-content-hash = "56cbab56e425b1c572ebff76488a7142d65d5f125ea497c4466d3e119114b1ff"
+content-hash = "30a41434518727c0c13e0d734482d760ca70da20860248dbc6e1612df207678a"
