@@ -14,7 +14,7 @@ WorkingDirectory=$SCRIPT_DIR
 ExecStart=/usr/bin/poetry run ./src/main.py $EM_NAME
 
 [Install]
-WantedBy=default.target" > ~/.config/systemd/user/"$EM_NAME"-em.service
+WantedBy=default.target" > ~/.config/systemd/user/"$ENV_PREFIX""$EM_NAME".service
 systemctl --user daemon-reload
 systemctl --user enable --now "$EM_NAME"-em.service
 sleep 3

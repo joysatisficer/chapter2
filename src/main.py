@@ -4,75 +4,85 @@ import dataclasses
 from datetime import datetime
 from typing import TypeVar, Iterable, Callable, AsyncIterable
 from pathlib import Path
+from functools import partial
 
 import yaml
 import dhall
 from aioitertools.more_itertools import take as async_take
 
 import resolve_config
+from resolve_config import Config
 from intermodel import callgpt
-from declarations import Message, UserID, MessageHistory, Author, Config
-from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY, web_document_format
+from intermodel.callgpt import count_tokens, max_token_length
+from declarations import Message, UserID, MessageHistory, Author
+from message_formats import MessageFormat
 from discord_interface import DiscordInterface, get_yaml_from_channel
 from mufflers import repeats_prompt_sentence, has_http
 from character_faculty import character_faculty
 from metaphor_search_faculty import metaphor_search_faculty
 
 
+FACULTY_NAME_TO_FUNCTION = {
+    "character": character_faculty,
+    "metaphor_search": metaphor_search_faculty,
+}
+
+
 async def generate_response(
     my_user_id: UserID, history: MessageHistory, config: Config
 ):
-    message_format = MESSAGE_FORMAT_REGISTRY[config.message_format]
+    count_continuation_model_tokens = partial(count_tokens, config.continuation_model)
     author = Author(config.name, my_user_id)
     recent_messages = await async_take(config.recency_window, history)
-    completion_prefix = message_format.name_prefix(config.name)
-    # todo: config options for header and footer for every ensemble
+    completion_prefix = config.message_history_format.name_prefix(config.name)
+    ctx_vars = {"now": datetime.now()}
     message_history_ensemble = (
-        (
-            ""
-            if config.message_history_header is None
-            else (config.message_history_header.format(now=datetime.now()) + "\n")
-        )
-        + format_message_section(message_format, recent_messages)
+        (config.message_history_header.format(**ctx_vars) + "\n")
+        + await format_message_section(config.message_history_format, recent_messages)
         + completion_prefix
     )
-    if "metaphor-search" in config.enabled_faculties:
-        web_results = await metaphor_search_faculty(history, config)
-        # todo: make sure it's in the correct order
-        metaphor_search_ensemble = format_message_section(
-            web_document_format,
-            web_results,
-            # todo: configurable scene breaks for all faculties
-            separator=config.scene_break,
-            while_=has_not_reached_token_limit(
-                config.continuation_model, config.metaphor_search_faculty_max_tokens
-            ),
+    ensembles = []
+    for faculty_config in config.ensembles:
+        faculty_results = FACULTY_NAME_TO_FUNCTION[faculty_config.faculty](
+            history, faculty_config, config
         )
-    else:
-        metaphor_search_ensemble = ""
-    if "character" in config.enabled_faculties:
-        # todo: token limits for all faculties
-        fetched = await character_faculty(history, config)
-        character_ensemble = format_message_section(
-            message_format,
-            fetched,
-            separator=config.scene_break,
-            while_=has_not_reached_token_limit(
-                config.continuation_model,
-                callgpt.max_token_length(config.continuation_model)
-                - callgpt.count_tokens(
-                    config.continuation_model, message_history_ensemble
-                )
-                - callgpt.count_tokens(
-                    config.continuation_model, metaphor_search_ensemble
-                )
-                - config.continuation_max_tokens,
-            ),
+        ensemble = (
+            faculty_config.header.format(ctx_vars)
+            + await format_message_section(
+                faculty_config.format,
+                faculty_results,
+                separator=faculty_config.separator,
+                while_=has_not_reached_token_limit(
+                    config.continuation_model,
+                    min(
+                        (
+                            max_token_length(config.continuation_model)
+                            - sum(
+                                [
+                                    count_continuation_model_tokens(ensemble)
+                                    for ensemble in ensembles
+                                    + [message_history_ensemble]
+                                ]
+                            )
+                            - config.continuation_max_tokens
+                            - count_continuation_model_tokens(
+                                faculty_config.header.format(**ctx_vars)
+                            )
+                            - count_continuation_model_tokens(
+                                faculty_config.footer.format(**ctx_vars)
+                            )
+                        ),
+                        faculty_config.max_tokens,
+                    ),
+                ),
+            )
+            + faculty_config.footer.format(ctx_vars)
         )
-    else:
-        character_ensemble = ""
-    # todo: make order of faculties configurable
-    prompt = metaphor_search_ensemble + character_ensemble + message_history_ensemble
+        ensembles.append(ensemble)
+    prompt = "".join(ensembles + [message_history_ensemble])
+    assert count_continuation_model_tokens(
+        prompt
+    ) + config.continuation_max_tokens < max_token_length(config.continuation_model)
     stop_sequences = unique(
         config.stop_sequences
         + [
@@ -81,7 +91,7 @@ async def generate_response(
             # immediately. if that's the case, we don't want to
             # prepend a newline to author-based stop sequences
             ("" if completion_prefix == "" else "\n")
-            + message_format.name_prefix(message.author.name)
+            + config.message_history_format.name_prefix(message.author.name)
             for message in recent_messages
             if message.author.name != config.name
         ]
@@ -142,11 +152,9 @@ async def get_replies(
     )["completions"][0]["text"]
     print("Completion>>", completion.replace("\n", r"\n"), "<<Completion", sep="")
     # Todo: Client-side stop sequences
-    for message in MESSAGE_FORMAT_REGISTRY[config.message_format].parse(
-        completion_prefix + completion
-    ):
+    for message in config.message_history_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes
-        if message.author.name in (my_name, ""):
+        if message.author is None or message.author.name == my_name:
             yield dataclasses.replace(message, author=author)
         else:
             break
@@ -159,19 +167,33 @@ def has_not_reached_token_limit(continuation_model: str, token_limit: int):
     return token_limit_not_reached
 
 
-def format_message_section(
+async def format_message_section(
     message_format: MessageFormat,
-    messages: list[Message],
+    messages: AsyncIterable[Message] | Iterable[Message],
     separator: str = "",
     while_: Callable[[str], bool] = lambda _: True,
 ) -> str:
     prompt = ""
-    for message in messages[::-1]:
-        new_prompt = prompt + separator + message_format.render(message)
-        if not while_(new_prompt):
-            break
-        prompt = new_prompt
-    return prompt
+    if hasattr(messages, "__aiter__"):
+        async for message in messages:
+            if prompt == "":
+                new_prompt = message_format.render(message)
+            else:
+                new_prompt = message_format.render(message) + separator + prompt
+            if not while_(new_prompt):
+                break
+            prompt = new_prompt
+        return prompt
+    else:
+        for message in messages:
+            if prompt == "":
+                new_prompt = message_format.render(message)
+            else:
+                new_prompt = message_format.render(message) + separator + prompt
+            if not while_(new_prompt):
+                break
+            prompt = new_prompt
+        return prompt
 
 
 T = TypeVar("T")
@@ -256,15 +278,14 @@ async def run_em(name):
             )
         ),
         # todo: set up logging
-        asyncio.create_task(interface.start(config.discord_token)),
+        asyncio.create_task(interface.start(config.discord_token.rstrip("\n"))),
     )
-    interface.run
 
 
 if __name__ == "__main__":
     from rich.traceback import install
 
-    install(show_locals=True)
+    install()
     import fire
 
     fire.Fire(lambda name: asyncio.run(run_em(name)))

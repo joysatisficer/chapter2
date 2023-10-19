@@ -1,27 +1,25 @@
 from dataclasses import dataclass
-from typing import Callable, Union, AsyncIterator, AsyncIterable, TYPE_CHECKING, TypeVar
-from abc import ABC
-from resolve_config import Config
+from typing import Callable, Union, AsyncIterable, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from message_formats import MessageFormat
+    from resolve_config import Config, FacultyConfig
 
 
-@dataclass
+@dataclass(frozen=True)
 class UserID:
     id: int
     platform: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class Author:
     name: str
     user_id: UserID | None = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class Message:
-    author: Author
+    author: Author | None
     content: str
     timestamp: float = 0  # sent messages use timestamp to represent time delay
 
@@ -29,7 +27,16 @@ class Message:
 Action = Union[Message]
 MessageHistory = AsyncIterable[Message]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
-GenerateResponse = Callable[[UserID, MessageHistory, Config], AsyncIterable[Action]]
-Faculty = Callable[
-    [MessageHistory, Config], list[Message]
-]  # AsyncIterable[Message] in the future
+GenerateResponse = Callable[[UserID, MessageHistory, "Config"], AsyncIterable[Action]]
+Faculty = Callable[[MessageHistory, "FacultyConfig", "Config"], AsyncIterable[Message]]
+
+
+# class AbstractInterface(ABC):
+#     @abstractmethod
+#     def __init__(
+#         self,
+#         agent_name: str,
+#         generate_response: GenerateResponse,
+#         get_discord_config: GetDiscordConfig,
+#     ):
+#         pass

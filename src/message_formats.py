@@ -1,22 +1,51 @@
 import re
 from dataclasses import dataclass
 from functools import reduce
-from typing import Callable
+from typing import Callable, Annotated
 from datetime import datetime
+
+import pydantic
 
 from declarations import Message, Author
 
+import tiktoken
 
-@dataclass
-class MessageFormat:
+tiktoken.get_encoding("gpt2").encode
+
+_register: dict[str, "MessageFormat"] = {}
+
+
+class MessageFormat(pydantic.BaseModel):
     """In the future, this could format all actions, not just messages, such as inner monologues"""
 
-    render: Callable[[Message], str]
-    name_prefix: Callable[[str], str]
-    parse: Callable[[str], list[Message]]
+    render: Callable[[Message], str] | type(NotImplemented)
+    name_prefix: Callable[[str], str] | type(NotImplemented)
+    parse: Callable[[str], list[Message]] | type(NotImplemented)
+
+    class Config:
+        arbitrary_types_allowed = True
+        json_encoders = {
+            Callable: lambda v: str(v),
+        }
+        schema_extra = {
+            "example": {
+                "render": "<function>",
+                "name_prefix": "<function>",
+                "parse": "<function>",
+            }
+        }
+
+    @pydantic.model_validator(mode="before")
+    def read_from_register(cls, data: str | dict):
+        if isinstance(data, str):
+            return _register[data]
+        else:
+            return data
 
 
-_register: dict[str, MessageFormat] = {}
+def parse_message_format(message_format: str) -> "MessageFormat":
+    return MessageFormat.parse_obj(message_format)
+
 
 irc_message_format = _register["irc"] = MessageFormat(
     render=lambda message: (
@@ -37,9 +66,9 @@ irc_message_format = _register["irc"] = MessageFormat(
     # match `<name> string`, `string` but not `<name`, which usually occurs
     # because of a length cutoff
     parse=lambda continuation: [
-        Message(Author(name), content)
+        Message(Author(name) if name != "" else None, content)
         for name, content in re.findall(
-            r"^(?:<([^\n]+)>)? ([^<].*)$", continuation, re.MULTILINE
+            r"^(?:<([^\n]+)> )?([^<].*)$", continuation, re.MULTILINE
         )
     ],
 )
@@ -63,7 +92,7 @@ colon_message_format = _register["colon"] = MessageFormat(
     # match `name: string`, `string` but not `name`, which usually occurs
     # because of a length cutoff
     parse=lambda continuation: [
-        Message(Author(name), content)
+        Message(Author(name) if name != "" else None, content)
         for name, content in re.findall(
             r"^(?:([^\n]+):)? ([^:].*)$", continuation, re.MULTILINE
         )
@@ -71,10 +100,12 @@ colon_message_format = _register["colon"] = MessageFormat(
 )
 
 web_document_format = _register["web_document"] = MessageFormat(
-    render=lambda message: ""
-    if message.timestamp is None
-    else (datetime.utcfromtimestamp(message.timestamp).strftime("%Y-%m-%d - "))
-    + message.author.name
+    render=lambda message: ("from " + message.author.name)
+    + (
+        ""
+        if message.timestamp is None
+        else (datetime.utcfromtimestamp(message.timestamp).strftime(" @ %Y-%m-%d"))
+    )
     + "\n"
     + message.content,
     name_prefix=NotImplemented,

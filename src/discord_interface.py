@@ -12,7 +12,8 @@ import yaml
 
 import resolve_config
 from util.discord_improved import ScheduleTyping, parse_discord_content
-from declarations import GenerateResponse, Message, UserID, Author, Config, JSON
+from declarations import GenerateResponse, Message, UserID, Author, JSON
+from resolve_config import Config
 
 GetDiscordConfig = Callable[["discord.abc.MessageableChannel"], Awaitable[Config]]
 
@@ -25,7 +26,7 @@ class DiscordInterface(discord.Client):
         agent_name: str,
         generate_response: GenerateResponse,
         get_discord_config: GetDiscordConfig,
-    ) -> None:
+    ):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(intents=intents)
@@ -67,7 +68,9 @@ class DiscordInterface(discord.Client):
                                 limit=None, before=command_message
                             ):
                                 if not await self.parse_continue_command(message):
-                                    yield await self.discord_message_to_message(message)
+                                    yield await self.discord_message_to_message(
+                                        config, message
+                                    )
 
                         return inner()
 
@@ -90,9 +93,11 @@ class DiscordInterface(discord.Client):
                 if command_message is not None:
                     await command_message.delete()
 
-    async def discord_message_to_message(self, message: discord.Message) -> Message:
+    async def discord_message_to_message(
+        self, config, message: discord.Message
+    ) -> Message:
         if message.author.id == self.user.id:
-            author_name = self.agent_name
+            author_name = config.name
         else:
             author_name = message.author.name
         return Message(
