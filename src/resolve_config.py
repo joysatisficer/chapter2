@@ -1,12 +1,74 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
+from math import inf
 import copy
 
 from annotated_types import Gt, Ge, Interval
 
 import pydantic
+from pydantic.functional_validators import BeforeValidator
+from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY
+
+
+class FacultyConfig(pydantic.BaseModel):
+    faculty: str
+    format: MessageFormat
+    separator: str = "***\n"
+    max_tokens: int | float = inf
+    header: str = ""
+    footer: str = "***\n"
+    recent_message_attention: int
+
+    @pydantic.field_validator("max_tokens")
+    def check_integer_or_inf(cls, v):
+        if isinstance(v, int) or v == inf:
+            return v
+        raise ValueError('Value must be an integer or float("inf")')
+
+
+FACULTY_TO_CONFIG_CLASS: dict[str, type[FacultyConfig]] = {}
+
+
+def faculty_name(faculty_name_str: str):
+    def faculty_name_inner(cls):
+        FACULTY_TO_CONFIG_CLASS[faculty_name_str] = cls
+        return cls
+
+    return faculty_name_inner
+
+
+@faculty_name("metaphor_search")
+class MetaphorSearchFacultyConfig(FacultyConfig):
+    format: MessageFormat = MESSAGE_FORMAT_REGISTRY["web_document"]
+    include_domains: list[str] | None = None
+    exclude_domains: list[str] | None = None
+    # set defaults
+    max_tokens: int | float = 4000
+    footer: str = "\n***\n"
+    recent_message_attention: int = 5
+
+
+@faculty_name("character")
+class CharacterFacultyConfig(FacultyConfig):
+    # set defaults
+    format: MessageFormat = MESSAGE_FORMAT_REGISTRY["irc"]
+    recent_message_attention: int = 7
+
+
+FACULTY_ALIASES = {}
+
+
+def parse_ensemble(ensemble: dict[str, Any]) -> FacultyConfig:
+    if "faculty" in ensemble:
+        faculty_name = ensemble["faculty"]
+        if FacultyConfigCls := FACULTY_TO_CONFIG_CLASS.get(faculty_name):
+            return FacultyConfigCls(**rename_keys(ensemble, FACULTY_ALIASES))
+        else:
+            raise NotImplementedError(f"unknown faculty {faculty_name}")
+    else:
+        raise NotImplementedError("non-faculty ensembles aren't implemented yet")
 
 
 class Config(pydantic.BaseModel):
@@ -14,18 +76,21 @@ class Config(pydantic.BaseModel):
     continuation_model: str = "code-davinci-002"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     representation_model: str = "intfloat/e5-large-v2"
-    message_history_header: str | None = None  # todo: rename
+    # todo: format validator and type
+    message_history_format: MessageFormat = MESSAGE_FORMAT_REGISTRY["irc"]
+    message_history_header: str = ""  # todo: rename
     scene_break: str = "***\n"  # todo: rename to scene_break_string
     recency_window: Annotated[int, Gt(0)] = 20
-    message_format: str = (
-        "irc"  # todo: validate this and make it a MessageFormat object
-    )
-    # todo: allow multiple instances of the same faculty
-    # faculties: dict[str, dict[str, Any]] = {}
-    enabled_faculties: list[str] = []
-    character_faculty_recent_message_attention: int = 7
-    metaphor_search_faculty_recent_message_attention: int = 5
-    metaphor_search_faculty_max_tokens: int = 4000
+    """
+    ensembles:
+     - faculty: character
+       max_tokens: 500
+
+    [[ensembles]]
+    faculty = "character"
+    max_tokens = 500
+    """
+    ensembles: list[Annotated[FacultyConfig, BeforeValidator(parse_ensemble)]] = []
     prevent_scene_break: bool = (
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )

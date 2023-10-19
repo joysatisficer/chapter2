@@ -6,40 +6,80 @@ import embedapi
 import numpy as np
 from thundersvm import SVC
 from sklearn import svm
-from asgiref.sync import sync_to_async
+from asgiref.sync import sync_to_async as asyncify
 
 from chr_loader import load_chr
 
+EMPTY = tuple()
+
+
+# todo: replace with icontract
+
 
 class AbstractIndex(ABC):
-    def __int__(self):
-        pass
+    def __init__(self):
+        self.frozen = False
 
     @abstractmethod
-    async def add_data(self, data: list[str]):
-        pass
+    async def add_data(self, data: list[str], keys):
+        assert len(data) == len(keys)
+        if len(data) == 0:
+            self.index = EMPTY
+            return True  # signal that caller should return immediately
+        elif self.frozen:
+            raise ValueError("Frozen index cannot be modified")
+
+    @classmethod
+    def dec_add_data(cls, fn):
+        async def add_data(*args, **kwargs):
+            if await cls.add_data(*args, **kwargs):
+                return
+            else:
+                return await fn(*args, **kwargs)
+
+        return add_data
 
     @abstractmethod
     async def query(self, query: str, k: int) -> list[str]:
-        pass
+        if self.index == EMPTY:
+            return []
+
+    @classmethod
+    def dec_query(cls, fn):
+        async def query(*args, **kwargs):
+            value = await cls.query(*args, **kwargs)
+            if value is not None:
+                return value
+            else:
+                return await fn(*args, **kwargs)
+
+        return query
 
     @staticmethod
     def process_string(string: str):
         return string
 
+    def freeze(self):
+        self.frozen = True
+
 
 class SVMIndex(AbstractIndex):
     def __init__(self, transformer):
+        super().__init__()
         self.transformer = transformer
         self.vectors = []
         self.strings = []
 
+    @AbstractIndex.dec_add_data
+    @asyncify
     def add_data(self, data: List[str]):
         processed = [self.process_string(s) for s in data]
         vectors = embedapi.encode_passages(self.transformer, processed)
         self.vectors.extend(vectors)
         self.strings.extend(data)
 
+    @AbstractIndex.dec_query
+    @asyncify
     def query(self, query: str, k: int) -> List[str]:
         vec_query = embedapi.encode_query(self.transformer, query)
         x = np.concatenate([vec_query[None, ...], self.vectors])
@@ -53,6 +93,8 @@ class SVMIndex(AbstractIndex):
 
 
 class SciKitSVMIndex(SVMIndex):
+    @AbstractIndex.dec_query
+    @asyncify
     def query(self, query: str, k: int) -> List[str]:
         vec_query = embedapi.encode_query(self.transformer, query)
         x = np.concatenate([vec_query[None, ...], self.vectors])
@@ -69,17 +111,18 @@ class SciKitSVMIndex(SVMIndex):
 
 class KNNIndex(AbstractIndex):
     def __init__(self, transformer):
+        super().__init__()
         self.transformer = transformer
         self.strings = []
         self.index = None
 
     # https://github.com/facebookresearch/faiss/wiki/Threads-and-asynchronous-calls
     # thread_sensitive=False is valid if locks are implemented properly
-    @sync_to_async
-    def add_data(self, data: List[str]):
-        processed = [self.process_string(s) for s in data]
-        self.strings.extend(data)
-        embeddings = embedapi.encode_passages(self.transformer, processed)
+    @AbstractIndex.dec_add_data
+    @asyncify
+    def add_data(self, indexates: list[str], keys: list):
+        self.strings.extend(keys)
+        embeddings = embedapi.encode_passages(self.transformer, indexates)
         embeddings = np.copy(embeddings)
         faiss.normalize_L2(embeddings)
         if self.index is None:
@@ -88,7 +131,8 @@ class KNNIndex(AbstractIndex):
             )
         self.index.add(embeddings)
 
-    @sync_to_async
+    @AbstractIndex.dec_query
+    @asyncify
     def query(self, query: str, k: int) -> List[str]:
         vec_query = np.array([embedapi.encode_query(self.transformer, query)])
         faiss.normalize_L2(vec_query)

@@ -10,47 +10,49 @@ from intermodel import callgpt
 
 from declarations import MessageHistory, Message, Author
 from message_formats import MessageFormat, irc_message_format
-from resolve_config import Config
+from resolve_config import Config, MetaphorSearchFacultyConfig
 
 
 async def metaphor_search_faculty(
-    history: MessageHistory, config: Config
-) -> list[Message]:
+    history: MessageHistory, faculty_config: MetaphorSearchFacultyConfig, config: Config
+):
     message_history_string = format_message_section(
         irc_message_format,
-        await async_take(
-            config.metaphor_search_faculty_recent_message_attention, history
-        ),
+        await async_take(faculty_config.recent_message_attention, history)
+        + [Message(Author(config.name), "")],
     )
     metaphor_client = Metaphor(config.metaphor_search_api_key)
-    results = (
-        await sync_to_async(metaphor_client.search)(
-            trim_tokens("gpt2", message_history_string, 1000),
-            num_results=30,
-        )
-    ).results
-    document_ids = []
-    for item in results:
-        document_ids.append(item.id)
-    document_contents = (
-        await sync_to_async(metaphor_client.get_contents)(document_ids)
-    ).contents
-    returned_messages = []
-    for document_content, result in zip(document_contents, results):
+    assert (
+        faculty_config.max_tokens <= 11_000
+    )  # max number of tokens it can return ais 10 documents * 1000 tokens per document by default
+    results = sorted(
+        (
+            await sync_to_async(metaphor_client.search)(
+                trim_tokens("gpt2", message_history_string, 1000),
+                num_results=10,
+                use_autoprompt=False,
+                include_domains=faculty_config.include_domains,
+                exclude_domains=faculty_config.exclude_domains,
+            )
+        ).results,
+        key=lambda item: item.score,
+        reverse=True,
+    )
+    for result in results:
         if result.published_date is None:
             published_timestamp = None
         else:
             published_timestamp = time.mktime(
                 dateutil.parser.parse(result.published_date).timetuple()
             )
-        returned_messages.append(
-            Message(
-                Author(document_content.url),
-                document_content.extract,
-                timestamp=published_timestamp,
-            )
+        document_content = (
+            await sync_to_async(metaphor_client.get_contents)([result.id])
+        ).contents[0]
+        yield Message(
+            Author(document_content.url),
+            document_content.extract,
+            timestamp=published_timestamp,
         )
-    return returned_messages
 
 
 def format_message_section(
