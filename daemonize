@@ -1,6 +1,7 @@
 #!/bin/bash
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-SERVICE_NAME="$ENV_PREFIX""$EM_NAME"
+# SERVICE_NAME is already used
+MY_SERVICE_NAME="$ENV_PREFIX""$EM_NAME"
 EM_NAME="$1"
 echo "[Unit]
 Description=Language model simulacrum based on Chapter 2
@@ -15,8 +16,8 @@ WorkingDirectory=$SCRIPT_DIR
 ExecStart=/usr/bin/poetry run ./src/main.py $EM_NAME
 
 [Install]
-WantedBy=default.target" > ~/.config/systemd/user/"$SERVICE_NAME".service
+WantedBy=default.target" > ~/.config/systemd/user/"$MY_SERVICE_NAME".service
 systemctl --user daemon-reload
-systemctl --user enable --now "$SERVICE_NAME".service
+systemctl --user enable --now "$MY_SERVICE_NAME".service
 sleep 1
-systemctl --user status "$SERVICE_NAME".service
+systemctl --user status "$MY_SERVICE_NAME".service
