@@ -248,8 +248,16 @@ async def run_em(name):
         # warning, loading dhall is not memory safe
         with open(em_folder / "config.dhall") as file:
             kv = dhall.load(file)
-    with open(parent_dir / "ems/vendors.yaml") as file:
-        kv = {**kv, **yaml.safe_load(file)}
+    try:
+        with open(os.path.expanduser("~/.config/chapter2/vendors.yaml")) as file:
+            kv = {**kv, **yaml.safe_load(file)}
+    except FileNotFoundError:
+        pass
+    try:
+        with open(parent_dir / "ems/vendors.yaml") as file:
+            kv = {**kv, **yaml.safe_load(file)}
+    except FileNotFoundError:
+        pass
     kv["em_folder"] = em_folder
     for subpath in em_folder.iterdir():
         if subpath.name in Config.model_fields.keys():
