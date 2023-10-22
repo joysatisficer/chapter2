@@ -1,4 +1,6 @@
 import asyncio
+from functools import cache
+from collections import Counter
 
 from asyncstdlib.functools import cache as async_cache
 from aioitertools.more_itertools import take as async_take
@@ -25,12 +27,16 @@ async def character_faculty(
             representations.append(colon_message_format.render(message).strip())
             indexed_messages.append(message)
 
+    dedup_representations, dedup_indexed_messages = remove_duplicate_representations(
+        tuple(representations), tuple(indexed_messages)
+    )
+
     # todo: options for non-KNN indexes
     index = await create_index(
         KNNIndex,
         config.representation_model,
-        tuple(representations),
-        tuple(indexed_messages),
+        tuple(dedup_representations),
+        tuple(dedup_indexed_messages),
     )
     messages = await async_take(faculty_config.recent_message_attention, history)
     query = ""
@@ -39,6 +45,15 @@ async def character_faculty(
     results = await index.query(query.replace("\n", " "), 1000)
     for message in results:
         yield message
+
+
+@cache
+def remove_duplicate_representations(representations, indexed):
+    first_instance = {}
+    for representation, index in zip(representations, indexed):
+        if representation not in first_instance:
+            first_instance[representation] = index
+    return tuple(first_instance.keys()), tuple(first_instance.values())
 
 
 @async_cache
@@ -50,5 +65,4 @@ async def create_index(
         print("warn: empty character")
     await index.add_data(list(representations), list(indexed_messages))
     index.freeze()
-    print(index.freeze)
     return index
