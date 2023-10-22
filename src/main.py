@@ -1,5 +1,6 @@
 #!/usr/bin/env -S python -u
 import os
+import sys
 import asyncio
 import dataclasses
 from datetime import datetime
@@ -294,7 +295,7 @@ async def run_em(name):
 if __name__ == "__main__":
     from rich.traceback import install
 
-    install()
+    install(show_locals=not sys.__stdin__.isatty())
     import fire
 
     fire.Fire(lambda name: asyncio.run(run_em(name)))
