@@ -48,7 +48,7 @@ async def generate_response(
             history, faculty_config, config
         )
         ensemble = (
-            faculty_config.header.format(ctx_vars)
+            faculty_config.header.format(**ctx_vars)
             + await format_message_section(
                 faculty_config.format,
                 faculty_results,
@@ -77,7 +77,7 @@ async def generate_response(
                     ),
                 ),
             )
-            + faculty_config.footer.format(ctx_vars)
+            + faculty_config.footer.format(**ctx_vars)
         )
         ensembles.append(ensemble)
     prompt = "".join(ensembles + [message_history_ensemble])
