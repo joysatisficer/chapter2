@@ -66,9 +66,9 @@ def parse_ensemble(ensemble: dict[str, Any]) -> FacultyConfig:
         if FacultyConfigCls := FACULTY_TO_CONFIG_CLASS.get(faculty_name):
             return FacultyConfigCls(**rename_keys(ensemble, FACULTY_ALIASES))
         else:
-            raise NotImplementedError(f"unknown faculty {faculty_name}")
+            raise ValueError(f"unknown faculty {faculty_name}")
     else:
-        raise NotImplementedError("non-faculty ensembles aren't implemented yet")
+        raise ValueError("non-faculty ensembles aren't implemented yet")
 
 
 class Config(pydantic.BaseModel):
