@@ -9,6 +9,7 @@ from typing import Callable, Awaitable, Optional, AsyncIterable
 
 import discord
 import yaml
+from pydantic import ValidationError
 
 import resolve_config
 from util.discord_improved import ScheduleTyping, parse_discord_content
@@ -50,7 +51,7 @@ class DiscordInterface(discord.Client):
             try:
                 try:
                     config = await self.get_config(message.channel)
-                except ValueError as exc:
+                except (ValueError, ValidationError) as exc:
                     raise ConfigError() from exc
                 if not await self.should_reply(message, config):
                     command_message = None
