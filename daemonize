@@ -14,6 +14,7 @@ RestartSec=3
 Type=simple
 WorkingDirectory=$SCRIPT_DIR
 ExecStart=/usr/bin/poetry run ./src/main.py $EM_NAME
+Slice=ems-$ENV_PREFIX.slice
 
 [Install]
 WantedBy=default.target" > ~/.config/systemd/user/"$SERVICE_NAME".service
