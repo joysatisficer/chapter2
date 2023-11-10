@@ -38,19 +38,20 @@ async def metaphor_search_faculty(
         key=lambda item: item.score,
         reverse=True,
     )
-    for result in results:
+    document_contents_response = await sync_to_async(metaphor_client.get_contents)(
+        [result.id for result in results]
+    )
+    document_contents = document_contents_response.contents
+    for i, result in enumerate(results):
         if result.published_date is None:
             published_timestamp = None
         else:
             published_timestamp = time.mktime(
                 dateutil.parser.parse(result.published_date).timetuple()
             )
-        document_content = (
-            await sync_to_async(metaphor_client.get_contents)([result.id])
-        ).contents[0]
         yield Message(
-            Author(document_content.url),
-            document_content.extract,
+            Author(document_contents[i].url),
+            document_contents[i].extract,
             timestamp=published_timestamp,
         )
 
