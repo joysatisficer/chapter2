@@ -1,5 +1,9 @@
 # Development
 
+## System services
+### [`embed_server`](https://github.com/ampdot-io/embed_server)
+You can run it yourself or you can use my instance of it, just ask.
+
 ## Building
 
 1. Clone [embedapi](https://github.com/ampdot-io/embedapi) to `../embedapi` (relative to the root of Chapter 2)
