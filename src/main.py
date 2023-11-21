@@ -294,8 +294,9 @@ async def run_em(name):
 
 if __name__ == "__main__":
     from rich.traceback import install
-
-    install(show_locals=not sys.__stdin__.isatty())
     import fire
+    import selectors
+
+    install(show_locals=not sys.__stdin__.isatty(), suppress=[asyncio, fire, selectors])
 
     fire.Fire(lambda name: asyncio.run(run_em(name)))
