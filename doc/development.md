@@ -2,13 +2,27 @@
 
 ## Building
 
+1. Clone [embedapi](https://github.com/ampdot-io/embedapi) to `../embedapi` (relative to the root of Chapter 2)
+2. Clone [intermodel](https://github.com/ampdot-io/intermodel) to ../modules/intermodel
+3. Install dependencies
+
 ```bash
-pipenv install
+poetry install
 ```
 
+## Running
+
+```bash
+./src/main.py [em-name]
+```
+
+will run the em in `ems/[em-name]`
+
 ## Running tests
+Tests are unused
 
 ## Running type checking
+Type-checking has not been set up
 
 ## Toolchain setup
 
