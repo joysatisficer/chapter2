@@ -52,7 +52,7 @@ irc_message_format = _register["irc"] = MessageFormat(
         reduce(
             lambda acc, line: acc + "\n" + line if acc != "" else line,
             [
-                f"<{message.author.name}> {message.content}"
+                f"<{message.author.name}> {line}"
                 for line in message.content.splitlines()
                 if not line.isspace()
             ],
