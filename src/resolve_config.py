@@ -7,21 +7,21 @@ import copy
 
 from annotated_types import Gt, Ge, Interval
 
-import pydantic
+from pydantic import BaseModel, SerializeAsAny, field_validator
 from pydantic.functional_validators import BeforeValidator
 from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY
 
 
-class FacultyConfig(pydantic.BaseModel):
+class FacultyConfig(BaseModel):
     faculty: str
     format: MessageFormat
     separator: str = "***\n"
     max_tokens: int | float = inf
     header: str = ""
-    footer: str = "***\n"
+    footer: str = "***"
     recent_message_attention: int
 
-    @pydantic.field_validator("max_tokens")
+    @field_validator("max_tokens")
     def check_integer_or_inf(cls, v):
         if isinstance(v, int) or v == inf:
             return v
@@ -71,7 +71,7 @@ def parse_ensemble(ensemble: dict[str, Any]) -> FacultyConfig:
         raise ValueError("non-faculty ensembles aren't implemented yet")
 
 
-class Config(pydantic.BaseModel):
+class Config(BaseModel):
     name: str
     continuation_model: str = "code-davinci-002"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
@@ -90,7 +90,7 @@ class Config(pydantic.BaseModel):
     faculty = "character"
     max_tokens = 500
     """
-    ensembles: list[Annotated[FacultyConfig, BeforeValidator(parse_ensemble)]] = []
+    ensembles: list[Annotated[SerializeAsAny[FacultyConfig], BeforeValidator(parse_ensemble)]] = []
     prevent_scene_break: bool = (
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )
@@ -115,7 +115,7 @@ class LegacyConfig(Config):
     scene_break: str = "###\n"
 
 
-class SingleVendorConfig(pydantic.BaseModel):
+class SingleVendorConfig(BaseModel):
     config: dict = {}
     provides: list[str] = []
 
