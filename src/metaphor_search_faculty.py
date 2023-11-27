@@ -38,6 +38,8 @@ async def metaphor_search_faculty(
         key=lambda item: item.score,
         reverse=True,
     )
+    if len(results) == 0:
+        return
     document_contents_response = await sync_to_async(metaphor_client.get_contents)(
         [result.id for result in results]
     )
