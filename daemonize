@@ -2,7 +2,7 @@
 set -euo pipefail
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 EM_NAME="$1"
-SERVICE_NAME="$ENV_PREFIX""$EM_NAME"
+SERVICE_NAME="$ENV_PREFIX"-"$EM_NAME"
 echo "[Unit]
 Description=Language model simulacrum based on Chapter 2
 After=network.target
