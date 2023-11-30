@@ -9,7 +9,6 @@ from pathlib import Path
 from functools import partial
 
 import yaml
-import dhall
 from aioitertools.more_itertools import take as async_take
 
 import resolve_config
@@ -241,15 +240,10 @@ async def rehearse_em(config):
 async def run_em(name):
     parent_dir = Path(__file__).resolve().parents[1]
     em_folder = parent_dir / "ems" / name
-    try:
-        with open(em_folder / "config.yaml") as file:
-            kv = yaml.safe_load(file)
-            if kv is None:
-                kv = {}
-    except FileNotFoundError:
-        # warning, loading dhall is not memory safe
-        with open(em_folder / "config.dhall") as file:
-            kv = dhall.load(file)
+    with open(em_folder / "config.yaml") as file:
+        kv = yaml.safe_load(file)
+        if kv is None:
+            kv = {}
     try:
         with open(os.path.expanduser("~/.config/chapter2/vendors.yaml")) as file:
             kv = {**kv, **yaml.safe_load(file)}
