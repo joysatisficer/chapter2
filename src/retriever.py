@@ -4,7 +4,6 @@ from typing import List
 import faiss
 import embedapi
 import numpy as np
-from thundersvm import SVC
 from sklearn import svm
 from asgiref.sync import sync_to_async as asyncify
 
@@ -81,6 +80,8 @@ class SVMIndex(AbstractIndex):
     @AbstractIndex.dec_query
     @asyncify
     def query(self, query: str, k: int) -> List[str]:
+        from thundersvm import SVC
+
         vec_query = embedapi.encode_query(self.transformer, query)
         x = np.concatenate([vec_query[None, ...], self.vectors])
         y = np.zeros(len(self.vectors) + 1)
