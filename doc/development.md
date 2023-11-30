@@ -11,6 +11,7 @@ You can run it yourself or you can use my instance of it, just ask.
 3. Install dependencies
 
 ```bash
+poetry env use python3.10
 poetry install
 ```
 
