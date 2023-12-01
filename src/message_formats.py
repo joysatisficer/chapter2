@@ -8,10 +8,6 @@ import pydantic
 
 from declarations import Message, Author
 
-import tiktoken
-
-tiktoken.get_encoding("gpt2").encode
-
 _register: dict[str, "MessageFormat"] = {}
 
 
