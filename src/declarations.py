@@ -1,5 +1,6 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Union, AsyncIterable, TYPE_CHECKING
+from typing import Callable, Union, AsyncIterable, TYPE_CHECKING, Awaitable
 
 if TYPE_CHECKING:
     from resolve_config import Config, FacultyConfig
@@ -25,18 +26,7 @@ class Message:
 
 
 Action = Union[Message]
-MessageHistory = AsyncIterable[Message]
+ActionHistory = AsyncIterable[Action]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
-GenerateResponse = Callable[[UserID, MessageHistory, "Config"], AsyncIterable[Action]]
-Faculty = Callable[[MessageHistory, "FacultyConfig", "Config"], AsyncIterable[Message]]
-
-
-# class AbstractInterface(ABC):
-#     @abstractmethod
-#     def __init__(
-#         self,
-#         agent_name: str,
-#         generate_response: GenerateResponse,
-#         get_discord_config: GetDiscordConfig,
-#     ):
-#         pass
+GenerateResponse = Callable[[UserID, ActionHistory, "Config"], AsyncIterable[Action]]
+Faculty = Callable[[ActionHistory, "FacultyConfig", "Config"], AsyncIterable[Message]]

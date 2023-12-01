@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from math import inf
 import copy
 
@@ -71,6 +71,9 @@ def parse_ensemble(ensemble: dict[str, Any]) -> FacultyConfig:
         raise ValueError("non-faculty ensembles aren't implemented yet")
 
 
+Interface = Literal["discord"] | Literal["chatcompletions"]
+
+
 class Config(BaseModel):
     name: str
     continuation_model: str = "code-davinci-002"
@@ -90,7 +93,9 @@ class Config(BaseModel):
     faculty = "character"
     max_tokens = 500
     """
-    ensembles: list[Annotated[SerializeAsAny[FacultyConfig], BeforeValidator(parse_ensemble)]] = []
+    ensembles: list[
+        Annotated[SerializeAsAny[FacultyConfig], BeforeValidator(parse_ensemble)]
+    ] = []
     prevent_scene_break: bool = (
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )
@@ -101,12 +106,15 @@ class Config(BaseModel):
     presence_penalty: float = 2.0
     stop_sequences: list[str] = []
 
+    active_interfaces: list[Interface] = ["discord"]
     discord_mute: str | bool = False
     thread_mute: bool = True
     vendors: dict[str, SingleVendorConfig] = {}
     discord_token: str | None = None
     metaphor_search_api_key: str | None = None
     em_folder: Path
+
+    chatcompletions_default_name: str = "user"
 
 
 class LegacyConfig(Config):

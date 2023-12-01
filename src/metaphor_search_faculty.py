@@ -8,13 +8,13 @@ import dateutil.parser
 from metaphor_python import Metaphor
 from intermodel import callgpt
 
-from declarations import MessageHistory, Message, Author
+from declarations import ActionHistory, Message, Author
 from message_formats import MessageFormat, irc_message_format
 from resolve_config import Config, MetaphorSearchFacultyConfig
 
 
 async def metaphor_search_faculty(
-    history: MessageHistory, faculty_config: MetaphorSearchFacultyConfig, config: Config
+    history: ActionHistory, faculty_config: MetaphorSearchFacultyConfig, config: Config
 ):
     message_history_string = format_message_section(
         irc_message_format,

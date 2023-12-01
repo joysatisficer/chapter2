@@ -6,7 +6,7 @@ import aioitertools.more_itertools
 import tiktoken
 from openai import ChatCompletion
 
-from declarations import Message, UserID, MessageHistory, Author, JSON
+from declarations import Message, UserID, ActionHistory, Author, JSON
 from message_formats import irc_message_format, MessageFormat
 from discord_interface import DiscordInterface, get_channel_metadata_from_topic_as_yaml
 from mufflers import repeats_prompt_sentence, has_http
@@ -21,9 +21,7 @@ def as_a_language_model(reply, prompt):
     )
 
 
-async def generate_response(
-    my_user_id: UserID, history: MessageHistory, metadata: JSON
-):
+async def generate_response(my_user_id: UserID, history: ActionHistory, metadata: JSON):
     if metadata.get("mystiqa") != True:
         return
     my_name = "allison"
