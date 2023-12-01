@@ -8,10 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from declarations import GenerateResponse, Message, UserID, Author
-from abstractinterface import AbstractInterface
-from resolve_config import Config
-
-GetDiscordConfig = Callable[["discord.abc.MessageableChannel"], Awaitable[Config]]
+from abstractinterface import AbstractInterface, GetDiscordConfig
 
 Role = Literal["system", "user", "assistant"]
 
@@ -25,17 +22,17 @@ class ChatCompletionsRequestMessage(BaseModel):
 class ChatCompletionsRequest(BaseModel):
     messages: list[ChatCompletionsRequestMessage]
     max_tokens: Optional[int] = None
-    # ignored parameters
+    # ignored or unimplemented parameters
     model: str
-    frequency_penalty: Optional[float] = None
-    presence_penalty: Optional[float] = None
-    function_call: Optional[Union[Literal["none", "auto"], dict]] = None
-    functions: Optional[list[Any]] = None
-    logit_bias: Optional[dict] = None
-    n: Optional[int] = 1
-    stop: Optional[Union[str, list[str]]] = None
     temperature: Optional[float] = None
     top_p: Optional[float] = None
+    stop: Optional[Union[str, list[str]]] = None
+    frequency_penalty: Optional[float] = None
+    presence_penalty: Optional[float] = None
+    logit_bias: Optional[dict] = None
+    function_call: Optional[Union[Literal["none", "auto"], dict]] = None
+    functions: Optional[list[Any]] = None
+    n: Optional[int] = 1
     user: Optional[str] = None
 
 

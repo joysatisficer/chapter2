@@ -20,6 +20,7 @@ from declarations import Message, UserID, ActionHistory, Author
 from message_formats import MessageFormat
 from discord_interface import DiscordInterface, get_yaml_from_channel
 from chatcompletions_interface import ChatCompletionsInterface
+from completions_interface import CompletionsInterface
 from mufflers import repeats_prompt_sentence, has_http
 from character_faculty import character_faculty
 from metaphor_search_faculty import metaphor_search_faculty
@@ -28,6 +29,12 @@ from metaphor_search_faculty import metaphor_search_faculty
 FACULTY_NAME_TO_FUNCTION = {
     "character": character_faculty,
     "metaphor_search": metaphor_search_faculty,
+}
+
+INTERFACE_NAME_TO_INTERFACE = {
+    "discord": DiscordInterface,
+    "completions": CompletionsInterface,
+    "chatcompletions": ChatCompletionsInterface,
 }
 
 
@@ -237,9 +244,6 @@ async def rehearse_em(config):
         pass
 
 
-INTERFACES = {"discord": DiscordInterface, "chatcompletions": ChatCompletionsInterface}
-
-
 async def run_em(name):
     parent_dir = Path(__file__).resolve().parents[1]
     em_folder = parent_dir / "ems" / name
@@ -272,7 +276,7 @@ async def run_em(name):
     args = get_config_getter(config), generate_response, kv["name"]
     interfaces = []
     for interface in config.active_interfaces:
-        interfaces.append(INTERFACES[interface])
+        interfaces.append(INTERFACE_NAME_TO_INTERFACE[interface])
     interface_instances = []
     for interface in interfaces:
         interface_instances.append(interface(*args))
