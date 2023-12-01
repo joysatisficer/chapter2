@@ -11,12 +11,10 @@ import discord
 import yaml
 from pydantic import ValidationError
 
-import resolve_config
 from util.discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON
+from abstractinterface import GetDiscordConfig
 from resolve_config import Config
-
-GetDiscordConfig = Callable[["discord.abc.MessageableChannel"], Awaitable[Config]]
 
 
 class DiscordInterface(discord.Client):
@@ -24,19 +22,18 @@ class DiscordInterface(discord.Client):
 
     def __init__(
         self,
-        agent_name: str,
-        generate_response: GenerateResponse,
         get_discord_config: GetDiscordConfig,
+        generate_response: GenerateResponse,
+        agent_name: str,
     ):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(intents=intents)
-        self.agent_name = agent_name
-        self.generate_response: GenerateResponse = generate_response
         self.get_config: GetDiscordConfig = get_discord_config
+        self.generate_response: GenerateResponse = generate_response
+        self.agent_name = agent_name
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
         self.pending_shutdown = False
-        signal.signal(signal.SIGINT, self.shutdown)
 
     async def on_message(self, message: discord.Message) -> None:
         if await self.parse_continue_command(message):
@@ -133,11 +130,6 @@ class DiscordInterface(discord.Client):
             )
         )
 
-    def shutdown(self, sig, frame):
-        self.pending_shutdown = True
-        if self.message_semaphore._value == self.MAX_CONCURRENT_MESSAGES:
-            raise KeyboardInterrupt()
-
     @contextlib.asynccontextmanager
     async def handle_exceptions(self, message: discord.Message):
         try:
@@ -190,6 +182,15 @@ class DiscordInterface(discord.Client):
         return "https://discord.com/api/oauth2/authorize?" + urllib.parse.urlencode(
             {"client_id": self.user.id, "permissions": 536879168, "scope": "bot"}
         )
+
+    async def start(self, token: str = None, *args, **kwargs) -> None:
+        if token is None:
+            token = (await self.get_config(None)).discord_token
+        return await super().start(token, *args, **kwargs)
+
+    def stop(self, sig, frame):
+        self.pending_shutdown = True
+        asyncio.create_task(self.close())
 
 
 async def get_yaml_from_channel(

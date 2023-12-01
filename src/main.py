@@ -1,5 +1,6 @@
 #!/usr/bin/env -S python -u
 import os
+import signal
 import sys
 import asyncio
 import dataclasses
@@ -15,9 +16,10 @@ import resolve_config
 from resolve_config import Config
 from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
-from declarations import Message, UserID, MessageHistory, Author
+from declarations import Message, UserID, ActionHistory, Author
 from message_formats import MessageFormat
 from discord_interface import DiscordInterface, get_yaml_from_channel
+from chatcompletions_interface import ChatCompletionsInterface
 from mufflers import repeats_prompt_sentence, has_http
 from character_faculty import character_faculty
 from metaphor_search_faculty import metaphor_search_faculty
@@ -29,9 +31,7 @@ FACULTY_NAME_TO_FUNCTION = {
 }
 
 
-async def generate_response(
-    my_user_id: UserID, history: MessageHistory, config: Config
-):
+async def generate_response(my_user_id: UserID, history: ActionHistory, config: Config):
     count_continuation_model_tokens = partial(count_tokens, config.continuation_model)
     author = Author(config.name, my_user_id)
     recent_messages = await async_take(config.recency_window, history)
@@ -207,7 +207,7 @@ def unique(iterable: Iterable[T]) -> list[T]:
 def get_config_getter(bot_config: Config):
     async def get_config(channel: "discord.abc.MessageableChannel") -> Config:
         return resolve_config.load_config_from_kv(
-            await get_yaml_from_channel(channel),
+            await get_yaml_from_channel(channel) if channel is not None else {},
             bot_config.model_dump(),
         )
 
@@ -235,6 +235,9 @@ async def rehearse_em(config):
         UserID(0, "rehearsal"), MockMessageHistoryIterable(), config
     ):
         pass
+
+
+INTERFACES = {"discord": DiscordInterface, "chatcompletions": ChatCompletionsInterface}
 
 
 async def run_em(name):
@@ -266,12 +269,19 @@ async def run_em(name):
     else:
         defaults = resolve_config.DEFAULTS
     config = resolve_config.load_config_from_kv(kv, defaults)
-    interface = DiscordInterface(
-        kv["name"], generate_response, get_config_getter(config)
-    )
-    import discord
+    args = get_config_getter(config), generate_response, kv["name"]
+    interfaces = []
+    for interface in config.active_interfaces:
+        interfaces.append(INTERFACES[interface])
+    interface_instances = []
+    for interface in interfaces:
+        interface_instances.append(interface(*args))
 
-    discord.utils.setup_logging()
+    def handle_interrupt(sig, frame):
+        for interface_instance in interface_instances:
+            interface_instance.stop(sig, frame)
+
+    signal.signal(signal.SIGINT, handle_interrupt)
 
     await asyncio.gather(
         asyncio.create_task(
@@ -281,8 +291,7 @@ async def run_em(name):
                 )
             )
         ),
-        # todo: set up logging
-        asyncio.create_task(interface.start(config.discord_token.rstrip("\n"))),
+        *[interface_instance.start() for interface_instance in interface_instances],
     )
 
 

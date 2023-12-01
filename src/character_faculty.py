@@ -6,7 +6,7 @@ from asyncstdlib.functools import cache as async_cache
 from aioitertools.more_itertools import take as async_take
 from asgiref.sync import sync_to_async
 
-from declarations import Message, Author, MessageHistory, Faculty
+from declarations import Message, Author, ActionHistory, Faculty
 from resolve_config import Config, CharacterFacultyConfig
 from chr_loader import load_chr
 from retriever import KNNIndex
@@ -17,7 +17,7 @@ from message_formats import irc_message_format, colon_message_format
 
 
 async def character_faculty(
-    history: MessageHistory, faculty_config: CharacterFacultyConfig, config: Config
+    history: ActionHistory, faculty_config: CharacterFacultyConfig, config: Config
 ):
     strings = load_chr(str(config.em_folder / f"{config.name}.chr"))
     representations = []
