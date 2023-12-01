@@ -11,6 +11,8 @@ from declarations import Message, Author
 _register: dict[str, "MessageFormat"] = {}
 
 
+# todo: refactor message formats to support returning an index for where parsing stopped
+# and to be a class instead
 class MessageFormat(pydantic.BaseModel):
     """In the future, this could format all actions, not just messages, such as inner monologues"""
 

@@ -7,6 +7,7 @@ from declarations import GenerateResponse
 GetDiscordConfig = Callable[["discord.abc.MessageableChannel"], Awaitable[Config]]
 
 
+# todo: interface-specific configuration
 class AbstractInterface(ABC):
     @abstractmethod
     def __init__(

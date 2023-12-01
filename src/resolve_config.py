@@ -71,7 +71,7 @@ def parse_ensemble(ensemble: dict[str, Any]) -> FacultyConfig:
         raise ValueError("non-faculty ensembles aren't implemented yet")
 
 
-Interface = Literal["discord"] | Literal["chatcompletions"]
+Interface = Literal["discord"] | Literal["completions"] | Literal["chatcompletions"]
 
 
 class Config(BaseModel):
