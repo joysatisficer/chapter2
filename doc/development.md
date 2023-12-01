@@ -9,10 +9,14 @@ You can run it yourself or you can use my instance of it, just ask.
 1. Clone [embedapi](https://github.com/CrazyPython/embedapi) to `../embedapi` (relative to the root of Chapter 2)
 2. Clone [intermodel](https://github.com/CrazyPython/intermodel) to ../modules/intermodel
 3. Install dependencies
-
 ```bash
 poetry env use python3.10
 poetry install
+```
+4. Get nltk data
+```pycon
+>>> import nltk
+>>> nltk.download('punkt')
 ```
 
 ## Running
