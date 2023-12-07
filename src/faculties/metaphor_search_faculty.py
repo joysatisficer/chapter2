@@ -33,6 +33,9 @@ async def metaphor_search_faculty(
                 use_autoprompt=False,
                 include_domains=faculty_config.include_domains,
                 exclude_domains=faculty_config.exclude_domains,
+                # start_crawl_date=faculty_config.start_crawl_date,
+                # end_crawl_date=faculty_config.end_crawl_date,
+                # start_published_date=faculty_config.start
             )
         ).results,
         key=lambda item: item.score,
