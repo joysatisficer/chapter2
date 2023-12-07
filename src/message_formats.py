@@ -25,7 +25,7 @@ class MessageFormat(pydantic.BaseModel):
         json_encoders = {
             Callable: lambda v: str(v),
         }
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "render": "<function>",
                 "name_prefix": "<function>",
