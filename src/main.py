@@ -22,8 +22,8 @@ from interfaces.discord_interface import DiscordInterface, get_yaml_from_channel
 from interfaces.chatcompletions_interface import ChatCompletionsInterface
 from interfaces.completions_interface import CompletionsInterface
 from mufflers import repeats_prompt_sentence, has_http
-from character_faculty import character_faculty
-from metaphor_search_faculty import metaphor_search_faculty
+from faculties.character_faculty import character_faculty
+from faculties.metaphor_search_faculty import metaphor_search_faculty
 
 
 FACULTY_NAME_TO_FUNCTION = {
