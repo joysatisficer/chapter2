@@ -9,3 +9,5 @@ ems/*/discord_token
 ems/*
 ems/*/*
 ems/*/*/*
+.venv/
+.fleet/
