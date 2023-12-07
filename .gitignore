@@ -11,3 +11,4 @@ ems/*/*
 ems/*/*/*
 .venv/
 .fleet/
+.run/
