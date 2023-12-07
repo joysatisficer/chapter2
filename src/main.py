@@ -18,9 +18,9 @@ from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
 from declarations import Message, UserID, ActionHistory, Author
 from message_formats import MessageFormat
-from discord_interface import DiscordInterface, get_yaml_from_channel
-from chatcompletions_interface import ChatCompletionsInterface
-from completions_interface import CompletionsInterface
+from interfaces.discord_interface import DiscordInterface, get_yaml_from_channel
+from interfaces.chatcompletions_interface import ChatCompletionsInterface
+from interfaces.completions_interface import CompletionsInterface
 from mufflers import repeats_prompt_sentence, has_http
 from character_faculty import character_faculty
 from metaphor_search_faculty import metaphor_search_faculty
