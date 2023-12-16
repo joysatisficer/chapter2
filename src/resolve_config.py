@@ -124,6 +124,7 @@ class SingleVendorConfig(BaseModel):
 
 
 REHEARSAL_CONFIG = {"vendors": {"fake-local": SingleVendorConfig(provides=[".*"])}}
+# core end
 
 
 def get_defaults(model):
@@ -199,6 +200,5 @@ def load_config_from_kv(kv: dict, defaults: dict = DEFAULTS) -> Config:
         ), "config key `interfaces` conflicts with legacy key `active_inferences`"
         interfaces = [{"name": interface_name} for interface_name in active_interfaces]
         kv["interfaces"] = interfaces
-
     dictionary = override_with(defaults, rename_keys(kv, ALIASES))
     return Config(**dictionary)
