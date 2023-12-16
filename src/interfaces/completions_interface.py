@@ -10,9 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ValidationError
 
 from declarations import GenerateResponse, Message, UserID, Author
-from resolve_config import Config
+from resolve_config import Config, CompletionsInterfaceConfig
 from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY
 from abstractinterface import AbstractInterface, GetDiscordConfig
+from util.asyncit import eager_iterable_to_async_iterable
 
 
 class CompletionRequest(BaseModel):
@@ -49,10 +50,12 @@ class CompletionsInterface(AbstractInterface):
         get_discord_config: GetDiscordConfig,
         generate_response: GenerateResponse,
         em_name: str,
+        interface_config: CompletionsInterfaceConfig,
     ):
         self.get_config: GetDiscordConfig = get_discord_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
+        self.interface_config = interface_config
         self.app = FastAPI()
         origins = ["*"]
         self.app.add_middleware(
@@ -63,7 +66,6 @@ class CompletionsInterface(AbstractInterface):
             allow_headers=["*"],
         )
         self.app.post("/v1/completions")(self.completions)
-        self.app.add_exception_handler(ValidationError, self.on_validation_error)
 
     async def completions(self, completion_request: CompletionRequest):
         irc_format = MESSAGE_FORMAT_REGISTRY["irc"]
@@ -77,15 +79,10 @@ class CompletionsInterface(AbstractInterface):
         if completion_request.max_tokens is not None:
             config.continuation_max_tokens = completion_request.max_tokens
 
-        class HistoryAsyncIterable:
-            async def __aiter__(self):
-                for message in messages:
-                    yield message
-
         async def get_response_messages():
             response_messages = []
             async for message in self.generate_response(
-                em_user_id, HistoryAsyncIterable(), config
+                em_user_id, eager_iterable_to_async_iterable(messages), config
             ):
                 response_messages.append(message)
             return response_messages

@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal, Union
 from math import inf
 import copy
 
 from annotated_types import Gt, Ge, Interval
 
-from pydantic import BaseModel, SerializeAsAny, field_validator
-from pydantic.functional_validators import BeforeValidator
+from pydantic import BaseModel, field_validator, Field
 from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY
 
 
@@ -16,7 +15,7 @@ class FacultyConfig(BaseModel):
     faculty: str
     format: MessageFormat
     separator: str = "***\n"
-    max_tokens: int | float = inf
+    max_tokens: int | float = inf  # todo: parsing inf from yaml
     header: str = ""
     footer: str = "***"
     recent_message_attention: int
@@ -28,19 +27,15 @@ class FacultyConfig(BaseModel):
         raise ValueError('Value must be an integer or float("inf")')
 
 
-FACULTY_TO_CONFIG_CLASS: dict[str, type[FacultyConfig]] = {}
+class CharacterFacultyConfig(FacultyConfig):
+    faculty: Literal["character"] = "character"
+    # set defaults
+    format: MessageFormat = MESSAGE_FORMAT_REGISTRY["irc"]
+    recent_message_attention: int = 7
 
 
-def faculty_name(faculty_name_str: str):
-    def faculty_name_inner(cls):
-        FACULTY_TO_CONFIG_CLASS[faculty_name_str] = cls
-        return cls
-
-    return faculty_name_inner
-
-
-@faculty_name("metaphor_search")
 class MetaphorSearchFacultyConfig(FacultyConfig):
+    faculty: Literal["metaphor_search"] = "metaphor_search"
     format: MessageFormat = MESSAGE_FORMAT_REGISTRY["web_document"]
     include_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
@@ -50,28 +45,38 @@ class MetaphorSearchFacultyConfig(FacultyConfig):
     recent_message_attention: int = 5
 
 
-@faculty_name("character")
-class CharacterFacultyConfig(FacultyConfig):
-    # set defaults
-    format: MessageFormat = MESSAGE_FORMAT_REGISTRY["irc"]
-    recent_message_attention: int = 7
+EnsembleConfig = Annotated[
+    CharacterFacultyConfig | MetaphorSearchFacultyConfig,
+    Field(..., discriminator="faculty"),
+]
 
 
-FACULTY_ALIASES = {}
+class DiscordGenerateAvatarAddonConfig(BaseModel):
+    name: Literal["generate_avatar"]
+    prompt: str
+    regenerate_every: float | None = None
 
 
-def parse_ensemble(ensemble: dict[str, Any]) -> FacultyConfig:
-    if "faculty" in ensemble:
-        faculty_name = ensemble["faculty"]
-        if FacultyConfigCls := FACULTY_TO_CONFIG_CLASS.get(faculty_name):
-            return FacultyConfigCls(**rename_keys(ensemble, FACULTY_ALIASES))
-        else:
-            raise ValueError(f"unknown faculty {faculty_name}")
-    else:
-        raise ValueError("non-faculty ensembles aren't implemented yet")
+class DiscordInterfaceConfig(BaseModel):
+    name: Literal["discord"] = 'discord'
+    addons: list[Union[DiscordGenerateAvatarAddonConfig]] = []
 
 
-Interface = Literal["discord"] | Literal["completions"] | Literal["chatcompletions"]
+class CompletionsInterfaceConfig(BaseModel):
+    name: Literal["completions"] = 'completions'
+
+
+class ChatCompletionsInterfaceConfig(BaseModel):
+    name: Literal["chatcompletions"] = 'chatcompletions'
+    default_name: str = "user"
+
+
+InterfaceConfig = Annotated[
+    DiscordInterfaceConfig
+    | CompletionsInterfaceConfig
+    | ChatCompletionsInterfaceConfig,
+    Field(..., discriminator="name"),
+]
 
 
 class Config(BaseModel):
@@ -84,18 +89,7 @@ class Config(BaseModel):
     message_history_header: str = ""  # todo: rename
     scene_break: str = "***\n"  # todo: rename to scene_break_string
     recency_window: Annotated[int, Gt(0)] = 20
-    """
-    ensembles:
-     - faculty: character
-       max_tokens: 500
-
-    [[ensembles]]
-    faculty = "character"
-    max_tokens = 500
-    """
-    ensembles: list[
-        Annotated[SerializeAsAny[FacultyConfig], BeforeValidator(parse_ensemble)]
-    ] = []
+    ensembles: list[EnsembleConfig] = []
     prevent_scene_break: bool = (
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )
@@ -106,15 +100,13 @@ class Config(BaseModel):
     presence_penalty: float = 2.0
     stop_sequences: list[str] = []
 
-    active_interfaces: list[Interface] = ["discord"]
+    interfaces: list[InterfaceConfig] = [DiscordInterfaceConfig()]
     discord_mute: str | bool = False
     thread_mute: bool = True
     vendors: dict[str, SingleVendorConfig] = {}
     discord_token: str | None = None
     metaphor_search_api_key: str | None = None
     em_folder: Path
-
-    chatcompletions_default_name: str = "user"
 
 
 class LegacyConfig(Config):
@@ -201,5 +193,12 @@ if rename_keys(DEFAULTS, ALIASES) != DEFAULTS:
 
 
 def load_config_from_kv(kv: dict, defaults: dict = DEFAULTS) -> Config:
+    if active_interfaces := kv.get("active_interfaces"):
+        assert (
+            kv.get("interfaces") is None
+        ), "config key `interfaces` conflicts with legacy key `active_inferences`"
+        interfaces = [{"name": interface_name} for interface_name in active_interfaces]
+        kv["interfaces"] = interfaces
+
     dictionary = override_with(defaults, rename_keys(kv, ALIASES))
     return Config(**dictionary)

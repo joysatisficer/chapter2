@@ -14,7 +14,7 @@ from pydantic import ValidationError
 from util.discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON
 from abstractinterface import GetDiscordConfig
-from resolve_config import Config
+from resolve_config import Config, DiscordInterfaceConfig
 
 
 class DiscordInterface(discord.Client):
@@ -24,16 +24,19 @@ class DiscordInterface(discord.Client):
         self,
         get_discord_config: GetDiscordConfig,
         generate_response: GenerateResponse,
-        agent_name: str,
+        em_name: str,
+        interface_config: DiscordInterfaceConfig,
     ):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(intents=intents)
         self.get_config: GetDiscordConfig = get_discord_config
         self.generate_response: GenerateResponse = generate_response
-        self.agent_name = agent_name
+        self.em_name = em_name
+        self.interface_config = interface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
         self.pending_shutdown = False
+        self.finalized_shutdown = asyncio.Event()
 
     async def on_message(self, message: discord.Message) -> None:
         if await self.parse_continue_command(message):
@@ -118,10 +121,10 @@ class DiscordInterface(discord.Client):
             )
             and not (
                 config.discord_mute is True
-                or config.discord_mute == self.agent_name
+                or config.discord_mute == self.em_name
                 or (
                     isinstance(config.discord_mute, list)
-                    and self.agent_name in config.discord_mute
+                    and self.em_name in config.discord_mute
                 )
             )
             and not (
