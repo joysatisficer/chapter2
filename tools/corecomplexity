@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Estimate the complexity of chapter2's ontological core
+TOTAL_LINES=$(cat src/resolve_config.py src/declarations.py | grep -v "import" | grep -v -e '^$' | wc -l)
+CONFIG_LINES=$(cat src/resolve_config.py | wc -l)
+CORE_END=$(cat src/resolve_config.py | grep -n "core end" | cut -f1 -d:)
+COMPAT_LINES=$(($CONFIG_LINES-$CORE_END))
+echo $(($TOTAL_LINES-COMPAT_LINES))
