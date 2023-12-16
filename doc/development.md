@@ -10,7 +10,7 @@ You can run it yourself or you can use my instance of it, just ask.
 2. Clone [intermodel](https://github.com/ampdot-io/intermodel) to ../modules/intermodel
 3. Install dependencies
 ```bash
-poetry env use python3.10
+poetry env use python3.11
 poetry install
 ```
 4. Get nltk data
