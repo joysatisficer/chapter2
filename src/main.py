@@ -19,6 +19,7 @@ from intermodel.callgpt import count_tokens, max_token_length
 from declarations import Message, UserID, ActionHistory, Author
 from message_formats import MessageFormat
 from interfaces.discord_interface import DiscordInterface, get_yaml_from_channel
+from interfaces.addons.discord_generate_avatar import discord_generate_avatar
 from interfaces.chatcompletions_interface import ChatCompletionsInterface
 from interfaces.completions_interface import CompletionsInterface
 from mufflers import repeats_prompt_sentence, has_http
@@ -26,6 +27,7 @@ from faculties.character_faculty import character_faculty
 from faculties.metaphor_search_faculty import metaphor_search_faculty
 
 
+# move these to __init__.py
 FACULTY_NAME_TO_FUNCTION = {
     "character": character_faculty,
     "metaphor_search": metaphor_search_faculty,
@@ -35,6 +37,12 @@ INTERFACE_NAME_TO_INTERFACE = {
     "discord": DiscordInterface,
     "completions": CompletionsInterface,
     "chatcompletions": ChatCompletionsInterface,
+}
+
+INTERFACE_ADDON_NAME_TO_ADDON = {
+    "discord": {
+        "generate_avatar": discord_generate_avatar,
+    },
 }
 
 
@@ -275,11 +283,32 @@ async def run_em(name):
     config = resolve_config.load_config_from_kv(kv, defaults)
     args = get_config_getter(config), generate_response, kv["name"]
     interfaces = []
-    for interface in config.active_interfaces:
-        interfaces.append(INTERFACE_NAME_TO_INTERFACE[interface])
+    for interface in config.interfaces:
+        interface_name = interface.name
+        addons = []
+        if hasattr(interface, 'addons'):
+            for addon in interface.addons:
+                addons.append(
+                    INTERFACE_ADDON_NAME_TO_ADDON[interface_name][addon.name](addon)
+                )
+        base_interface = INTERFACE_NAME_TO_INTERFACE[interface_name]
+        if len(addons) == 0:
+            interfaces.append((base_interface, interface))
+        else:
+            interfaces.append(
+                (
+                    type(
+                        "Custom" + base_interface.__name__,
+                        (*addons, base_interface),
+                        {},
+                    ),
+                    interface,
+                )
+            )
+
     interface_instances = []
-    for interface in interfaces:
-        interface_instances.append(interface(*args))
+    for interface, interface_config in interfaces:
+        interface_instances.append(interface(*args, interface_config))
 
     def handle_interrupt(sig, frame):
         for interface_instance in interface_instances:

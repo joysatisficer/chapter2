@@ -1,7 +1,8 @@
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Callable, Awaitable
 
-from resolve_config import Config
+from resolve_config import Config, InterfaceConfig
 from declarations import GenerateResponse
 
 GetDiscordConfig = Callable[["discord.abc.MessageableChannel"], Awaitable[Config]]
@@ -14,9 +15,15 @@ class AbstractInterface(ABC):
         self,
         get_discord_config: GetDiscordConfig,
         generate_response: GenerateResponse,
-        agent_name: str,
+        em_name: str,
+        interface_config: InterfaceConfig,
     ):
-        pass
+        self.get_config: GetDiscordConfig = get_discord_config
+        self.generate_response: GenerateResponse = generate_response
+        self.em_name = em_name
+        # in 3.12, we can use type variables to replace this with a super() call
+        self.interface_config = interface_config
+        self.finalized_shutdown = asyncio.Event()
 
     @abstractmethod
     async def start(self):
