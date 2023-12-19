@@ -30,7 +30,8 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
                 openai_image_response = await openai.Image.acreate(
                     model=model,
                     prompt=addon_config.prompt,
-                    api_key=config.vendors[intermodel.callgpt.pick_vendor(model)].config['openai_api_key']
+                    # todo: make intermodel support dall-e
+                    api_key=config.vendors['openai'].config['openai_api_key']
                 )
             except openai.error.InvalidRequestError:
                 raise  # todo: propagate exception to entire event loop
@@ -48,6 +49,7 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
             with open(config.em_folder / "avatar_changed_at", "w") as f:
                 f.write(str(int(start_time)))
 
+        @log_async_task_exceptions
         async def regenerate_avatar_loop(self, interval):
             config = await self.get_config(None)
             while True:
@@ -69,9 +71,13 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
     return DiscordGenerateAvatarAddon
 
 
-async def log_async_task_exceptions(awaitable):
-    try:
-        return await awaitable
-    except Exception as e:
-        print("Unhandled exception")
-        raise
+def log_async_task_exceptions(decorated):
+    async def log_async_task_exceptions(*args, **kwargs):
+        try:
+            return await decorated(*args, **kwargs)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise
+
+    return log_async_task_exceptions
