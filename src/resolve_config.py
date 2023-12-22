@@ -66,6 +66,10 @@ class DiscordInterfaceConfig(BaseModel):
 class MikotoInterfaceConfig(BaseModel):
     name: Literal["mikoto"] = "mikoto"
     auth: str
+    # todo: high-level API for customizing if a message should be engaged with
+    allowed_users: list[str] | None = None
+    # todo: config loaders and interfaces as separate things
+    custom_config: dict = {}
 
 
 class CompletionsInterfaceConfig(BaseModel):
