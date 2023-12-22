@@ -206,9 +206,16 @@ def unique(iterable: Iterable[T]) -> list[T]:
 
 
 def get_config_getter(bot_config: Config):
+    # todo: config loaders as separate entities from interfaces
     async def get_config(channel: "discord.abc.MessageableChannel") -> Config:
+        if isinstance(channel, dict):
+            kv = channel
+        elif channel is not None:
+            kv = await get_yaml_from_channel(channel)
+        else:
+            kv = {}
         return resolve_config.load_config_from_kv(
-            await get_yaml_from_channel(channel) if channel is not None else {},
+            kv,
             bot_config.model_dump(),
         )
 

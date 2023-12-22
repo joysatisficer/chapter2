@@ -35,7 +35,7 @@ class MikotoInterface(mikoto.MikotoClient):
             command_message = None
         try:
             my_user_id = UserID((await self.users.me()).id, "mikoto")
-            config = await self.get_config(None)
+            config = await self.get_config(self.interface_config.custom_config)
             if not await self.should_reply(message, config):
                 return
 
@@ -86,7 +86,13 @@ class MikotoInterface(mikoto.MikotoClient):
         )
 
     async def should_reply(self, message: mikoto.Message, config: Config):
-        return message.author.id != (await self.users.me()).id
+        return (
+            message.author.id != (await self.users.me()).id
+            and (
+                self.interface_config.allowed_users is None
+                or message.author.id in self.interface_config.allowed_users
+            )
+        )
 
     async def start(self):
         await self._login_internal(self.interface_config.auth)
