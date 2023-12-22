@@ -45,7 +45,9 @@ class MikotoInterface(mikoto.MikotoClient):
                     yield await self.mikoto_message_to_message(config, this_message)
                 while True:
                     message = None
-                    for message in await self.messages.list(this_message.channelId, cursor, 20):
+                    for message in await self.messages.list(
+                        this_message.channelId, cursor, 20
+                    ):
                         if not is_continue_command(message.content):
                             yield await self.mikoto_message_to_message(config, message)
                     if message is None:
@@ -93,12 +95,9 @@ class MikotoInterface(mikoto.MikotoClient):
         )
 
     async def should_reply(self, message: mikoto.Message, config: Config):
-        return (
-            message.author.id != (await self.users.me()).id
-            and (
-                self.interface_config.allowed_users is None
-                or message.author.id in self.interface_config.allowed_users
-            )
+        return message.author.id != (await self.users.me()).id and (
+            self.interface_config.allowed_users is None
+            or message.author.id in self.interface_config.allowed_users
         )
 
     async def start(self):
