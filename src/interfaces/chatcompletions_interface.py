@@ -89,7 +89,7 @@ class ChatCompletionsInterface(AbstractInterface):
         async def chat_completions(chat_completions_request: ChatCompletionsRequest):
             config = await self.get_config(None)
             config.continuation_model = "gpt-4-base"  # TODO: XXX
-            my_user_id = UserID(-hash("ch2-" + self.em_name), "chatcompletions")
+            my_user_id = UserID("em::" + self.em_name, "chatcompletions")
 
             # todo: error handling
 
@@ -103,7 +103,9 @@ class ChatCompletionsInterface(AbstractInterface):
                             if chat_completion_message.name is not None
                             else self.interface_config.default_name
                         )
-                        author = Author(name, UserID(-hash(name), "chatcompletions"))
+                        author = Author(
+                            name, UserID(str(hash(name)), "chatcompletions")
+                        )
                     else:
                         continue
                     yield Message(

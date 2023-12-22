@@ -1,16 +1,13 @@
 import asyncio
 import contextlib
-import os
-import sys
-import signal
 import time
 import urllib.parse
-from typing import Callable, Awaitable, Optional, AsyncIterable
 
 import discord
 import yaml
 from pydantic import ValidationError
 
+from util.asyncit import async_generator_to_reusable_async_iterable
 from util.discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON
 from abstractinterface import GetDiscordConfig
@@ -36,49 +33,37 @@ class DiscordInterface(discord.Client):
         self.interface_config = interface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
         self.pending_shutdown = False
-        self.finalized_shutdown = asyncio.Event()
 
     async def on_message(self, message: discord.Message) -> None:
-        if await self.parse_continue_command(message):
+        if is_continue_command(message.content):
             command_message = message
-            message_to_respond_to = [
+            message_to_react_to = [
                 message async for message in message.channel.history(limit=2)
             ][1]
         else:
             command_message = None
-            message_to_respond_to = message
-        async with self.handle_exceptions(message_to_respond_to):
+            message_to_react_to = message
+        async with self.handle_exceptions(message_to_react_to):
             try:
-                try:
-                    config = await self.get_config(message.channel)
-                except (ValueError, ValidationError) as exc:
-                    raise ConfigError() from exc
-                if not await self.should_reply(message, config):
-                    command_message = None
-                    return
-                my_user_id = UserID(self.user.id, "discord")
+                config = await self.get_config(message.channel)
+            except (ValueError, ValidationError) as exc:
+                raise ConfigError() from exc
+            if not await self.should_reply(message, config):
+                return
+            try:
+                my_user_id = UserID(str(self.user.id), "discord")
 
-                # PyCharm's type checker incorrectly infers an async-for
-                # generator as a Generator when it is an AsyncIterable
-                # noinspection PyTypeChecker
-                class MessageHistoryIterable:
-                    def __aiter__(_) -> AsyncIterable:
-                        async def inner():
-                            nonlocal message
-                            async for message in message.channel.history(
-                                limit=None, before=command_message
-                            ):
-                                if not await self.parse_continue_command(message):
-                                    yield await self.discord_message_to_message(
-                                        config, message
-                                    )
+                async def message_history():
+                    nonlocal message
+                    async for message in message.channel.history(
+                        limit=None, before=command_message
+                    ):
+                        if not is_continue_command(message.content):
+                            yield await self.discord_message_to_message(config, message)
 
-                        return inner()
-
-                # noinspection PyTypeChecker
                 response_messages = self.generate_response(
                     my_user_id,
-                    MessageHistoryIterable(),
+                    async_generator_to_reusable_async_iterable(message_history),
                     config,
                 )
                 async with ScheduleTyping(message.channel):
@@ -102,14 +87,9 @@ class DiscordInterface(discord.Client):
         else:
             author_name = message.author.name
         return Message(
-            Author(author_name, UserID(message.author.id, "discord")),
+            Author(author_name, UserID(str(message.author.id), "discord")),
             await parse_discord_content(message),
             message.created_at.timestamp(),
-        )
-
-    async def parse_continue_command(self, message):
-        return message.content.strip() == "/continue" or message.content.startswith(
-            "m continue"
         )
 
     async def should_reply(self, message: discord.Message, config: Config) -> bool:
@@ -188,12 +168,23 @@ class DiscordInterface(discord.Client):
 
     async def start(self, token: str = None, *args, **kwargs) -> None:
         if token is None:
-            token = (await self.get_config(None)).discord_token
+            token = self.interface_config.auth
         return await super().start(token, *args, **kwargs)
 
     def stop(self, sig, frame):
         self.pending_shutdown = True
-        asyncio.create_task(self.close())
+        asyncio.create_task(self.handle_shutdown())
+
+    async def handle_shutdown(self):
+        if self.message_semaphore._value == self.MAX_CONCURRENT_MESSAGES:
+            await self.close()
+        self.pending_shutdown = True
+
+
+def is_continue_command(message_content: str):
+    return message_content.strip() == "/continue" or message_content.startswith(
+        "m continue"
+    )
 
 
 async def get_yaml_from_channel(
@@ -211,7 +202,7 @@ async def get_yaml_from_channel(
 
 def get_channel_topic(
     channel: "discord.abc.MessageableChannel",
-) -> Optional[str]:
+) -> str | None:
     if hasattr(channel, "topic"):
         return channel.topic
     elif hasattr(channel, "parent"):

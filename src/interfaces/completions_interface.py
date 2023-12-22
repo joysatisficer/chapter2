@@ -14,6 +14,7 @@ from resolve_config import Config, CompletionsInterfaceConfig
 from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY
 from abstractinterface import AbstractInterface, GetDiscordConfig
 from util.asyncit import eager_iterable_to_async_iterable
+from util.uvicorn_improved import RapidShutdownUvicornServer
 
 
 class CompletionRequest(BaseModel):
@@ -70,7 +71,7 @@ class CompletionsInterface(AbstractInterface):
     async def completions(self, completion_request: CompletionRequest):
         irc_format = MESSAGE_FORMAT_REGISTRY["irc"]
         messages = irc_format.parse(completion_request.prompt)
-        em_user_id = UserID(-1, "completions")
+        em_user_id = UserID("em::" + self.em_name, "completions")
         config: Config = await self.get_config(None)
         if completion_request.temperature is not None:
             config.temperature = completion_request.temperature
@@ -121,7 +122,7 @@ class CompletionsInterface(AbstractInterface):
         uv_config = uvicorn.Config(
             self.app, port=6006, log_level="info", host="0.0.0.0"
         )
-        self.uv_server = uvicorn.Server(uv_config)
+        self.uv_server = RapidShutdownUvicornServer(uv_config)
         self.uv_server.install_signal_handlers = lambda: None
         return self.uv_server.serve()
 

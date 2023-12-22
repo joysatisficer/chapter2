@@ -58,21 +58,28 @@ class DiscordGenerateAvatarAddonConfig(BaseModel):
 
 
 class DiscordInterfaceConfig(BaseModel):
-    name: Literal["discord"] = 'discord'
+    name: Literal["discord"] = "discord"
+    auth: str | None = None
     addons: list[Union[DiscordGenerateAvatarAddonConfig]] = []
 
 
+class MikotoInterfaceConfig(BaseModel):
+    name: Literal["mikoto"] = "mikoto"
+    auth: str
+
+
 class CompletionsInterfaceConfig(BaseModel):
-    name: Literal["completions"] = 'completions'
+    name: Literal["completions"] = "completions"
 
 
 class ChatCompletionsInterfaceConfig(BaseModel):
-    name: Literal["chatcompletions"] = 'chatcompletions'
+    name: Literal["chatcompletions"] = "chatcompletions"
     default_name: str = "user"
 
 
 InterfaceConfig = Annotated[
     DiscordInterfaceConfig
+    | MikotoInterfaceConfig
     | CompletionsInterfaceConfig
     | ChatCompletionsInterfaceConfig,
     Field(..., discriminator="name"),
@@ -93,6 +100,7 @@ class Config(BaseModel):
     prevent_scene_break: bool = (
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )
+    prevent_gpt_topic_change: bool = False
 
     temperature: Annotated[float, Ge(0)] = 0.9
     top_p: Annotated[float, Interval(gt=0, le=1)] = 0.97
@@ -104,7 +112,6 @@ class Config(BaseModel):
     discord_mute: str | bool = False
     thread_mute: bool = True
     vendors: dict[str, SingleVendorConfig] = {}
-    discord_token: str | None = None
     metaphor_search_api_key: str | None = None
     em_folder: Path
 
@@ -200,5 +207,10 @@ def load_config_from_kv(kv: dict, defaults: dict = DEFAULTS) -> Config:
         ), "config key `interfaces` conflicts with legacy key `active_inferences`"
         interfaces = [{"name": interface_name} for interface_name in active_interfaces]
         kv["interfaces"] = interfaces
+    if discord_token := kv.get("discord_token"):
+        for interface in kv["interfaces"]:
+            if interface["name"] == "discord":
+                interface["auth"] = discord_token
+                break
     dictionary = override_with(defaults, rename_keys(kv, ALIASES))
     return Config(**dictionary)
