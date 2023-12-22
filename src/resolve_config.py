@@ -156,7 +156,7 @@ ALIASES = {
     "chat.context": "message_history_header",
     "lookup_msg_cache": "character_faculty_recent_message_attention",
     "active_interfaces": None,
-    "discord_token": None
+    "discord_token": None,
 }
 
 DEFAULTS = get_defaults(Config)
