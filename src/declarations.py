@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class UserID:
-    id: int
+    id: str
     platform: str
 
 

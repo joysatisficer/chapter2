@@ -13,37 +13,18 @@ import yaml
 from aioitertools.more_itertools import take as async_take
 
 import resolve_config
+from interfaces import (
+    FACULTY_NAME_TO_FUNCTION,
+    INTERFACE_NAME_TO_INTERFACE,
+    INTERFACE_ADDON_NAME_TO_ADDON,
+)
 from resolve_config import Config
 from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
 from declarations import Message, UserID, ActionHistory, Author
 from message_formats import MessageFormat
-from interfaces.discord_interface import DiscordInterface, get_yaml_from_channel
-from interfaces.addons.discord_generate_avatar import discord_generate_avatar
-from interfaces.chatcompletions_interface import ChatCompletionsInterface
-from interfaces.completions_interface import CompletionsInterface
+from interfaces.discord_interface import get_yaml_from_channel
 from mufflers import repeats_prompt_sentence, has_http
-from faculties.character_faculty import character_faculty
-from faculties.metaphor_search_faculty import metaphor_search_faculty
-
-
-# move these to __init__.py
-FACULTY_NAME_TO_FUNCTION = {
-    "character": character_faculty,
-    "metaphor_search": metaphor_search_faculty,
-}
-
-INTERFACE_NAME_TO_INTERFACE = {
-    "discord": DiscordInterface,
-    "completions": CompletionsInterface,
-    "chatcompletions": ChatCompletionsInterface,
-}
-
-INTERFACE_ADDON_NAME_TO_ADDON = {
-    "discord": {
-        "generate_avatar": discord_generate_avatar,
-    },
-}
 
 
 async def generate_response(my_user_id: UserID, history: ActionHistory, config: Config):
@@ -170,7 +151,12 @@ async def get_replies(
     # Todo: Client-side stop sequences
     for message in config.message_history_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes
-        if message.author is None or message.author.name == my_name:
+        if (
+            config.prevent_gpt_topic_change
+            and message.content.strip() == config.scene_break.strip()
+        ):
+            break
+        elif message.author is None or message.author.name == my_name:
             yield dataclasses.replace(message, author=author)
         else:
             break
@@ -247,7 +233,7 @@ async def rehearse_em(config):
             return mock_message_history_iterator()
 
     async for response in generate_response(
-        UserID(0, "rehearsal"), MockMessageHistoryIterable(), config
+        UserID("em::" + config.name, "rehearsal"), MockMessageHistoryIterable(), config
     ):
         pass
 

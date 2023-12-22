@@ -1,4 +1,4 @@
-from typing import Iterable, AsyncIterable
+from typing import Iterable, AsyncIterable, Callable, AsyncGenerator
 
 
 def eager_iterable_to_async_iterable(iterable: Iterable) -> AsyncIterable:
@@ -6,5 +6,15 @@ def eager_iterable_to_async_iterable(iterable: Iterable) -> AsyncIterable:
         async def __aiter__(self):
             for item in iterable:
                 yield item
+
+    return AsyncIterableWrapper()
+
+
+def async_generator_to_reusable_async_iterable(
+    iterable: Callable[[], AsyncGenerator]
+) -> AsyncIterable:
+    class AsyncIterableWrapper:
+        def __aiter__(self):
+            return iterable()
 
     return AsyncIterableWrapper()
