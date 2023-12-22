@@ -12,3 +12,8 @@ Managing API keys. chapter2 follows [vendors.yaml](https://github.com/ampdot-io/
 
 Prompt sections (ensembles) are produced by faculties. See `declarations:Faculty` for the type.
 
+These rules are intended for creating a good core.
+Forks may violate rules about being pure to add functionality.
+The core may expand its ontology to better accommodate 
+
+order of priorities: prompter > maintainer > author
