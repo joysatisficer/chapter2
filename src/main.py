@@ -14,10 +14,7 @@ from aioitertools.more_itertools import take as async_take
 
 import resolve_config
 from faculties import FACULTY_NAME_TO_FUNCTION
-from interfaces import (
-    INTERFACE_NAME_TO_INTERFACE,
-    INTERFACE_ADDON_NAME_TO_ADDON,
-)
+from interfaces import INTERFACE_NAME_TO_INTERFACE, INTERFACE_ADDON_NAME_TO_ADDON
 from resolve_config import Config
 from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
