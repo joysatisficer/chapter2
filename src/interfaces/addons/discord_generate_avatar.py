@@ -26,12 +26,12 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
             start_time = time.time()
             config = await self.get_config(None)
             try:
-                model = 'dall-e-3'
+                model = "dall-e-3"
                 openai_image_response = await openai.Image.acreate(
                     model=model,
                     prompt=addon_config.prompt,
                     # todo: make intermodel support dall-e
-                    api_key=config.vendors['openai'].config['openai_api_key']
+                    api_key=config.vendors["openai"].config["openai_api_key"],
                 )
             except openai.error.InvalidRequestError:
                 raise  # todo: propagate exception to entire event loop
@@ -43,7 +43,7 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
             avatars_folder.mkdir(exist_ok=True)
             hasher = hashlib.sha256(usedforsecurity=False)
             hasher.update(contents)
-            with open(avatars_folder / (hasher.hexdigest() + '.png'), "wb") as f:
+            with open(avatars_folder / (hasher.hexdigest() + ".png"), "wb") as f:
                 f.write(contents)
             await self.user.edit(avatar=contents)
             with open(config.em_folder / "avatar_changed_at", "w") as f:
@@ -65,7 +65,7 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
 
         def stop(self, sig, frame):
             super().stop(sig, frame)
-            if hasattr(self, 'regenerate_avatar_task'):
+            if hasattr(self, "regenerate_avatar_task"):
                 self.regenerate_avatar_task.cancel()
 
     return DiscordGenerateAvatarAddon
@@ -77,6 +77,7 @@ def log_async_task_exceptions(decorated):
             return await decorated(*args, **kwargs)
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             raise
 

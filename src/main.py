@@ -286,7 +286,7 @@ async def run_em(name):
     for interface in config.interfaces:
         interface_name = interface.name
         addons = []
-        if hasattr(interface, 'addons'):
+        if hasattr(interface, "addons"):
             for addon in interface.addons:
                 addons.append(
                     INTERFACE_ADDON_NAME_TO_ADDON[interface_name][addon.name](addon)
