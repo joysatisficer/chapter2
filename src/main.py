@@ -264,7 +264,7 @@ async def run_em(name):
         pass
     kv["em_folder"] = em_folder
     for subpath in em_folder.iterdir():
-        if subpath.name in Config.model_fields.keys():
+        if subpath.name in Config.model_fields.keys() or subpath.name in resolve_config.ALIASES.keys():
             kv[subpath.name] = subpath.read_text()
     if "name" not in kv:
         kv["name"] = name

@@ -155,6 +155,8 @@ ALIASES = {
     },
     "chat.context": "message_history_header",
     "lookup_msg_cache": "character_faculty_recent_message_attention",
+    "active_interfaces": None,
+    "discord_token": None
 }
 
 DEFAULTS = get_defaults(Config)
@@ -188,6 +190,8 @@ def rename_keys(kv: dict, aliases: dict):
         else:
             new_kv[renamed] = value
     for key, value in aliases.items():
+        if value is None:
+            continue
         if key in new_kv:
             if value in new_kv:
                 raise ValueError(f"Duplicate config keys: {value} and {key} both set")
