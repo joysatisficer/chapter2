@@ -13,8 +13,8 @@ import yaml
 from aioitertools.more_itertools import take as async_take
 
 import resolve_config
+from faculties import FACULTY_NAME_TO_FUNCTION
 from interfaces import (
-    FACULTY_NAME_TO_FUNCTION,
     INTERFACE_NAME_TO_INTERFACE,
     INTERFACE_ADDON_NAME_TO_ADDON,
 )
