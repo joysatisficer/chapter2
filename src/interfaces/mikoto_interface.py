@@ -28,30 +28,37 @@ class MikotoInterface(mikoto.MikotoClient):
         self.interface_config = interface_config
         self.messages.on_create(self.on_message)
 
-    async def on_message(self, message: mikoto.Message):
-        if is_continue_command(message.content):
-            command_message = message
+    async def on_message(self, this_message: mikoto.Message):
+        if is_continue_command(this_message.content):
+            command_message = this_message
         else:
             command_message = None
         try:
             my_user_id = UserID((await self.users.me()).id, "mikoto")
             config = await self.get_config(self.interface_config.custom_config)
-            if not await self.should_reply(message, config):
+            if not await self.should_reply(this_message, config):
                 return
 
             async def message_history():
-                nonlocal message
-                cursor = message.authorId
-                for message in await self.messages.list(message.channelId, cursor, 20):
-                    if not is_continue_command(message.content):
-                        yield await self.mikoto_message_to_message(config, message)
+                cursor = this_message.id
+                if command_message is None:
+                    yield await self.mikoto_message_to_message(config, this_message)
+                while True:
+                    message = None
+                    for message in await self.messages.list(this_message.channelId, cursor, 20):
+                        if not is_continue_command(message.content):
+                            yield await self.mikoto_message_to_message(config, message)
+                    if message is None:
+                        return
+                    else:
+                        cursor = message.id
 
             response_messages = self.generate_response(
                 my_user_id,
                 async_generator_to_reusable_async_iterable(message_history),
                 config,
             )
-            with typing(message.channelId, self.messages):
+            with typing(this_message.channelId, self.messages):
                 async for reply_message in response_messages:
                     if reply_message.author.user_id == my_user_id and not isempty(
                         reply_message.content
@@ -60,11 +67,11 @@ class MikotoInterface(mikoto.MikotoClient):
                         if reply_message.timestamp > current_time:
                             await asyncio.sleep(reply_message.timestamp - current_time)
                         await self.messages.send(
-                            message.channelId, reply_message.content
+                            this_message.channelId, reply_message.content
                         )
         finally:
             if command_message is not None:
-                await self.messages.delete(message.channelId, message.id)
+                await self.messages.delete(this_message.channelId, this_message.id)
 
     async def mikoto_message_to_message(
         self, config: Config, message: mikoto.Message
