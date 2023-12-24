@@ -22,6 +22,7 @@ from declarations import Message, UserID, ActionHistory, Author
 from message_formats import MessageFormat
 from interfaces.discord_interface import get_yaml_from_channel
 from mufflers import repeats_prompt_sentence, has_http
+from util.asyncit import eager_iterable_to_async_iterable
 
 
 async def generate_response(my_user_id: UserID, history: ActionHistory, config: Config):
@@ -222,22 +223,17 @@ def get_config_getter(bot_config: Config):
 async def rehearse_em(config):
     """Rehearsal runs an em in mock mode when it awakens to populate caches"""
 
-    async def mock_message_history_iterator():
-        messages = [
-            Message(Author("alice"), "hello"),
-            Message(Author("bob"), "hi alice!"),
-            Message(Author(config.name), "hi bob!"),
-            Message(Author("alice"), f"hi {config.name}!"),
-        ][::-1]
-        for message in messages:
-            yield message
-
-    class MockMessageHistoryIterable(AsyncIterable):
-        def __aiter__(self):
-            return mock_message_history_iterator()
+    mock_messages = [
+        Message(Author("alice"), "hello"),
+        Message(Author("bob"), "hi alice!"),
+        Message(Author(config.name), "hi bob!"),
+        Message(Author("alice"), f"hi {config.name}!"),
+    ][::-1]
 
     async for response in generate_response(
-        UserID("em::" + config.name, "rehearsal"), MockMessageHistoryIterable(), config
+        UserID("em::" + config.name, "rehearsal"),
+        eager_iterable_to_async_iterable(mock_messages),
+        config,
     ):
         pass
 
