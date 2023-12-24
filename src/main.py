@@ -221,15 +221,13 @@ def get_config_getter(bot_config: Config):
 
 
 async def rehearse_em(config):
-    """Rehearsal runs an em in mock mode when it awakens to populate caches"""
-
+    """Run an em in mock mode to populate caches and test the em"""
     mock_messages = [
         Message(Author("alice"), "hello"),
         Message(Author("bob"), "hi alice!"),
         Message(Author(config.name), "hi bob!"),
         Message(Author("alice"), f"hi {config.name}!"),
     ][::-1]
-
     async for response in generate_response(
         UserID("em::" + config.name, "rehearsal"),
         eager_iterable_to_async_iterable(mock_messages),
