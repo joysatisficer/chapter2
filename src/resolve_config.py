@@ -215,6 +215,8 @@ def load_config_from_kv(kv: dict, defaults: dict = DEFAULTS) -> Config:
         ), "config key `interfaces` conflicts with legacy key `active_inferences`"
         interfaces = [{"name": interface_name} for interface_name in active_interfaces]
         kv["interfaces"] = interfaces
+    elif kv.get("interfaces") is None:
+        kv["interfaces"] = [{"name": "discord"}]
     if discord_token := kv.get("discord_token"):
         for interface in kv["interfaces"]:
             if interface["name"] == "discord":
