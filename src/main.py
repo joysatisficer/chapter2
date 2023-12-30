@@ -29,7 +29,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
     count_continuation_model_tokens = partial(count_tokens, config.continuation_model)
     author = Author(config.name, my_user_id)
     recent_messages = await async_take(config.recency_window, history)
-    if config.only_reply_when_mentioned and not recent_messages[1].has_mention:
+    if config.only_reply_when_mentioned and not recent_messages[0].has_mention:
         return
     completion_prefix = config.message_history_format.name_prefix(config.name)
     ctx_vars = {"now": datetime.now()}
