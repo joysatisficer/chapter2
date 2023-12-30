@@ -27,6 +27,18 @@ poetry install
 
 will run the em in `ems/[em-name]`
 
+### REPL
+
+```bash
+./src/main.py -- --interactive
+```
+or shorthand:
+```bash
+./src/main.py -- -i
+```
+will activate a REPL with Chapter 2's libraries activated
+
+
 ## Running tests
 Tests are unused
 
