@@ -18,6 +18,7 @@ class FacultyConfig(BaseModel):
     max_tokens: int | float = inf  # todo: parsing inf from yaml
     header: str = ""
     footer: str = "***"
+    # todo: replace with perplexity-chunking based method
     recent_message_attention: int
 
     @field_validator("max_tokens")
