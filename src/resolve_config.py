@@ -163,19 +163,23 @@ DEFAULTS = get_defaults(Config)
 LEGACY_DEFAULTS = {**copy.deepcopy(DEFAULTS), **get_defaults(LegacyConfig)}
 
 
-def override_with(items: dict, updates: dict):
-    """
-    Updates a dict, if a value is a dict, uses recursion.
-
-    Returns:
-        dict: a new dictionary with updated values
-    """
-    result = dict(items)
-    for key, value in updates.items():
+def overlay(base: dict | list, updates: dict | list):
+    result = copy.copy(base)
+    if isinstance(updates, list):
+        keyvalues = enumerate(updates)
+        keys = list(range(len(updates)))
+    else:
+        keyvalues = updates.items()
+        keys = updates.keys()
+    for key, value in keyvalues:
         if isinstance(value, dict):
-            if key not in result:
+            if key not in keys:
                 result[key] = {}
-            result[key] = override_with(result[key], value)
+            result[key] = overlay(result[key], value)
+        elif isinstance(value, list):
+            if key not in keys:
+                result[key] = []
+            result[key] = overlay(result[key], value)
         else:
             result[key] = value
     return result
@@ -198,7 +202,7 @@ def rename_keys(kv: dict, aliases: dict):
             elif isinstance(value, str):
                 new_kv[value.replace("-", "_")] = new_kv.pop(key)
             elif isinstance(value, dict):
-                new_kv = override_with(new_kv, rename_keys(new_kv[key], value))
+                new_kv = overlay(new_kv, rename_keys(new_kv[key], value))
             else:
                 raise ValueError(f"Invalid alias: {key} -> {value}")
     return new_kv
@@ -215,12 +219,10 @@ def load_config_from_kv(kv: dict, defaults: dict = DEFAULTS) -> Config:
         ), "config key `interfaces` conflicts with legacy key `active_inferences`"
         interfaces = [{"name": interface_name} for interface_name in active_interfaces]
         kv["interfaces"] = interfaces
-    elif kv.get("interfaces") is None:
-        kv["interfaces"] = [{"name": "discord"}]
     if discord_token := kv.get("discord_token"):
         for interface in kv["interfaces"]:
             if interface["name"] == "discord":
                 interface["auth"] = discord_token
                 break
-    dictionary = override_with(defaults, rename_keys(kv, ALIASES))
+    dictionary = overlay(defaults, rename_keys(kv, ALIASES))
     return Config(**dictionary)
