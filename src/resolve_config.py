@@ -118,6 +118,7 @@ class Config(BaseModel):
     vendors: dict[str, SingleVendorConfig] = {}
     metaphor_search_api_key: str | None = None
     em_folder: Path
+    only_reply_when_mentioned: bool = False
 
 
 class LegacyConfig(Config):

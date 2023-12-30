@@ -23,6 +23,7 @@ class Message:
     author: Author | None
     content: str
     timestamp: float = 0  # sent messages use timestamp to represent time delay
+    has_mention: bool = False
 
 
 Action = Union[Message]

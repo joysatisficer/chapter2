@@ -90,6 +90,7 @@ class DiscordInterface(discord.Client):
             Author(author_name, UserID(str(message.author.id), "discord")),
             await parse_discord_content(message),
             message.created_at.timestamp(),
+            has_mention=self.user.mentioned_in(message),
         )
 
     async def should_reply(self, message: discord.Message, config: Config) -> bool:
