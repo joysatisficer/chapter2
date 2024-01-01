@@ -57,11 +57,21 @@ async def metaphor_search_faculty(
             published_timestamp = time.mktime(
                 dateutil.parser.parse(result.published_date).timetuple()
             )
+        extract = document_contents[i].extract
+        if faculty_config.strip_leading_indentation:
+            extract = strip_leading_indentation(extract)
         yield Message(
             Author(document_contents[i].url),
-            document_contents[i].extract,
+            extract,
             timestamp=published_timestamp,
         )
+
+
+def strip_leading_indentation(string: str) -> str:
+    result = []
+    for line in string.splitlines():
+        result.append(line.lstrip())
+    return "\n".join(result)
 
 
 def format_message_section(

@@ -39,6 +39,7 @@ class MetaphorSearchFacultyConfig(FacultyConfig):
     format: MessageFormat = MESSAGE_FORMAT_REGISTRY["web_document"]
     include_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
+    strip_leading_indentation: bool = False
     # set defaults
     max_tokens: int | float = 4000
     footer: str = "\n***\n"
@@ -55,6 +56,10 @@ class DiscordGenerateAvatarAddonConfig(BaseModel):
     name: Literal["generate_avatar"]
     prompt: str
     regenerate_every: float | None = None
+    only_reply_on_mention: bool = False  # todo: implement as add-on
+
+
+# todo: support sets (concatenate instead of override)
 
 
 class DiscordInterfaceConfig(BaseModel):
