@@ -164,6 +164,7 @@ ALIASES = {
     "discord_token": None,
 }
 
+# todo: namespaced default sets to allow for opt-in defaults upgrades
 DEFAULTS = get_defaults(Config)
 LEGACY_DEFAULTS = {**copy.deepcopy(DEFAULTS), **get_defaults(LegacyConfig)}
 
@@ -172,21 +173,41 @@ def overlay(base: dict | list, updates: dict | list):
     result = copy.copy(base)
     if isinstance(updates, list):
         keyvalues = enumerate(updates)
-        keys = list(range(len(updates)))
     else:
         keyvalues = updates.items()
-        keys = updates.keys()
+    if isinstance(base, list):
+        keys = list(range(len(base)))
+    else:
+        keys = base.keys()
     for key, value in keyvalues:
         if isinstance(value, dict):
+            # recurse inside dicts
             if key not in keys:
-                result[key] = {}
+                if isinstance(result, list):
+                    if key >= len(result):
+                        result.append({})
+                    else:
+                        assert 0, "impossible"
+                else:
+                    result[key] = {}
             result[key] = overlay(result[key], value)
         elif isinstance(value, list):
+            # recurse inside lists
             if key not in keys:
-                result[key] = []
+                if isinstance(result, list):
+                    if key >= len(result):
+                        result.append([])
+                    else:
+                        assert 0, "impossible"
+                else:
+                    result[key] = []
             result[key] = overlay(result[key], value)
         else:
-            result[key] = value
+            if isinstance(result, list):
+                # assume lists of primitives act like sets
+                result.append(value)
+            else:
+                result[key] = value
     return result
 
 
@@ -224,7 +245,10 @@ def load_config_from_kv(kv: dict, defaults: dict = DEFAULTS) -> Config:
         ), "config key `interfaces` conflicts with legacy key `active_inferences`"
         interfaces = [{"name": interface_name} for interface_name in active_interfaces]
         kv["interfaces"] = interfaces
+        del kv["active_interfaces"]
     if discord_token := kv.get("discord_token"):
+        if "interfaces" not in kv:
+            kv["interfaces"] = defaults["interfaces"]
         for interface in kv["interfaces"]:
             if interface["name"] == "discord":
                 interface["auth"] = discord_token
