@@ -56,7 +56,6 @@ class DiscordGenerateAvatarAddonConfig(BaseModel):
     name: Literal["generate_avatar"]
     prompt: str
     regenerate_every: float | None = None
-    only_reply_on_mention: bool = False  # todo: implement as add-on
 
 
 # todo: support sets (concatenate instead of override)
@@ -123,6 +122,7 @@ class Config(BaseModel):
     vendors: dict[str, SingleVendorConfig] = {}
     metaphor_search_api_key: str | None = None
     em_folder: Path
+    only_reply_on_ping: bool = False  # todo: implement dynamic interface config getting
 
 
 class LegacyConfig(Config):
