@@ -108,9 +108,10 @@ class DiscordInterface(discord.Client):
                 )
             )
             and not (
-                config.thread_mute is True
+                config.thread_mute
                 and message.channel.type == discord.ChannelType.public_thread
             )
+            and (not config.only_reply_on_ping or self.user.mentioned_in(message))
         )
 
     @contextlib.asynccontextmanager
@@ -141,6 +142,7 @@ class DiscordInterface(discord.Client):
                     f"#{message.channel.name}",
                 ),
             )
+            print(exc)
             raise
         finally:
             if (
