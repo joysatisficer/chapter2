@@ -17,7 +17,7 @@ nltk = "*"
 pyyaml = "*"
 python-dotenv = "*"
 pydantic = ">=2.0a1"
-intermodel = {path = "./../intermodel"}
+intermodel = {path = "../intermodel"}
 thundersvm-cpu = "^0.3.3"
 streamlit = "^1.24.0"
 scikit-learn = "^1.2.2"
