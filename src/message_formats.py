@@ -1,116 +1,128 @@
 import re
+from abc import abstractmethod
 from dataclasses import dataclass
 from functools import reduce
-from typing import Callable, Annotated
+from typing import Callable, Annotated, Literal
 from datetime import datetime
 
 import pydantic
 
 from declarations import Message, Author
 
-_register: dict[str, "MessageFormat"] = {}
-
 
 # todo: refactor message formats to support returning an index for where parsing stopped
 # and to be a class instead
-class MessageFormat(pydantic.BaseModel):
-    """In the future, this could format all actions, not just messages, such as inner monologues"""
+# https://github.com/pydantic/pydantic/issues/1932
+class AbstractMessageFormat:
+    """In the future, this could format all actions, not just messages, such as inner
+    monologues"""
 
-    render: Callable[[Message], str] | type(NotImplemented)
-    name_prefix: Callable[[str], str] | type(NotImplemented)
-    parse: Callable[[str], list[Message]] | type(NotImplemented)
+    name: str
 
-    class Config:
-        arbitrary_types_allowed = True
-        json_encoders = {
-            Callable: lambda v: str(v),
-        }
-        json_schema_extra = {
-            "example": {
-                "render": "<function>",
-                "name_prefix": "<function>",
-                "parse": "<function>",
-            }
-        }
+    @staticmethod
+    @abstractmethod
+    def render(message: Message) -> str:
+        pass
 
-    @pydantic.model_validator(mode="before")
-    def read_from_register(cls, data: str | dict):
-        if isinstance(data, str):
-            return _register[data]
-        else:
-            return data
+    @staticmethod
+    @abstractmethod
+    def name_prefix(name: str) -> str:  # TODO: Refactor to Author
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def parse(continuation: str) -> list[Message]:
+        pass
 
 
-def parse_message_format(message_format: str) -> "MessageFormat":
-    return MessageFormat.parse_obj(message_format)
+class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
+    name: Literal["irc"] = "irc"
+
+    @staticmethod
+    def render(message):
+        return (
+            reduce(
+                lambda acc, line: acc + "\n" + line if acc != "" else line,
+                [
+                    f"<{message.author.name}> {line}"
+                    for line in message.content.splitlines()
+                    if not line.isspace()
+                ],
+                "",  # initial value
+            )
+            if message.author is not None
+            else message.content
+        ) + "\n"
+
+    @staticmethod
+    def name_prefix(name):
+        return f"<{name}>"
+
+    @staticmethod
+    def parse(continuation):
+        return [
+            Message(Author(name) if name != "" else None, content)
+            for name, content in re.findall(
+                r"^(?:<([^\n]+)> )?([^<].*)$", continuation, re.MULTILINE
+            )
+        ]
 
 
-irc_message_format = _register["irc"] = MessageFormat(
-    render=lambda message: (
-        reduce(
-            lambda acc, line: acc + "\n" + line if acc != "" else line,
-            [
-                f"<{message.author.name}> {line}"
-                for line in message.content.splitlines()
-                if not line.isspace()
-            ],
-            "",  # initial value
+class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
+    name: Literal["colon"] = "colon"
+
+    @staticmethod
+    def render(message):
+        return (
+            reduce(
+                lambda acc, line: acc + "\n" + line if acc != "" else line,
+                [
+                    f"{message.author.name}: {line}"
+                    for line in message.content.splitlines()
+                    if not line.isspace()
+                ],
+                "",  # initial value
+            )
+            if message.author is not None
+            else message.content
+        ) + "\n"
+
+    @staticmethod
+    def name_prefix(name):
+        return f"{name}:"
+
+    @staticmethod
+    def parse(continuation):
+        return [
+            Message(Author(name) if name != "" else None, content)
+            for name, content in re.findall(
+                r"^(?:([^\n]+):)? ([^:].*)$", continuation, re.MULTILINE
+            )
+        ]
+
+
+class WebDocumentMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
+    name: Literal["web_document"] = "web_document"
+
+    @staticmethod
+    def render(message):
+        return (
+            "from "
+            + message.author.name
+            + (
+                ""
+                if message.timestamp is None
+                else (
+                    datetime.utcfromtimestamp(message.timestamp).strftime(" @ %Y-%m-%d")
+                )
+            )
+            + "\n"
+            + message.content
         )
-        if message.author is not None
-        else message.content
-    )
-    + "\n",
-    name_prefix=lambda name: f"<{name}>",
-    # match `<name> string`, `string` but not `<name`, which usually occurs
-    # because of a length cutoff
-    parse=lambda continuation: [
-        Message(Author(name) if name != "" else None, content)
-        for name, content in re.findall(
-            r"^(?:<([^\n]+)> )?([^<].*)$", continuation, re.MULTILINE
-        )
-    ],
-)
 
-colon_message_format = _register["colon"] = MessageFormat(
-    render=lambda message: (
-        reduce(
-            lambda acc, line: acc + "\n" + line if acc != "" else line,
-            [
-                f"{message.author.name}: {line}"
-                for line in message.content.splitlines()
-                if not line.isspace()
-            ],
-            "",  # initial value
-        )
-        if message.author is not None
-        else message.content
-    )
-    + "\n",
-    name_prefix=lambda name: f"{name}:",
-    # match `name: string`, `string` but not `name`, which usually occurs
-    # because of a length cutoff
-    parse=lambda continuation: [
-        Message(Author(name) if name != "" else None, content)
-        for name, content in re.findall(
-            r"^(?:([^\n]+):)? ([^:].*)$", continuation, re.MULTILINE
-        )
-    ],
-)
-
-web_document_format = _register["web_document"] = MessageFormat(
-    render=lambda message: ("from " + message.author.name)
-    + (
-        ""
-        if message.timestamp is None
-        else (datetime.utcfromtimestamp(message.timestamp).strftime(" @ %Y-%m-%d"))
-    )
-    + "\n"
-    + message.content,
-    name_prefix=NotImplemented,
-    parse=NotImplemented,
-)
 
 # contrib
+LiteralMessageFormat = Literal["irc"] | Literal["colon"] | Literal["web_document"]
 
 
 def parse_repl_log(log_text):
@@ -146,39 +158,62 @@ def parse_repl_log(log_text):
     return sections
 
 
-python_repl_message_format = _register["python_repl"] = MessageFormat(
-    render=lambda message: (
-        message.content
-        if message.author.name == "interpreter" or message.author is None
-        else "\n".join(
-            [
-                f">>> {line}" if i == 0 else f"... {line}"
-                for i, line in enumerate(message.content.splitlines())
-            ]
+class PythonREPLMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
+    name: Literal["python_repl"] = "python_repl"
+
+    @staticmethod
+    def render(message: Message):
+        return (
+            message.content
+            if message.author.name == "interpreter" or message.author is None
+            else "\n".join(
+                [
+                    f">>> {line}" if i == 0 else f"... {line}"
+                    for i, line in enumerate(message.content.splitlines())
+                ]
+            )
+            + ("\n..." if len(message.content.splitlines()) > 1 else "")
+        ) + "\n"
+
+    @staticmethod
+    def name_prefix(name: str):
+        return "" if name == "interpreter" else ">>>"
+
+    @staticmethod
+    def parse(continuation: str):
+        return [
+            Message(Author(name), content)
+            for name, content in parse_repl_log(continuation)
+        ]
+
+
+class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
+    name: Literal["infrastruct"] = "infrastruct"
+
+    @staticmethod
+    def render(message: Message) -> str:
+        return "[{role}](#{type})\n{content}".format(
+            role=message.author.name,
+            type="instructions" if message.author.name == "system" else "message",
+            content=message.content,
         )
-        + ("\n..." if len(message.content.splitlines()) > 1 else "")
-    )
-    + "\n",
-    name_prefix=lambda name: "" if name == "interpreter" else ">>>",
-    parse=lambda continuation: [
-        Message(Author(name), content) for name, content in parse_repl_log(continuation)
-    ],
-)
 
-faux_chat_message_format = _register["faux_chat"] = MessageFormat(
-    render=lambda message: "[{role}](#{type})\n{content}".format(
-        role=message.author.name,
-        type="instructions" if message.author.name == "system" else "message",
-        content=message.content,
-    ),
-    name_prefix=lambda name: "[{role}](#{type})\n".format(
-        role=name,
-        type="instructions" if name == "system" else "message",
-    ),
-    # (?:\[(\w+)\]\(#(\w+)\)\n(.*)\s*)+
-    parse=lambda continuation: re.match(
-        "(?:\[(\w+)\]\(#(\w+)\)\n(.*))+", continuation
-    ).groups(),
-)
+    @staticmethod
+    def name_prefix(name: str) -> str:
+        return "[{role}](#{type})\n".format(
+            role=name,
+            type="instructions" if name == "system" else "message",
+        )
 
-MESSAGE_FORMAT_REGISTRY = _register
+    @staticmethod
+    def parse(continuation: str) -> str:
+        re.match("(?:\[(\w+)\]\(#(\w+)\)\n(.*))+", continuation).groups()
+
+
+MessageFormat = (
+    IRCMessageFormat
+    | ColonMessageFormat
+    | WebDocumentMessageFormat
+    | PythonREPLMessageFormat
+    | InfrastructMessageFormat
+)
