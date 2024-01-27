@@ -10,7 +10,7 @@ from declarations import Message, Author, ActionHistory, Faculty
 from resolve_config import Config, CharacterFacultyConfig
 from chr_loader import load_chr
 from retriever import KNNIndex
-from message_formats import irc_message_format, colon_message_format
+from message_formats import IRCMessageFormat, ColonMessageFormat
 
 # todo: turn faculties into functions, make the KNN index maker a cached function using functools cache
 # todo: read character folder in the impure shell
@@ -23,8 +23,8 @@ async def character_faculty(
     representations = []
     indexed_messages = []
     for string in strings:
-        for message in irc_message_format.parse(string):
-            representations.append(colon_message_format.render(message).strip())
+        for message in IRCMessageFormat.parse(string):
+            representations.append(ColonMessageFormat.render(message).strip())
             indexed_messages.append(message)
 
     dedup_representations, dedup_indexed_messages = remove_duplicate_representations(
@@ -41,7 +41,7 @@ async def character_faculty(
     messages = await async_take(faculty_config.recent_message_attention, history)
     query = ""
     for message in messages[::-1]:
-        query += colon_message_format.render(message)
+        query += ColonMessageFormat.render(message)
     results = await index.query(query.replace("\n", " "), 1000)
     for message in results:
         yield message

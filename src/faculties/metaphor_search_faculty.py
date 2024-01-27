@@ -10,7 +10,7 @@ from metaphor_python import AsyncMetaphor
 from intermodel import callgpt
 
 from declarations import ActionHistory, Message, Author
-from message_formats import MessageFormat, irc_message_format
+from message_formats import MessageFormat, IRCMessageFormat
 from resolve_config import Config, MetaphorSearchFacultyConfig
 
 SharedAsyncMetaphor = cache(AsyncMetaphor)
@@ -20,7 +20,7 @@ async def metaphor_search_faculty(
     history: ActionHistory, faculty_config: MetaphorSearchFacultyConfig, config: Config
 ):
     message_history_string = format_message_section(
-        irc_message_format,
+        IRCMessageFormat,
         await async_take(faculty_config.recent_message_attention, history)
         + [Message(Author(config.name), "")],
     )

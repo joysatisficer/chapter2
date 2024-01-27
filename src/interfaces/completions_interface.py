@@ -11,7 +11,7 @@ from pydantic import BaseModel, ValidationError
 
 from declarations import GenerateResponse, Message, UserID, Author
 from resolve_config import Config, CompletionsInterfaceConfig
-from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY
+from message_formats import IRCMessageFormat
 from abstractinterface import AbstractInterface, GetDiscordConfig
 from util.asyncit import eager_iterable_to_async_iterable
 from util.uvicorn_improved import RapidShutdownUvicornServer
@@ -69,7 +69,7 @@ class CompletionsInterface(AbstractInterface):
         self.app.post("/v1/completions")(self.completions)
 
     async def completions(self, completion_request: CompletionRequest):
-        irc_format = MESSAGE_FORMAT_REGISTRY["irc"]
+        irc_format = IRCMessageFormat
         messages = irc_format.parse(completion_request.prompt)
         em_user_id = UserID("em::" + self.em_name, "completions")
         config: Config = await self.get_config(None)

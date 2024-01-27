@@ -5,10 +5,13 @@ from typing import Annotated, Literal, Union
 from math import inf
 import copy
 
+import pydantic
 from annotated_types import Gt, Ge, Interval
 
 from pydantic import BaseModel, field_validator, Field
-from message_formats import MessageFormat, MESSAGE_FORMAT_REGISTRY
+from pydantic_core import PydanticUndefined
+
+from message_formats import MessageFormat, IRCMessageFormat, WebDocumentMessageFormat
 
 
 class FacultyConfig(BaseModel):
@@ -27,18 +30,46 @@ class FacultyConfig(BaseModel):
         raise ValueError('Value must be an integer or float("inf")')
 
 
+class FixedSizeChunker(BaseModel):
+    name: Literal["fixed"] = "fixed"
+    n_lines: int = 3
+
+
+class PerplexityChunker(BaseModel):
+    name: Literal["perplexity"] = "perplexity"
+
+
+class UltratrieverConfig(BaseModel):
+    # nested array of steps with a type system
+    # organize in order of steps
+    chunker: FixedSizeChunker | PerplexityChunker = FixedSizeChunker()
+    # message_reformat: pair of message formats
+    # deduplication
+    representation_model: str = "intfloat/e5-large-v2"
+    # metric: Literal["knn/euclid"] | Literal["hyperplane/"]
+    index_type: Literal["knn"] | Literal["svm"] = "knn"
+    # deduplication
+    # reranker
+
+
 class CharacterFacultyConfig(FacultyConfig):
     faculty: Literal["character"] = "character"
+    name: str | None = None  # defaults to config.em_name
+    chunk_size: int = 3
+    retriever: UltratrieverConfig = UltratrieverConfig()
     # set defaults
-    format: MessageFormat = MESSAGE_FORMAT_REGISTRY["irc"]
+    format: MessageFormat = IRCMessageFormat()
     recent_message_attention: int = 7
 
 
 class MetaphorSearchFacultyConfig(FacultyConfig):
     faculty: Literal["metaphor_search"] = "metaphor_search"
-    format: MessageFormat = MESSAGE_FORMAT_REGISTRY["web_document"]
+    format: MessageFormat = WebDocumentMessageFormat()
     include_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
+    extractor: Literal["readability-lxml-summary"] | Literal[
+        "beautifulsoup"
+    ] | None = None
     strip_leading_indentation: bool = False
     # set defaults
     max_tokens: int | float = 4000
@@ -98,9 +129,9 @@ class Config(BaseModel):
     name: str
     continuation_model: str = "code-davinci-002"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
+    # todo: update default representation model
     representation_model: str = "intfloat/e5-large-v2"
-    # todo: format validator and type
-    message_history_format: MessageFormat = MESSAGE_FORMAT_REGISTRY["irc"]
+    message_history_format: MessageFormat = IRCMessageFormat()
     message_history_header: str = ""  # todo: rename
     scene_break: str = "***\n"  # todo: rename to scene_break_string
     recency_window: Annotated[int, Gt(0)] = 20
@@ -143,11 +174,35 @@ REHEARSAL_CONFIG = {"vendors": {"fake-local": SingleVendorConfig(provides=[".*"]
 # core end
 
 
-def get_defaults(model):
+def get_defaults(model: pydantic.BaseModel) -> dict:
     defaults = {}
-    for name, field in model.model_json_schema()["properties"].items():
-        if "default" in field:
-            defaults[name] = field["default"]
+    for name, field in model.model_fields.items():
+        if field.default != PydanticUndefined:
+            if isinstance(field.default, pydantic.BaseModel):
+                defaults[name] = get_defaults(field.default)
+            elif isinstance(field.default, list):
+                newlist = []
+                for item in field.default:
+                    if isinstance(item, pydantic.BaseModel):
+                        newlist.append(get_defaults(item))
+                    else:
+                        newlist.append(item)
+                defaults[name] = newlist
+            elif isinstance(field.default, dict):
+                newdict = {}
+                for key, value in field.default.items():
+                    if isinstance(key, pydantic.BaseModel):
+                        realkey = get_defaults(key)
+                    else:
+                        realkey = key
+                    if isinstance(value, pydantic.BaseModel):
+                        realvalue = get_defaults(value)
+                    else:
+                        realvalue = value
+                    newdict[realkey] = realvalue
+                defaults[name] = newdict
+            else:
+                defaults[name] = field.default
     return defaults
 
 
