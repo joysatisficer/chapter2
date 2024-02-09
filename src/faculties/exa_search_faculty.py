@@ -1,0 +1,107 @@
+import time
+from typing import Callable
+
+from asgiref.sync import sync_to_async
+from aioitertools.more_itertools import take as async_take
+
+import dateutil.parser
+from functools import cache
+from exa_py import Exa
+from intermodel import callgpt
+
+from declarations import ActionHistory, Message, Author
+from message_formats import MessageFormat, IRCMessageFormat
+from resolve_config import (
+    Config,
+    ExaSearchFacultyConfig,
+    ExaSearchFullTextConfig,
+    ExaSearchHighlightsConfig,
+)
+
+SharedExa = cache(Exa)
+INITIAL_EXA_RESULTS = 10
+
+
+async def exa_search_faculty(
+    history: ActionHistory, faculty_config: ExaSearchFacultyConfig, config: Config
+):
+    message_history_string = format_message_section(
+        faculty_config.input_format,
+        await async_take(faculty_config.recent_message_attention, history)
+        + [Message(Author(config.name), "")],
+    )
+    exa_client = SharedExa(config.exa_search_api_key)
+    kwparams = {
+        "use_autoprompt": faculty_config.use_autoprompt,
+        "include_domains": faculty_config.include_domains,
+        "exclude_domains": faculty_config.exclude_domains,
+    }
+    if isinstance(faculty_config.output, ExaSearchFullTextConfig):
+        kwparams["text"] = {
+            "max_characters": faculty_config.output.max_characters,
+            "include_html_tags": faculty_config.output.include_html_tags,
+        }
+    else:
+        kwparams["highlights"] = {
+            "highlights_per_url": faculty_config.output.highlights_per_url,
+            "num_sentences": faculty_config.output.sentences_per_highlight,
+        }
+    yielded_urls = set()
+    for i in range(0, faculty_config.max_results, INITIAL_EXA_RESULTS):
+        kwparams["num_results"] = i + INITIAL_EXA_RESULTS
+        results = sorted(
+            (
+                await sync_to_async(exa_client.search_and_contents)(
+                    trim_tokens("gpt2", message_history_string, 1000),
+                    **kwparams,
+                )
+            ).results,
+            key=lambda item: item.score,
+            reverse=True,
+        )
+        if len(results) == 0:
+            return
+        for result in results:
+            if result.url in yielded_urls:
+                continue
+            if result.published_date is None:
+                published_timestamp = None
+            else:
+                published_timestamp = time.mktime(
+                    dateutil.parser.parse(result.published_date).timetuple()
+                )
+            if isinstance(faculty_config.output, ExaSearchFullTextConfig):
+                text = result.text
+            else:
+                text = "\n".join(result.highlights)
+            if faculty_config.strip_leading_indentation:
+                text = strip_leading_indentation(text)
+            yield Message(Author(result.url), text, timestamp=published_timestamp)
+            yielded_urls.add(result.url)
+
+
+def strip_leading_indentation(string: str) -> str:
+    result = []
+    for line in string.splitlines():
+        result.append(line.lstrip())
+    return "\n".join(result)
+
+
+def format_message_section(
+    message_format: MessageFormat,
+    messages: list[Message],
+    separator: str = "",
+    while_: Callable[[str], bool] = lambda _: True,
+) -> str:
+    prompt = ""
+    for message in messages[::-1]:
+        new_prompt = prompt + separator + message_format.render(message)
+        if not while_(new_prompt):
+            break
+        prompt = new_prompt
+    return prompt
+
+
+def trim_tokens(model: str, string: str, n_tokens: int):
+    used_tokens = callgpt.tokenize(model, string)[-n_tokens:]
+    return callgpt.untokenize(model, used_tokens)

@@ -16,11 +16,12 @@ from message_formats import MessageFormat, IRCMessageFormat, WebDocumentMessageF
 
 class FacultyConfig(BaseModel):
     faculty: str
+    input_format: MessageFormat = IRCMessageFormat()
     format: MessageFormat
     separator: str = "***\n"
     max_tokens: int | float = inf  # todo: parsing inf from yaml
     header: str = ""
-    footer: str = "***"
+    footer: str = "***\n"
     recent_message_attention: int
 
     @field_validator("max_tokens")
@@ -62,23 +63,34 @@ class CharacterFacultyConfig(FacultyConfig):
     recent_message_attention: int = 7
 
 
-class MetaphorSearchFacultyConfig(FacultyConfig):
-    faculty: Literal["metaphor_search"] = "metaphor_search"
+class ExaSearchFullTextConfig(BaseModel):
+    max_characters: int = 2500
+    include_html_tags: bool = False
+
+
+class ExaSearchHighlightsConfig(BaseModel):
+    # todo: replace with full ensemble nesting
+    highlights_per_url: int = 3
+    sentences_per_highlight: int = 3
+
+
+class ExaSearchFacultyConfig(FacultyConfig):
+    faculty: Literal["metaphor_search"] | Literal["exa_search"] = "exa_search"
     format: MessageFormat = WebDocumentMessageFormat()
     include_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
-    extractor: Literal["readability-lxml-summary"] | Literal[
-        "beautifulsoup"
-    ] | None = None
-    strip_leading_indentation: bool = False
+    max_results: int = 25  # 25 is the cap of the Wanderer plan
+    use_autoprompt: bool = False
+    output: ExaSearchHighlightsConfig = ExaSearchHighlightsConfig()
+    strip_leading_indentation: bool = True
     # set defaults
     max_tokens: int | float = 4000
-    footer: str = "\n***\n"
+    footer: str = "***\n"
     recent_message_attention: int = 5
 
 
 EnsembleConfig = Annotated[
-    CharacterFacultyConfig | MetaphorSearchFacultyConfig,
+    CharacterFacultyConfig | ExaSearchFacultyConfig,
     Field(..., discriminator="faculty"),
 ]
 
@@ -151,7 +163,7 @@ class Config(BaseModel):
     discord_mute: str | bool = False
     thread_mute: bool = True
     vendors: dict[str, SingleVendorConfig] = {}
-    metaphor_search_api_key: str | None = None
+    exa_search_api_key: str | None = None
     em_folder: Path
     only_reply_on_ping: bool = False  # todo: implement dynamic interface config getting
 
@@ -217,6 +229,7 @@ ALIASES = {
     "lookup_msg_cache": "character_faculty_recent_message_attention",
     "active_interfaces": None,
     "discord_token": None,
+    "metaphor_search_api_key": "exa_search_api_key",
 }
 
 # todo: namespaced default sets to allow for opt-in defaults upgrades

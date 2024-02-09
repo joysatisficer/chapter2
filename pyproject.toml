@@ -9,7 +9,7 @@ readme = "README.md"
 python =  ">=3.11,<4.0"
 "discord.py" = "*"
 openai = "*"
-tiktoken = "*"
+tiktoken = ">=0.5.2"
 more-itertools = "*"
 aioitertools = "*"
 pyvespa = "*"
@@ -39,6 +39,7 @@ aiohttp = "^3.9.1"
 metaphor-python = {url = "https://github.com/ampdot-io/metaphor-python/archive/async.zip"}
 lmql = "^0.7.3"
 mikoto-py = "^0.0.6"
+exa-py = "^1.0.7"
 
 
 [tool.poetry.group.dev.dependencies]

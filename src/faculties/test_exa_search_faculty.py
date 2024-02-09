@@ -5,12 +5,12 @@ import pytest
 import yaml
 
 from declarations import Message, Author
-from resolve_config import MetaphorSearchFacultyConfig, Config, load_config_from_kv
-from faculties.metaphor_search_faculty import metaphor_search_faculty
+from resolve_config import ExaSearchFacultyConfig, Config, load_config_from_kv
+from faculties.exa_search_faculty import exa_search_faculty
 
 
 @pytest.mark.asyncio
-async def test_metaphor_search_faculty():
+async def test_exa_search_faculty():
     kv = {
         "em_folder": "/tmp",
         "name": "tmp",
@@ -27,8 +27,8 @@ async def test_metaphor_search_faculty():
     except FileNotFoundError:
         pass
     config = load_config_from_kv(kv)
-    async for message in metaphor_search_faculty(
-        mock_message_history_iterator(config), MetaphorSearchFacultyConfig(), config
+    async for message in exa_search_faculty(
+        mock_message_history_iterator(config), ExaSearchFacultyConfig(), config
     ):
         print(message)
 
