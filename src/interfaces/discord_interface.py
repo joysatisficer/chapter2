@@ -86,7 +86,9 @@ class DiscordInterface(discord.Client):
                             await wait_until_timestamp(
                                 reply_message.timestamp, message.channel.typing
                             )
-                            await message.channel.send(reply_message.content)
+                            await message.channel.send(
+                                realize_pings(message.channel, reply_message.content)
+                            )
             finally:
                 if command_message is not None:
                     await command_message.delete()
@@ -203,6 +205,13 @@ def is_continue_command(message_content: str):
 
 def is_mu_command(message_content: str):
     return message_content.strip() == "/mu" or message_content.startswith("m mu")
+
+
+def realize_pings(channel: discord.TextChannel, message_content: str):
+    for member in channel.members:
+        if "@" + member.name in message_content:
+            message_content.replace("@" + member.name, f"<@!{member.id}>")
+    return message_content
 
 
 async def get_yaml_from_channel(
