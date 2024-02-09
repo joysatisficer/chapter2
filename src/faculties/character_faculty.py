@@ -19,13 +19,19 @@ from message_formats import IRCMessageFormat, ColonMessageFormat
 async def character_faculty(
     history: ActionHistory, faculty_config: CharacterFacultyConfig, config: Config
 ):
-    strings = load_chr(str(config.em_folder / f"{config.name}.chr"))
+    strings = load_chr(
+        str(config.em_folder / f"{config.name}.chr"), faculty_config.chunk_size
+    )
     representations = []
     indexed_messages = []
     for string in strings:
-        for message in IRCMessageFormat.parse(string):
-            representations.append(ColonMessageFormat.render(message).strip())
-            indexed_messages.append(message)
+        representation = ""
+        messages = faculty_config.input_format.parse(string)
+        for message in messages:
+            representation += ColonMessageFormat.render(message).strip()
+        if representation != "":
+            representations.append(representation)
+            indexed_messages.append(tuple(messages))
 
     dedup_representations, dedup_indexed_messages = remove_duplicate_representations(
         tuple(representations), tuple(indexed_messages)
@@ -44,7 +50,13 @@ async def character_faculty(
         query += ColonMessageFormat.render(message)
     results = await index.query(query.replace("\n", " "), 1000)
     for message in results:
-        yield message
+        # todo: refactor ontology to allow groups of messages to be yielded
+        # todo: native support for recursive ensembles when separator configuration?
+        # todo: alternatively, simpler approach where we hardcode the type
+        # todo: or, we do the full Lisp style thing... or we could do it as a set of
+        # todo: Python libraries
+        for message_ in message:
+            yield message_
 
 
 @cache
