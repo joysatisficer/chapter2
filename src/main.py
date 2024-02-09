@@ -123,12 +123,22 @@ async def get_replies(
     author: Author,
     stop_sequences: list[str] = None,
 ):
+    logit_bias = {}
+    for logit, bias in config.logit_bias.items():
+        if isinstance(logit, int):
+            logit_bias[logit] = bias
+        elif isinstance(logit, str):
+            tokens = callgpt.tokenize(config.continuation_model, logit)
+            assert len(tokens) == 1, "logit_bias invalid string logit"
+            logit_bias[tokens[0]] = bias
+        else:
+            raise NotImplementedError("Unrecognized logit_bias key type")
+
     if config.prevent_scene_break:
-        logit_bias = {
-            callgpt.tokenize(config.continuation_model, config.scene_break.strip("\n"))[
-                0
-            ]: -100
-        }
+        scene_break_token = callgpt.tokenize(
+            config.continuation_model, config.scene_break.strip("\n")
+        )[0]
+        logit_bias[scene_break_token] = -100
     else:
         logit_bias = {}
     print(prompt)
@@ -143,9 +153,19 @@ async def get_replies(
             stop=stop_sequences[:3] if stop_sequences is not None else None,
             vendor_config=config.vendors,
             logit_bias=logit_bias,
+            best_of=config.best_of,
         )
     )["completions"][0]["text"]
-    print("Completion>>", completion.replace("\n", r"\n"), "<<Completion", sep="")
+    if callgpt.pick_vendor(config.continuation_model) == "fake-local":
+        print(
+            "Completion>>",
+            "{",
+            callgpt.count_tokens(config.continuation_model, completion),
+            "tokens omitted}",
+            "<<Completion",
+        )
+    else:
+        print("Completion>>", completion.replace("\n", r"\n"), "<<Completion", sep="")
     # Todo: Client-side stop sequences
     for message in config.message_history_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes
@@ -220,7 +240,7 @@ def get_config_getter(bot_config: Config):
     return get_config
 
 
-async def rehearse_em(config):
+async def rehearse_em(config: Config):
     """Run an em in mock mode to populate caches and test the em"""
     mock_messages = [
         Message(Author("alice"), "hello"),
