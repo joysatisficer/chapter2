@@ -40,6 +40,16 @@ class DiscordInterface(discord.Client):
             message_to_react_to = [
                 message async for message in message.channel.history(limit=2)
             ][1]
+        elif is_mu_command(message.content):
+            command_message = message
+            async for this_message in message.channel.history(before=message):
+                if this_message.author.id == self.user.id:
+                    await this_message.delete()
+                else:
+                    break
+            message_to_react_to = [
+                message async for message in message.channel.history(limit=2)
+            ][1]
         else:
             command_message = None
             message_to_react_to = message
@@ -55,11 +65,13 @@ class DiscordInterface(discord.Client):
 
                 async def message_history():
                     nonlocal message
-                    async for message in message.channel.history(
+                    async for this_message in message.channel.history(
                         limit=None, before=command_message
                     ):
-                        if not is_continue_command(message.content):
-                            yield await self.discord_message_to_message(config, message)
+                        if not is_continue_command(this_message.content):
+                            yield await self.discord_message_to_message(
+                                config, this_message
+                            )
 
                 response_messages = self.generate_response(
                     my_user_id,
@@ -111,7 +123,10 @@ class DiscordInterface(discord.Client):
                 config.thread_mute
                 and message.channel.type == discord.ChannelType.public_thread
             )
-            and (not config.only_reply_on_ping or self.user.mentioned_in(message))
+            and (
+                not self.interface_config.only_reply_on_ping
+                or self.user.mentioned_in(message)
+            )
         )
 
     @contextlib.asynccontextmanager
@@ -187,6 +202,10 @@ def is_continue_command(message_content: str):
     return message_content.strip() == "/continue" or message_content.startswith(
         "m continue"
     )
+
+
+def is_mu_command(message_content: str):
+    return message_content.strip() == "/mu" or message_content.startswith("m mu")
 
 
 async def get_yaml_from_channel(
