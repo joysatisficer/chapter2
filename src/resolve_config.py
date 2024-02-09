@@ -79,7 +79,7 @@ class ExaSearchFacultyConfig(FacultyConfig):
     format: MessageFormat = WebDocumentMessageFormat()
     include_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
-    max_results: int = 25  # 25 is the cap of the Wanderer plan
+    max_results: int = 10  # 10 is the cap of the Wanderer plan
     use_autoprompt: bool = False
     output: ExaSearchHighlightsConfig = ExaSearchHighlightsConfig()
     strip_leading_indentation: bool = True
@@ -188,6 +188,7 @@ REHEARSAL_CONFIG = {"vendors": {"fake-local": SingleVendorConfig(provides=[".*"]
 # core end
 
 
+# todo: support defaults versioning
 def get_defaults(model: pydantic.BaseModel) -> dict:
     defaults = {}
     for name, field in model.model_fields.items():
