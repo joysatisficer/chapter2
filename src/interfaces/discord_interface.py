@@ -123,10 +123,7 @@ class DiscordInterface(discord.Client):
                 config.thread_mute
                 and message.channel.type == discord.ChannelType.public_thread
             )
-            and (
-                not self.interface_config.only_reply_on_ping
-                or self.user.mentioned_in(message)
-            )
+            and (not config.only_reply_on_ping or self.user.mentioned_in(message))
         )
 
     @contextlib.asynccontextmanager
