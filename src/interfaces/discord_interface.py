@@ -210,7 +210,9 @@ def is_mu_command(message_content: str):
 def realize_pings(channel: discord.TextChannel, message_content: str):
     for member in channel.members:
         if "@" + member.name in message_content:
-            message_content.replace("@" + member.name, f"<@!{member.id}>")
+            message_content = message_content.replace(
+                "@" + member.name, f"<@!{member.id}>"
+            )
     return message_content
 
 
