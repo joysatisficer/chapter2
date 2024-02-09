@@ -78,6 +78,8 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                 lambda acc, line: acc + "\n" + line if acc != "" else line,
                 [
                     f"{message.author.name}: {line}"
+                    if message.author.name is not None
+                    else line
                     for line in message.content.splitlines()
                     if not line.isspace()
                 ],
@@ -118,6 +120,7 @@ class WebDocumentMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
             )
             + "\n"
             + message.content
+            + "\n"
         )
 
 
@@ -189,25 +192,44 @@ class PythonREPLMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 
 class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["infrastruct"] = "infrastruct"
+    type: str = "message"
 
-    @staticmethod
-    def render(message: Message) -> str:
-        return "[{role}](#{type})\n{content}".format(
+    def render(self, message: Message) -> str:
+        return "[{role}](#{type})\n{content}\n\n".format(
             role=message.author.name,
-            type="instructions" if message.author.name == "system" else "message",
-            content=message.content,
+            type="instructions" if message.author.name == "system" else self.type,
+            content=message.content.replace("\n", "\n\n").rstrip(),
         )
 
-    @staticmethod
-    def name_prefix(name: str) -> str:
+    def name_prefix(self, name: str) -> str:
         return "[{role}](#{type})\n".format(
             role=name,
-            type="instructions" if name == "system" else "message",
+            type="instructions" if name == "system" else self.type,
         )
 
     @staticmethod
-    def parse(continuation: str) -> str:
-        re.match("(?:\[(\w+)\]\(#(\w+)\)\n(.*))+", continuation).groups()
+    def parse(continuation: str) -> list[Message]:
+        messages = []
+        cur_message_content = ""
+        name = None
+        first_message = True
+        for line in continuation.splitlines(keepends=True):
+            # allow usernames to be URLs
+            if match := re.match(r"^\[([\w:/.-]+)]\(#(\w+)\)", line):
+                if not first_message:
+                    messages.append(Message(Author(name), cur_message_content))
+                first_message = False
+                name, _ = match.groups()
+                cur_message_content = ""
+            elif line.strip() == "":
+                if not cur_message_content.endswith("\n"):
+                    cur_message_content += "\n"
+            elif line.strip() != "":
+                cur_message_content += line
+
+        if cur_message_content != "" or name is not None:
+            messages.append(Message(Author(name), cur_message_content))
+        return messages
 
 
 MessageFormat = (
