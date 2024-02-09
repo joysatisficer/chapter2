@@ -158,6 +158,8 @@ class Config(BaseModel):
     frequency_penalty: float = 0.75
     presence_penalty: float = 2.0
     stop_sequences: list[str] = []
+    logit_bias: dict[int | str, float] = {}
+    best_of: int = 1
 
     interfaces: list[InterfaceConfig] = [DiscordInterfaceConfig()]
     discord_mute: str | bool = False
