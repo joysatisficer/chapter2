@@ -154,7 +154,7 @@ class Config(BaseModel):
     prevent_gpt_topic_change: bool = False
 
     temperature: Annotated[float, Ge(0)] = 0.9
-    top_p: Annotated[float, Interval(gt=0, le=1)] = 0.97
+    top_p: Annotated[float, Interval(gt=0, le=1)] = 0.98
     frequency_penalty: float = 0.75
     presence_penalty: float = 2.0
     stop_sequences: list[str] = []
