@@ -4,7 +4,6 @@ from typing import List
 import faiss
 import embedapi
 import numpy as np
-from sklearn import svm
 from asgiref.sync import sync_to_async as asyncify
 
 from chr_loader import load_chr
@@ -97,11 +96,13 @@ class SciKitSVMIndex(SVMIndex):
     @AbstractIndex.dec_query
     @asyncify
     def query(self, query: str, k: int) -> List[str]:
+        from sklearn.svm import LinearSVC
+
         vec_query = embedapi.encode_query(self.transformer, query)
         x = np.concatenate([vec_query[None, ...], self.vectors])
         y = np.zeros(len(self.vectors) + 1)
         y[0] = 1
-        clf = svm.LinearSVC(
+        clf = LinearSVC(
             class_weight="balanced", verbose=False, max_iter=10000, tol=1e-6, C=0.1
         )
         clf.fit(x, y)
