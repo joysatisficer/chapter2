@@ -19,8 +19,12 @@ from message_formats import IRCMessageFormat, ColonMessageFormat
 async def character_faculty(
     history: ActionHistory, faculty_config: CharacterFacultyConfig, config: Config
 ):
+    if faculty_config.name is None:
+        character_name = config.name
+    else:
+        character_name = faculty_config.name
     strings = load_chr(
-        str(config.em_folder / f"{config.name}.chr"), faculty_config.chunk_size
+        str(config.em_folder / f"{character_name}.chr"), faculty_config.chunk_size
     )
     representations = []
     indexed_messages = []
