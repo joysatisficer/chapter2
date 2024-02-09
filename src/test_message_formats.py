@@ -1,5 +1,5 @@
 from declarations import Message, Author
-from message_formats import PythonREPLMessageFormat
+from message_formats import PythonREPLMessageFormat, InfrastructMessageFormat
 
 
 def test_python_repl_message_format():
@@ -16,3 +16,10 @@ def test_python_repl_message_format():
         Message(Author("interpreter"), "foo\nbar"),
         Message(Author("user"), "baz"),
     ]
+
+
+def test_infrastruct_message_format_parse_empty():
+    assert InfrastructMessageFormat.parse("") == []
+
+
+# todo: investigate testing with hypothesis library
