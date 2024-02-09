@@ -26,6 +26,7 @@ class DiscordInterface(discord.Client):
     ):
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.members = True
         super().__init__(intents=intents)
         self.get_config: GetDiscordConfig = get_discord_config
         self.generate_response: GenerateResponse = generate_response
