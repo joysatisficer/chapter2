@@ -19,7 +19,6 @@ from resolve_config import (
 )
 
 SharedExa = cache(Exa)
-INITIAL_EXA_RESULTS = 10
 
 
 async def exa_search_faculty(
@@ -47,7 +46,7 @@ async def exa_search_faculty(
             "num_sentences": faculty_config.output.sentences_per_highlight,
         }
     yielded_urls = set()
-    n_results = INITIAL_EXA_RESULTS
+    n_results = faculty_config.impl_hint_initial_num_results
     while True:
         kwparams["num_results"] = n_results
         results = sorted(
@@ -82,7 +81,10 @@ async def exa_search_faculty(
         if n_results == faculty_config.max_results:
             break
         if n_results < faculty_config.max_results:
-            n_results = max(n_results + INITIAL_EXA_RESULTS, faculty_config.max_results)
+            n_results = max(
+                n_results + faculty_config.impl_hint_initial_num_results,
+                faculty_config.max_results,
+            )
 
 
 def strip_leading_indentation(string: str) -> str:
