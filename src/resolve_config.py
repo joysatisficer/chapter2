@@ -21,7 +21,7 @@ class FacultyConfig(BaseModel):
     separator: str = "***\n"
     max_tokens: int | float = inf  # todo: parsing inf from yaml
     header: str = ""
-    footer: str = "***\n"
+    footer: str = "***"
     recent_message_attention: int
 
     @field_validator("max_tokens")
