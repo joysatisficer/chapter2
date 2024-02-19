@@ -47,8 +47,9 @@ async def exa_search_faculty(
             "num_sentences": faculty_config.output.sentences_per_highlight,
         }
     yielded_urls = set()
-    for i in range(0, faculty_config.max_results, INITIAL_EXA_RESULTS):
-        kwparams["num_results"] = i + INITIAL_EXA_RESULTS
+    n_results = INITIAL_EXA_RESULTS
+    while True:
+        kwparams["num_results"] = n_results
         results = sorted(
             (
                 await sync_to_async(exa_client.search_and_contents)(
@@ -78,6 +79,10 @@ async def exa_search_faculty(
                 text = strip_leading_indentation(text)
             yield Message(Author(result.url), text, timestamp=published_timestamp)
             yielded_urls.add(result.url)
+        if n_results == faculty_config.max_results:
+            break
+        if n_results < faculty_config.max_results:
+            n_results = max(n_results + INITIAL_EXA_RESULTS, faculty_config.max_results)
 
 
 def strip_leading_indentation(string: str) -> str:
