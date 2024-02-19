@@ -31,6 +31,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
     recent_messages = await async_take(config.recency_window, history)
     completion_prefix = config.message_history_format.name_prefix(config.name)
     ctx_vars = {"now": datetime.now()}
+    # todo: message history normal ensemble configs including max_tokens
     message_history_ensemble = (
         (config.message_history_header.format(**ctx_vars) + "\n")
         + await format_message_section(config.message_history_format, recent_messages)
@@ -95,7 +96,6 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
     tries = 0
     while not has_valid_reply and tries < 3:
         tries += 1
-        replies = []
         has_valid_reply = True
         async for reply in get_replies(
             config, prompt, completion_prefix, config.name, author, stop_sequences
@@ -110,9 +110,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
                 has_valid_reply = False
                 print("Muffled>>", reply, "<<Muffled", muffler_results, sep="")
             else:
-                replies.append(reply)
-    for reply in replies:
-        yield reply
+                yield reply
 
 
 async def get_replies(
@@ -256,7 +254,7 @@ async def rehearse_em(config: Config):
         pass
 
 
-async def run_em(name):
+def load_em(name) -> Config:
     parent_dir = Path(__file__).resolve().parents[1]
     em_folder = parent_dir / "ems" / name
     with open(em_folder / "config.yaml") as file:
@@ -282,13 +280,19 @@ async def run_em(name):
             kv[subpath.name] = subpath.read_text()
     if "name" not in kv:
         kv["name"] = name
+    # TODO: Replace with defaults versioning system
     if kv.get("legacy", False):
         defaults = resolve_config.LEGACY_DEFAULTS
         del kv["legacy"]
     else:
         defaults = resolve_config.DEFAULTS
     config = resolve_config.load_config_from_kv(kv, defaults)
-    args = get_config_getter(config), generate_response, kv["name"]
+    return config
+
+
+async def run_em(name):
+    config = load_em(name)
+    args = get_config_getter(config), generate_response, config.name
     interfaces = []
     for interface in config.interfaces:
         interface_name = interface.name
@@ -327,7 +331,7 @@ async def run_em(name):
         asyncio.create_task(
             rehearse_em(
                 resolve_config.load_config_from_kv(
-                    kv, {**defaults, **resolve_config.REHEARSAL_CONFIG}
+                    config.model_dump(), resolve_config.REHEARSAL_CONFIG
                 )
             )
         ),
