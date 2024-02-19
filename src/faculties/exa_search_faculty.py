@@ -62,7 +62,7 @@ async def exa_search_faculty(
         if len(results) == 0:
             return
         for result in results:
-            if result.url in yielded_urls:
+            if result.url in yielded_urls or result.url in faculty_config.ignored_urls:
                 continue
             if result.published_date is None:
                 published_timestamp = None

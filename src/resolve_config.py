@@ -82,6 +82,8 @@ class ExaSearchFacultyConfig(FacultyConfig):
     max_results: int = 10  # 10 is the cap of the Wanderer plan
     use_autoprompt: bool = False
     output: ExaSearchHighlightsConfig = ExaSearchHighlightsConfig()
+    # client-side filtering
+    ignored_urls: list[str] = []
     strip_leading_indentation: bool = True
     # set defaults
     max_tokens: int | float = 4000
