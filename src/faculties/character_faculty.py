@@ -1,16 +1,13 @@
-import asyncio
 from functools import cache
-from collections import Counter
 
 from asyncstdlib.functools import cache as async_cache
 from aioitertools.more_itertools import take as async_take
-from asgiref.sync import sync_to_async
 
 from declarations import Message, Author, ActionHistory, Faculty
 from resolve_config import Config, CharacterFacultyConfig
 from chr_loader import load_chr
-from retriever import KNNIndex
-from message_formats import IRCMessageFormat, ColonMessageFormat
+from retriever import KNNIndex, SVMIndex
+from message_formats import ColonMessageFormat
 
 # todo: turn faculties into functions, make the KNN index maker a cached function using functools cache
 # todo: read character folder in the impure shell
@@ -43,7 +40,7 @@ async def character_faculty(
 
     # todo: options for non-KNN indexes
     index = await create_index(
-        KNNIndex,
+        {"knn": KNNIndex, "svm": SVMIndex}[faculty_config.retriever.ranking_metric],
         config.representation_model,
         tuple(dedup_representations),
         tuple(dedup_indexed_messages),
