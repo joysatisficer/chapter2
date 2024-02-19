@@ -48,7 +48,7 @@ class UltratrieverConfig(BaseModel):
     # deduplication
     representation_model: str = "intfloat/e5-large-v2"
     # metric: Literal["knn/euclid"] | Literal["hyperplane/"]
-    index_type: Literal["knn"] | Literal["svm"] = "knn"
+    ranking_metric: Literal["knn"] | Literal["svm"] = "knn"
     # deduplication
     # reranker
 

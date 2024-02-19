@@ -17,12 +17,12 @@ EMPTY = tuple()
 class AbstractIndex(ABC):
     def __init__(self):
         self.frozen = False
+        self.index = EMPTY
 
     @abstractmethod
     async def add_data(self, data: list[str], keys):
         assert len(data) == len(keys)
         if len(data) == 0:
-            self.index = EMPTY
             return True  # signal that caller should return immediately
         elif self.frozen:
             raise ValueError("Frozen index cannot be modified")
@@ -70,29 +70,11 @@ class SVMIndex(AbstractIndex):
 
     @AbstractIndex.dec_add_data
     @asyncify
-    def add_data(self, data: List[str]):
-        processed = [self.process_string(s) for s in data]
-        vectors = embedapi.encode_passages(self.transformer, processed)
+    def add_data(self, indexates: list[str], keys: list):
+        vectors = embedapi.encode_passages(self.transformer, indexates)
         self.vectors.extend(vectors)
-        self.strings.extend(data)
+        self.strings.extend(keys)
 
-    @AbstractIndex.dec_query
-    @asyncify
-    def query(self, query: str, k: int) -> List[str]:
-        from thundersvm import SVC
-
-        vec_query = embedapi.encode_query(self.transformer, query)
-        x = np.concatenate([vec_query[None, ...], self.vectors])
-        y = np.zeros(len(self.vectors) + 1)
-        y[0] = 1
-        clf = SVC()
-        clf.fit(x, y)
-        similarities = [item[0] for item in clf.decision_function(x)]
-        sorted_ix = np.argsort(-np.array(similarities))
-        return [self.strings[index - 1] for index in sorted_ix[: k + 1] if index != 0]
-
-
-class SciKitSVMIndex(SVMIndex):
     @AbstractIndex.dec_query
     @asyncify
     def query(self, query: str, k: int) -> List[str]:
