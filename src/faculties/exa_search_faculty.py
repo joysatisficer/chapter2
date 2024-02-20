@@ -81,7 +81,7 @@ async def exa_search_faculty(
         if n_results == faculty_config.max_results:
             break
         if n_results < faculty_config.max_results:
-            n_results = max(
+            n_results = min(
                 n_results + faculty_config.impl_hint_initial_num_results,
                 faculty_config.max_results,
             )
