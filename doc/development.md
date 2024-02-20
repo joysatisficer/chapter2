@@ -29,6 +29,17 @@ will run the em in `ems/[em-name]`
 
 ### REPL
 
+#### Method 1
+
+```py
+from repl import *
+```
+
+will import key Chapter 2 functions as libraries
+
+
+#### Method 2
+
 ```bash
 ./src/main.py -- --interactive
 ```
@@ -36,8 +47,8 @@ or shorthand:
 ```bash
 ./src/main.py -- -i
 ```
-will activate a REPL with Chapter 2's libraries activated
 
+will activate a REPL with Chapter 2's libraries activated
 
 ## Running tests
 Tests are unused
