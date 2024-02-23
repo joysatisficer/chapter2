@@ -4,10 +4,15 @@ import re
 import discord
 import discord.context_managers
 import discord.utils
+from discord.abc import Messageable
 
 
 class ScheduleTyping(discord.context_managers.Typing):
     """discord.context_managers.Typing where the typing event is scheduled, instead of awaited, reducing latency"""
+
+    def __init__(self, messageable: Messageable, typing: bool = True):
+        super().__init__(messageable)
+        self.typing = typing
 
     async def __aenter__(self) -> None:
         self.task: asyncio.Task[None] = self.loop.create_task(self.do_typing())
@@ -18,7 +23,8 @@ class ScheduleTyping(discord.context_managers.Typing):
         typing = channel._state.http.send_typing
 
         while True:
-            await typing(channel.id)
+            if self.typing:
+                await typing(channel.id)
             await asyncio.sleep(9)
 
 

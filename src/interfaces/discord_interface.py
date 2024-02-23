@@ -79,7 +79,9 @@ class DiscordInterface(discord.Client):
                     async_generator_to_reusable_async_iterable(message_history),
                     config,
                 )
-                async with ScheduleTyping(message.channel):
+                async with ScheduleTyping(
+                    message.channel, typing=config.discord_send_typing
+                ):
                     async for reply_message in response_messages:
                         if reply_message.author.user_id == my_user_id and not isempty(
                             reply_message.content
