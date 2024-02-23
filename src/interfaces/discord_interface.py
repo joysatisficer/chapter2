@@ -61,6 +61,11 @@ class DiscordInterface(discord.Client):
                 raise ConfigError() from exc
             if not await self.should_reply(message, config):
                 return
+            if (
+                config.discord_random_threshold < 1
+                and random.random() < config.discord_random_threshold
+            ):
+                return
             try:
                 my_user_id = UserID(str(self.user.id), "discord")
 
