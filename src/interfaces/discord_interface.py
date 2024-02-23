@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import time
 import urllib.parse
+import random
 
 import discord
 import yaml
@@ -64,6 +65,7 @@ class DiscordInterface(discord.Client):
             if (
                 config.discord_random_threshold < 1
                 and random.random() < config.discord_random_threshold
+                and not self.user.mentioned_in(message)
             ):
                 return
             try:
