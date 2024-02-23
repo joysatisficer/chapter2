@@ -172,6 +172,7 @@ class Config(BaseModel):
     exa_search_api_key: str | None = None
     em_folder: Path
     only_reply_on_ping: bool = False  # todo: implement dynamic interface config getting
+    discord_send_typing: bool = True
 
 
 class LegacyConfig(Config):
