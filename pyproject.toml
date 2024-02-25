@@ -40,6 +40,7 @@ metaphor-python = {url = "https://github.com/ampdot-io/metaphor-python/archive/a
 lmql = "^0.7.3"
 mikoto-py = "^0.0.6"
 exa-py = "^1.0.7"
+sentry-sdk = {extras = ["fastapi"], version = "^1.40.5"}
 
 
 [tool.poetry.group.dev.dependencies]

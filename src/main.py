@@ -292,6 +292,8 @@ def load_em(name) -> Config:
 
 async def run_em(name):
     config = load_em(name)
+    if config.sentry_dsn_url is not None:
+        setup_sentry(config)
     args = get_config_getter(config), generate_response, config.name
     interfaces = []
     for interface in config.interfaces:
@@ -337,6 +339,21 @@ async def run_em(name):
         ),
         *[interface_instance.start() for interface_instance in interface_instances],
     )
+
+
+def setup_sentry(config: Config):
+    import sentry_sdk, platform
+
+    sentry_sdk.init(
+        dsn=config.sentry_dsn_url,
+        traces_sample_rate=1.0,
+        profiles_sample_rate=1.0,
+    )
+    path = Path(config.em_folder)
+    em = path.parts[-1]
+    deployment = path.parts[-3]
+    hostname = platform.node().split(".")[0].lower()
+    sentry_sdk.set_tag("instance", f"{em}/{deployment}@{hostname}")
 
 
 if __name__ == "__main__":
