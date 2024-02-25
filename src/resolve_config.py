@@ -173,6 +173,7 @@ class Config(BaseModel):
     em_folder: Path
     only_reply_on_ping: bool = False  # todo: implement dynamic interface config getting
     discord_send_typing: bool = True
+    discord_random_threshold: float = 1.0
 
 
 class LegacyConfig(Config):
