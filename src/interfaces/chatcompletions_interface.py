@@ -97,6 +97,7 @@ class ChatCompletionsInterface(AbstractInterface):
                 for chat_completion_message in chat_completions_request.messages[::-1]:
                     if chat_completion_message.role == "assistant":
                         author = Author(self.em_name, my_user_id)
+                        message_type = None
                     elif chat_completion_message.role == "user":
                         name = (
                             chat_completion_message.name
@@ -106,10 +107,23 @@ class ChatCompletionsInterface(AbstractInterface):
                         author = Author(
                             name, UserID(str(hash(name)), "chatcompletions")
                         )
+                        message_type = None
+                    elif chat_completion_message.role == "system":
+                        name = (
+                            chat_completion_message.name
+                            if chat_completion_message.name is not None
+                            else "system"
+                        )
+                        author = Author(
+                            name, UserID(str(hash(name)), "chatcompletions")
+                        )
+                        message_type = "instructions"
                     else:
                         continue
                     yield Message(
-                        author=author, content=chat_completion_message.content
+                        author=author,
+                        content=chat_completion_message.content,
+                        type=message_type,
                     )
 
             valid_messages = []
