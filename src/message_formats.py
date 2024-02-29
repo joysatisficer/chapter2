@@ -195,9 +195,15 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     type: str = "message"
 
     def render(self, message: Message) -> str:
+        if message.type is not None:
+            message_type = message.type
+        elif message.author.name == "system":
+            message_type = "instructions"
+        else:
+            message_type = self.type
         return "[{role}](#{type})\n{content}\n\n".format(
             role=message.author.name,
-            type="instructions" if message.author.name == "system" else self.type,
+            type=message_type,
             content=message.content.replace("\n", "\n\n").rstrip(),
         )
 
