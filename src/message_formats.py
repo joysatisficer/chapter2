@@ -221,7 +221,7 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         first_message = True
         for line in continuation.splitlines(keepends=True):
             # allow usernames to be URLs
-            if match := re.match(r"^\[([\w:/.-]+)]\(#(\w+)\)", line):
+            if match := re.match(r"^\[([\w:/.-]+)]\(#(\w*)\)", line):
                 if not first_message:
                     messages.append(Message(Author(name), cur_message_content))
                 first_message = False
@@ -232,9 +232,10 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                     cur_message_content += "\n"
             elif line.strip() != "":
                 cur_message_content += line
-        if message_type == "message":
-            message_type = None
-        elif name == "system" and message_type == "instructions":
+        if name == "system":
+            if message_type == "instructions":
+                message_type = None
+        elif message_type == "message":
             message_type = None
 
         if cur_message_content != "" or name is not None:
