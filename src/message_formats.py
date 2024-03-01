@@ -225,16 +225,22 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                 if not first_message:
                     messages.append(Message(Author(name), cur_message_content))
                 first_message = False
-                name, _ = match.groups()
+                name, message_type = match.groups()
                 cur_message_content = ""
             elif line.strip() == "":
                 if not cur_message_content.endswith("\n"):
                     cur_message_content += "\n"
             elif line.strip() != "":
                 cur_message_content += line
+        if message_type == "message":
+            message_type = None
+        elif name == "system" and message_type == "instructions":
+            message_type = None
 
         if cur_message_content != "" or name is not None:
-            messages.append(Message(Author(name), cur_message_content))
+            messages.append(
+                Message(Author(name), cur_message_content, type=message_type)
+            )
         return messages
 
 
