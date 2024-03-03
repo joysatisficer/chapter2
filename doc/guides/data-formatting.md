@@ -1,0 +1,3 @@
+- Watch out for Unicode; verify the file is UTF-8
+- Pay attention to extra newlines
+- Pay attention to escape sequences
