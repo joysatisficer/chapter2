@@ -26,8 +26,10 @@ jobs:
         with:
           path: ~/.local
           key: poetry-local-${{ runner.os }}-${{ steps.setup_python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}-${{ hashFiles('.github/workflows/*.yml') }}
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v2
+      - name: Install Poetry ${{ env.POETRY_VERSION }}
+        run: |
+          curl -sSL ${{ env.POETRY_URL }} | python - --version ${{ env.POETRY_VERSION }}
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Download custom dependencies
         run: |
           mkdir ../modules
