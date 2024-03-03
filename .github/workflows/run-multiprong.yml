@@ -1,11 +1,16 @@
 on: [push]
+env:
+  openai_api_key: ${{ secrets.openai_api_key }}
+  openai_organization: ${{ secrets.openai_organization }}
+  ch2_discord_token: ${{ secrets.ch2_discord_token }}
+  ch2_exa_search_api_key: ${{ secrets.ch2_exa_search_api_key }}
+  ch2_novelai_api_key: ${{ secrets.ch2_novelai_api_key }}
 jobs:
   Run-multiprong:
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
-
         python-version: [ "3.11" ]
         poetry-version: [ "1.7.1" ]
     runs-on: ubuntu-latest
