@@ -2,8 +2,8 @@ __pycache__/
 .idea/
 doc/todo.md
 .pyre/*
-src/.pyre/*
-src/.pytest_cache/*
+chapter2/.pyre/*
+chapter2/.pytest_cache/*
 people/vendors.yaml
 ems/*/discord_token
 ems/*
