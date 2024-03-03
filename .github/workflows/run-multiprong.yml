@@ -15,15 +15,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install poetry
         uses: abatilo/actions-poetry@v2
-      - name: Setup a local virtual environment (if no poetry.toml file)
+      - name: Install custom dependencies
         run: |
-          poetry config virtualenvs.create true --local
-          poetry config virtualenvs.in-project true --local
-      - uses: actions/cache@v3
-        name: Define a cache for the virtual environment based on the dependencies lock file
-        with:
-          path: ./.venv
-          key: venv-${{ hashFiles('poetry.lock') }}
+          git clone https://github.com/CrazyPython/embedapi ../embedapi
+          mkdir ../modules
+          git clone https://github.com/CrazyPython/intermodel ../modules/intermodel
       - name: Install the project dependencies
         run: poetry install
       - name: Set secrets
