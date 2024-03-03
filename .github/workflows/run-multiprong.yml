@@ -43,6 +43,6 @@ jobs:
                  printf "%s: %s\n" "$key" "$v" >> ems/vendors.yaml
               fi
           done < <(env -0)
-          printf "vendors: { openai: { openai_api_key: %s, organization: %s } }" >> ems/vendors.yaml
+          printf "vendors: { openai: { config: { openai_api_key: %s, organization: %s } } }" >> ems/vendors.yaml
       - name: Run multiprong
         run: poetry run python3 chapter2/main.py multiprong --end-to-end-test
