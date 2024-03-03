@@ -153,7 +153,7 @@ InterfaceConfig = Annotated[
 
 class Config(BaseModel):
     name: str
-    continuation_model: str = "code-davinci-002"
+    continuation_model: str = "davinci-002"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     # todo: update default representation model
     representation_model: str = "intfloat/e5-large-v2"
