@@ -1,7 +1,7 @@
 on: [push]
 env:
-  openai_api_key: ${{ secrets.openai_api_key }}
-  openai_organization: ${{ secrets.openai_organization }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  OPENAI_ORGANIZATION: ${{ secrets.OPENAI_ORGANIZATION }}
   ch2_sentry_dsn_url: ${{ secrets.ch2_sentry_dsn_url }}
   ch2_discord_token: ${{ secrets.ch2_discord_token }}
   ch2_exa_search_api_key: ${{ secrets.ch2_exa_search_api_key }}
