@@ -4,9 +4,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+
         python-version: [ "3.11" ]
         poetry-version: [ "1.7.1" ]
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +23,8 @@ jobs:
           git clone https://github.com/CrazyPython/embedapi ../modules/embedapi
       - name: Install the project dependencies
         run: poetry install
+      - name: Download punkt
+        run: python3 -c "import nltk; nltk.download('punkt')"
       - name: Set secrets
         run: |
           while IFS='=' read -r -d '' n v; do
