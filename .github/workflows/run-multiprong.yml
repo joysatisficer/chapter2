@@ -6,6 +6,8 @@ env:
   ch2_discord_token: ${{ secrets.ch2_discord_token }}
   ch2_exa_search_api_key: ${{ secrets.ch2_exa_search_api_key }}
   ch2_novelai_api_key: ${{ secrets.ch2_novelai_api_key }}
+  ch2_end_to_end_test_discord_token: ${{ secrets.ch2_end_to_end_test_discord_token }}
+  ch2_end_to_end_test_discord_channel_id: ${{ secrets.ch2_end_to_end_test_discord_channel_id }}
 jobs:
   Run-multiprong:
     strategy:
@@ -22,7 +24,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install poetry
         uses: abatilo/actions-poetry@v2
-      - name: Install custom dependencies
+      - name: Download custom dependencies
         run: |
           mkdir ../modules
           git clone https://github.com/CrazyPython/intermodel ../intermodel
@@ -42,4 +44,4 @@ jobs:
               fi
           done < <(env -0)
       - name: Run multiprong
-        run: poetry run python3 chapter2/main.py multiprong
+        run: poetry run python3 chapter2/main.py multiprong --end-to-end-test
