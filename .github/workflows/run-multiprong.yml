@@ -2,6 +2,7 @@ on: [push]
 env:
   openai_api_key: ${{ secrets.openai_api_key }}
   openai_organization: ${{ secrets.openai_organization }}
+  ch2_sentry_dsn_url: ${{ secrets.ch2_sentry_dsn_url }}
   ch2_discord_token: ${{ secrets.ch2_discord_token }}
   ch2_exa_search_api_key: ${{ secrets.ch2_exa_search_api_key }}
   ch2_novelai_api_key: ${{ secrets.ch2_novelai_api_key }}
@@ -37,7 +38,7 @@ jobs:
               if [[ $n == $prefix* ]] ;
               then
                  key=${n#"$prefix"}
-                 printf "%s: %s\n" "$key" "$v"
+                 printf "%s: %s\n" "$key" "$v" >> ems/vendors.yaml
               fi
           done < <(env -0)
       - name: Run multiprong
