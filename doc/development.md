@@ -22,7 +22,7 @@ poetry install
 ## Running
 
 ```bash
-./src/main.py [em-name]
+./chapter2/main.py [em-name]
 ```
 
 will run the em in `ems/[em-name]`
@@ -32,7 +32,7 @@ will run the em in `ems/[em-name]`
 #### Method 1
 
 ```py
-from repl import *
+from tools.repl import *
 ```
 
 will import key Chapter 2 functions as libraries
@@ -41,11 +41,11 @@ will import key Chapter 2 functions as libraries
 #### Method 2
 
 ```bash
-./src/main.py -- --interactive
+./chapter2/main.py -- --interactive
 ```
 or shorthand:
 ```bash
-./src/main.py -- -i
+./chapter2/main.py -- -i
 ```
 
 will activate a REPL with Chapter 2's libraries activated
