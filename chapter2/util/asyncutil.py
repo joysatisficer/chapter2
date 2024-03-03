@@ -25,6 +25,6 @@ _running_tasks = set()
 
 
 def run_task(coro):
-    asyncio.create_task(coro).add_done_callback(
-        lambda task: _running_tasks.remove(task)
-    )
+    task = asyncio.create_task(coro)
+    _running_tasks.add(task)
+    task.add_done_callback(lambda task: _running_tasks.remove(task))
