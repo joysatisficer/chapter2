@@ -141,12 +141,12 @@ class DiscordInterface(discord.Client):
     @contextlib.asynccontextmanager
     async def handle_exceptions(self, message: discord.Message):
         config = await self.get_config(None)
-        if config.end_to_end_test:
-            self.end_to_end_test_fail = True
         try:
             async with self.message_semaphore:
                 yield None
         except ConfigError as exc:
+            if config.end_to_end_test:
+                self.end_to_end_test_fail = True
             await message.add_reaction("⚙️")
             # if the message is deleted, the url will still head to the channel
             print(
@@ -159,6 +159,8 @@ class DiscordInterface(discord.Client):
             )
             raise exc.__cause__
         except Exception as exc:
+            if config.end_to_end_test:
+                self.end_to_end_test_fail = True
             await message.add_reaction("⚠")
             if isinstance(exc, ConnectionError):
                 await message.add_reaction("📵")
