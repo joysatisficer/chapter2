@@ -17,10 +17,9 @@ jobs:
         uses: abatilo/actions-poetry@v2
       - name: Install custom dependencies
         run: |
-          git clone https://github.com/CrazyPython/embedapi ../embedapi
           mkdir ../modules
-          git clone https://github.com/CrazyPython/intermodel ../modules/intermodel
-          echo $(pwd)
+          git clone https://github.com/CrazyPython/intermodel ../intermodel
+          git clone https://github.com/CrazyPython/embedapi ../modules/embedapi
       - name: Install the project dependencies
         run: poetry install
       - name: Set secrets
