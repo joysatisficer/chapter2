@@ -153,7 +153,7 @@ InterfaceConfig = Annotated[
 
 class Config(BaseModel):
     name: str
-    continuation_model: str = "code-davinci-002"
+    continuation_model: str = "davinci-002"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     # todo: update default representation model
     representation_model: str = "intfloat/e5-large-v2"
@@ -190,6 +190,10 @@ class Config(BaseModel):
     exa_search_api_key: str | None = None
     sentry_dsn_url: str | None = None
     novelai_api_key: str | None = None
+
+    end_to_end_test: bool = False
+    end_to_end_test_discord_token: str | None = None
+    end_to_end_test_discord_channel_id: int | None = None
 
 
 class LegacyConfig(Config):

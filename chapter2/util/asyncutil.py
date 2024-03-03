@@ -1,3 +1,4 @@
+import asyncio
 from typing import Iterable, AsyncIterable, Callable, AsyncGenerator
 
 
@@ -18,3 +19,12 @@ def async_generator_to_reusable_async_iterable(
             return iterable()
 
     return AsyncIterableWrapper()
+
+
+_running_tasks = set()
+
+
+def run_task(coro):
+    task = asyncio.create_task(coro)
+    _running_tasks.add(task)
+    task.add_done_callback(lambda task: _running_tasks.remove(task))

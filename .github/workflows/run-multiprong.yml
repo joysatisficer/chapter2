@@ -1,0 +1,57 @@
+on: [push]
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  OPENAI_ORGANIZATION: ${{ secrets.OPENAI_ORGANIZATION }}
+  ch2_sentry_dsn_url: ${{ secrets.ch2_sentry_dsn_url }}
+  ch2_discord_token: ${{ secrets.ch2_discord_token }}
+  ch2_exa_search_api_key: ${{ secrets.ch2_exa_search_api_key }}
+  ch2_novelai_api_key: ${{ secrets.ch2_novelai_api_key }}
+  ch2_end_to_end_test_discord_token: ${{ secrets.ch2_end_to_end_test_discord_token }}
+  ch2_end_to_end_test_discord_channel_id: ${{ secrets.ch2_end_to_end_test_discord_channel_id }}
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.7.1"
+  POETRY_URL: https://install.python-poetry.org
+jobs:
+  run-multiprong:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Cache Poetry cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-cache-${{ runner.os }}-${{ steps.setup_python.outputs.python-version }}-${{ env.POETRY_VERSION }}
+      - name: Cache Packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.local
+          key: poetry-local-${{ runner.os }}-${{ steps.setup_python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}-${{ hashFiles('.github/workflows/*.yml') }}
+      - name: Install Poetry ${{ env.POETRY_VERSION }}
+        run: |
+          curl -sSL ${{ env.POETRY_URL }} | python - --version ${{ env.POETRY_VERSION }}
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Download custom dependencies
+        run: |
+          mkdir ../modules
+          git clone https://github.com/ampdot-io/intermodel ../intermodel
+          git clone https://github.com/ampdot-io/embedapi ../modules/embedapi
+      - name: Install the project dependencies
+        run: poetry install
+      - name: Download punkt
+        run: poetry run python3 -c "import nltk; nltk.download('punkt')"
+      - name: Set secrets
+        run: |
+          while IFS='=' read -r -d '' n v; do
+              prefix="ch2_"
+              if [[ $n == $prefix* ]] ;
+              then
+                 key=${n#"$prefix"}
+                 printf "%s: %s\n" "$key" "$v" >> ems/vendors.yaml
+              fi
+          done < <(env -0)
+          printf "vendors: { openai: { config: { openai_api_key: %s, organization: %s } } }" >> ems/vendors.yaml
+      - name: Run multiprong
+        run: poetry run python3 chapter2/main.py multiprong --end-to-end-test

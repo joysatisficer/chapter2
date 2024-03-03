@@ -8,7 +8,7 @@ import discord
 import yaml
 from pydantic import ValidationError
 
-from util.asyncit import async_generator_to_reusable_async_iterable
+from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON
 from abstractinterface import GetDiscordConfig
@@ -140,10 +140,13 @@ class DiscordInterface(discord.Client):
 
     @contextlib.asynccontextmanager
     async def handle_exceptions(self, message: discord.Message):
+        config = await self.get_config(None)
         try:
             async with self.message_semaphore:
                 yield None
         except ConfigError as exc:
+            if config.end_to_end_test:
+                self.end_to_end_test_fail = True
             await message.add_reaction("⚙️")
             # if the message is deleted, the url will still head to the channel
             print(
@@ -156,6 +159,8 @@ class DiscordInterface(discord.Client):
             )
             raise exc.__cause__
         except Exception as exc:
+            if config.end_to_end_test:
+                self.end_to_end_test_fail = True
             await message.add_reaction("⚠")
             if isinstance(exc, ConnectionError):
                 await message.add_reaction("📵")
@@ -184,6 +189,8 @@ class DiscordInterface(discord.Client):
             )
         )
         print("Discord interface ready")
+        if (await self.get_config(None)).end_to_end_test:
+            run_task(self.end_to_end_test())
 
     def get_invite_link(self):
         if self.user.id is None:
@@ -205,6 +212,21 @@ class DiscordInterface(discord.Client):
         if self.message_semaphore._value == self.MAX_CONCURRENT_MESSAGES:
             await self.close()
         self.pending_shutdown = True
+
+    async def end_to_end_test(self):
+        config = await self.get_config(None)
+        ch2_client = self
+
+        class AutotesterClient(discord.Client):
+            async def on_ready(self):
+                channel = await self.fetch_channel(
+                    config.end_to_end_test_discord_channel_id
+                )
+                await channel.send("Hello")
+                ch2_client.pending_shutdown = True
+
+        client = AutotesterClient(intents=discord.Intents.default())
+        run_task(client.start(config.end_to_end_test_discord_token))
 
 
 def is_continue_command(message_content: str):
