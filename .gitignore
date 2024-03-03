@@ -12,3 +12,9 @@ ems/*/*/*
 .venv/
 .fleet/
 .run/
+!ems/multiprong
+!ems/multiprong/
+!ems/multiprong/*
+ems/multiprong/discord_token
+ems/multiprong/avatars
+ems/multiprong/avatar_changed_at

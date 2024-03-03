@@ -1,0 +1,6 @@
+# An em that uses as much functionality as possible for use in automated testing
+interfaces:
+  - name: discord
+    addons:
+      - name: generate_avatar
+        prompt: colorful, many colors, portrait, rainbow, jack of all trades, omnicompetent
