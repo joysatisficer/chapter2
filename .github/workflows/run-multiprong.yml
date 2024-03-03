@@ -9,19 +9,13 @@ env:
   ch2_end_to_end_test_discord_token: ${{ secrets.ch2_end_to_end_test_discord_token }}
   ch2_end_to_end_test_discord_channel_id: ${{ secrets.ch2_end_to_end_test_discord_channel_id }}
 jobs:
-  Run-multiprong:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ ubuntu-latest ]
-        python-version: [ "3.11" ]
-        poetry-version: [ "1.7.1" ]
+  run-multiprong:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.11
       - name: Install poetry
         uses: abatilo/actions-poetry@v2
       - name: Download custom dependencies
