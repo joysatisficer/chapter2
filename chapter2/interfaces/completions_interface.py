@@ -13,7 +13,7 @@ from declarations import GenerateResponse, Message, UserID, Author
 from resolve_config import Config, CompletionsInterfaceConfig
 from message_formats import IRCMessageFormat
 from abstractinterface import AbstractInterface, GetDiscordConfig
-from util.asyncit import eager_iterable_to_async_iterable
+from util.asyncutil import eager_iterable_to_async_iterable
 from util.uvicorn_improved import RapidShutdownUvicornServer
 
 

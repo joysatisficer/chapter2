@@ -191,6 +191,10 @@ class Config(BaseModel):
     sentry_dsn_url: str | None = None
     novelai_api_key: str | None = None
 
+    end_to_end_test: bool = False
+    end_to_end_test_discord_token: str | None = None
+    end_to_end_test_discord_channel_id: int | None = None
+
 
 class LegacyConfig(Config):
     representation_model: str = "sentence-transformers/all-mpnet-base-v2"

@@ -5,7 +5,7 @@ from datetime import datetime
 
 import mikoto
 
-from util.asyncit import async_generator_to_reusable_async_iterable
+from util.asyncutil import async_generator_to_reusable_async_iterable
 from declarations import GenerateResponse, Message, Author, UserID
 from abstractinterface import AbstractInterface, GetDiscordConfig
 from resolve_config import MikotoInterfaceConfig, Config

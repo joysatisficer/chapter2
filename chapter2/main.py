@@ -22,7 +22,7 @@ from declarations import Message, UserID, ActionHistory, Author
 from message_formats import MessageFormat
 from interfaces.discord_interface import get_yaml_from_channel
 from mufflers import repeats_prompt_sentence, has_http
-from util.asyncit import eager_iterable_to_async_iterable
+from util.asyncutil import eager_iterable_to_async_iterable
 
 
 async def generate_response(my_user_id: UserID, history: ActionHistory, config: Config):
@@ -290,8 +290,10 @@ def load_em(name) -> Config:
     return config
 
 
-async def run_em(name):
+async def run_em(name, end_to_end_test=False):
     config = load_em(name)
+    if end_to_end_test:
+        config.end_to_end_test = True
     if config.sentry_dsn_url is not None:
         setup_sentry(config)
     args = get_config_getter(config), generate_response, config.name
@@ -363,4 +365,7 @@ if __name__ == "__main__":
 
     install(show_locals=not sys.__stdin__.isatty(), suppress=[asyncio, fire, selectors])
 
-    fire.Fire(lambda name: asyncio.run(run_em(name)))
+    def _(name, end_to_end_test=False):
+        asyncio.run(run_em(name, end_to_end_test))
+
+    fire.Fire(_)
