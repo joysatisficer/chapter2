@@ -24,7 +24,7 @@ jobs:
       - name: Install the project dependencies
         run: poetry install
       - name: Download punkt
-        run: python3 -c "import nltk; nltk.download('punkt')"
+        run: poetry run python3 -c "import nltk; nltk.download('punkt')"
       - name: Set secrets
         run: |
           while IFS='=' read -r -d '' n v; do
