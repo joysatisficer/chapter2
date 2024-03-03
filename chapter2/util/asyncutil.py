@@ -21,9 +21,10 @@ def async_generator_to_reusable_async_iterable(
     return AsyncIterableWrapper()
 
 
-_task_refs = set()
+_running_tasks = set()
 
 
 def run_task(coro):
-    task = asyncio.create_task(coro)
-    task.add_done_callback(lambda _: _task_refs.remove(task))
+    asyncio.create_task(coro).add_done_callback(
+        lambda task: _running_tasks.remove(task)
+    )
