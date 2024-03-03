@@ -342,6 +342,15 @@ async def run_em(name, end_to_end_test=False):
         *[interface_instance.start() for interface_instance in interface_instances],
     )
 
+    exit_code = 0
+    for interface_instance in interface_instances:
+        if (
+            hasattr(interface_instance, "end_to_end_test_fail")
+            and interface_instance.end_to_end_test_fail
+        ):
+            exit_code = 1
+    return exit_code
+
 
 def setup_sentry(config: Config):
     import sentry_sdk, platform
@@ -366,6 +375,7 @@ if __name__ == "__main__":
     install(show_locals=not sys.__stdin__.isatty(), suppress=[asyncio, fire, selectors])
 
     def _(name, end_to_end_test=False):
-        asyncio.run(run_em(name, end_to_end_test))
+        result = asyncio.run(run_em(name, end_to_end_test))
+        sys.exit(result)
 
     fire.Fire(_)

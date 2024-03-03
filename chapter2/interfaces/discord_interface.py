@@ -140,6 +140,9 @@ class DiscordInterface(discord.Client):
 
     @contextlib.asynccontextmanager
     async def handle_exceptions(self, message: discord.Message):
+        config = await self.get_config(None)
+        if config.end_to_end_test:
+            self.end_to_end_test_fail = True
         try:
             async with self.message_semaphore:
                 yield None
