@@ -20,6 +20,7 @@ jobs:
           git clone https://github.com/CrazyPython/embedapi ../embedapi
           mkdir ../modules
           git clone https://github.com/CrazyPython/intermodel ../modules/intermodel
+          echo $(pwd)
       - name: Install the project dependencies
         run: poetry install
       - name: Set secrets
