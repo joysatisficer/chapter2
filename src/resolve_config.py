@@ -101,8 +101,18 @@ EnsembleConfig = Annotated[
 
 class DiscordGenerateAvatarAddonConfig(BaseModel):
     name: Literal["generate_avatar"]
+    image_vendor: Literal["novelai"] | Literal["openai"] = "novelai"
+    image_model: str = "auto"
     prompt: str
     regenerate_every: float | None = None
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        match self.image_vendor:
+            case "novelai":
+                self.image_model = "nai-diffusion-3"
+            case "openai":
+                self.image_model = "dall-e-3"
 
 
 # todo: support sets (concatenate instead of override)
@@ -157,7 +167,9 @@ class Config(BaseModel):
     )
     prevent_gpt_topic_change: bool = False
 
-    temperature: Annotated[float, Ge(0)] = 0.9
+    temperature: Annotated[
+        float, Ge(0)
+    ] = 0.9  # todo: vary on model; 0.9 for davinci-002, 1.0 for gpt-4-base
     top_p: Annotated[float, Interval(gt=0, le=1)] = 0.98
     frequency_penalty: float = 0.75
     presence_penalty: float = 2.0
@@ -168,13 +180,16 @@ class Config(BaseModel):
     interfaces: list[InterfaceConfig] = [DiscordInterfaceConfig()]
     discord_mute: str | bool = False
     thread_mute: bool = True
-    vendors: dict[str, SingleVendorConfig] = {}
-    exa_search_api_key: str | None = None
     em_folder: Path
     only_reply_on_ping: bool = False  # todo: implement dynamic interface config getting
     discord_send_typing: bool = True
     discord_random_threshold: float = 1.0
+
+    # API keys
+    vendors: dict[str, SingleVendorConfig] = {}
+    exa_search_api_key: str | None = None
     sentry_dsn_url: str | None = None
+    novelai_api_key: str | None = None
 
 
 class LegacyConfig(Config):
