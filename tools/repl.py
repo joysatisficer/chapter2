@@ -1,6 +1,7 @@
 """Utility library for quickly importing everything from a REPL. Example usage:
   from repl import *
 """
+
 from chapter2.declarations import *
 from chapter2.message_formats import *
 from chapter2.resolve_config import *

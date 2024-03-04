@@ -77,9 +77,11 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
             reduce(
                 lambda acc, line: acc + "\n" + line if acc != "" else line,
                 [
-                    f"{message.author.name}: {line}"
-                    if message.author.name is not None
-                    else line
+                    (
+                        f"{message.author.name}: {line}"
+                        if message.author.name is not None
+                        else line
+                    )
                     for line in message.content.splitlines()
                     if not line.isspace()
                 ],

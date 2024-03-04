@@ -46,7 +46,7 @@ novelai-api = "^0.23.1"
 
 
 [tool.poetry.group.dev.dependencies]
-black = "*"
+black = "^24"
 pre-commit = "*"
 streamlit = "*"
 pytest = "*"
