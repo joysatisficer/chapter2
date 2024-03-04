@@ -43,6 +43,11 @@ from tools.repl import *
 
 will import key Chapter 2 functions as libraries
 
+### As a library
+```py
+from chapter2.message_formats import IRCMessageFormat
+```
+gets you Chapter 2's IRCMessageFormat
 
 #### Method 2
 
