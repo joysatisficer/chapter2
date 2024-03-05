@@ -117,14 +117,15 @@ class CompletionsInterface(AbstractInterface):
             },
         )
 
-    def start(self):
+    async def start(self):
         # TODO: read port from config, read config from env, read unix socket from env
         uv_config = uvicorn.Config(
             self.app, port=6006, log_level="info", host="0.0.0.0"
         )
         self.uv_server = RapidShutdownUvicornServer(uv_config)
         self.uv_server.install_signal_handlers = lambda: None
-        return self.uv_server.serve()
+        self.task_serve = asyncio.create_task(self.uv_server.serve())
+        return await self.task_serve
 
-    def stop(self, sig, frame):
-        return self.uv_server.handle_exit(sig, frame)
+    def stop(self, *args):
+        return self.task_serve.cancel()

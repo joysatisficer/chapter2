@@ -1,8 +1,4 @@
 import asyncio
-
-from types import FrameType
-from typing import Optional
-
 import uvicorn
 
 
@@ -14,7 +10,3 @@ class RapidShutdownUvicornServer(uvicorn.Server):
             await super().main_loop()
         except asyncio.CancelledError:
             return
-
-    def handle_exit(self, sig: int, frame: Optional[FrameType]) -> None:
-        super().handle_exit(sig, frame)
-        self._inner_main_loop_task.cancel()

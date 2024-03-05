@@ -167,9 +167,9 @@ class Config(BaseModel):
     )
     prevent_gpt_topic_change: bool = False
 
-    temperature: Annotated[
-        float, Ge(0)
-    ] = 0.9  # todo: vary on model; 0.9 for davinci-002, 1.0 for gpt-4-base
+    temperature: Annotated[float, Ge(0)] = (
+        0.9  # todo: vary on model; 0.9 for davinci-002, 1.0 for gpt-4-base
+    )
     top_p: Annotated[float, Interval(gt=0, le=1)] = 0.98
     frequency_penalty: float = 0.75
     presence_penalty: float = 2.0
