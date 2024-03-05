@@ -46,3 +46,7 @@ Interfaces can have add-ons. An add-on is a mix-in returned by a closure when pa
 ## Running
 
 See `doc/development.md`
+
+## Pitfalls
+
+- pytest unittests in files of the form `test_*.py` are broken
