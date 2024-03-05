@@ -1,3 +1,4 @@
+import asyncio
 import time
 import math
 from typing import Callable, Awaitable, Optional, AsyncIterable, Any, Union, Literal
@@ -10,6 +11,8 @@ from pydantic import BaseModel
 from declarations import GenerateResponse, Message, UserID, Author
 from abstractinterface import AbstractInterface, GetDiscordConfig
 from resolve_config import ChatCompletionsInterfaceConfig
+from util import asyncutil
+from util.uvicorn_improved import RapidShutdownUvicornServer
 
 Role = Literal["system", "user", "assistant"]
 
@@ -164,17 +167,34 @@ class ChatCompletionsInterface(AbstractInterface):
                 ),
             )
 
-    def start(self):
+    async def start(self):
         # TODO: read port from config, read config from env, read unix socket from env
+        config = await self.get_config(None)
         uv_config = uvicorn.Config(
             self.app, port=6005, log_level="info", host="0.0.0.0"
         )
-        self.uv_server = uvicorn.Server(uv_config)
+        self.uv_server = RapidShutdownUvicornServer(uv_config)
         self.uv_server.install_signal_handlers = lambda: None
-        return self.uv_server.serve()
+        if config.end_to_end_test:
+            self.uv_server.on_ready = lambda: asyncutil.run_task(self.end_to_end_test())
+        self.task_serve = asyncio.create_task(self.uv_server.serve())
+        return await self.task_serve
 
-    def stop(self, sig, frame):
-        return self.uv_server.handle_exit(sig, frame)
+    def stop(self, *args):
+        self.task_serve.cancel()
+
+    async def end_to_end_test(self):
+        import openai
+
+        try:
+            await openai.ChatCompletion.acreate(
+                model="foo",
+                api_base="http://0.0.0.0:6005/v1",
+                messages=[{"role": "user", "content": "Hello"}],
+            )
+        except RuntimeError:
+            self.end_to_end_test_fail = True
+        self.task_serve.cancel()
 
 
 def isempty(string):

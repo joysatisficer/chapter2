@@ -113,18 +113,24 @@ class KNNIndex(AbstractIndex):
             self.index = faiss.index_factory(
                 embeddings.shape[1], "HNSW32", faiss.METRIC_INNER_PRODUCT
             )
+            self.shape = embeddings.shape[1]
         self.index.add(embeddings)
 
     @AbstractIndex.dec_query
     @asyncify
     def query(self, query: str, k: int) -> List[str]:
-        vec_query = np.array([embedapi.encode_query(self.transformer, query)])
+        if query == "":
+            # todo: instead of the center of this embedding space, this should return
+            #  the average of all the points indexed
+            vec_query = np.array([np.zeros(self.shape)], dtype=np.float32)
+        else:
+            vec_query = np.array([embedapi.encode_query(self.transformer, query)])
         faiss.normalize_L2(vec_query)
         _, (embedding_ids,) = self.index.search(vec_query, k)
         documents = []
         seen_before = set()
         for embedding_id in embedding_ids:
-            if embedding_id in seen_before:
+            if embedding_id in seen_before or embedding_id < 0:
                 continue
             documents.append(self.strings[embedding_id])
             seen_before.add(embedding_id)

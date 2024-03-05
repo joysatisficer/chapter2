@@ -15,6 +15,7 @@ ems/*/*/*
 !ems/multiprong
 !ems/multiprong/
 !ems/multiprong/*
+!ems/multiprong/multiprong.chr/*
 ems/multiprong/discord_token
 ems/multiprong/avatars
 ems/multiprong/avatar_changed_at
