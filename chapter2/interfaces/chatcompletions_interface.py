@@ -3,16 +3,12 @@ import time
 import math
 from typing import Callable, Awaitable, Optional, AsyncIterable, Any, Union, Literal
 
-import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from declarations import GenerateResponse, Message, UserID, Author
 from abstractinterface import AbstractInterface, GetDiscordConfig
 from resolve_config import ChatCompletionsInterfaceConfig
 from util import asyncutil
-from util.uvicorn_improved import RapidShutdownUvicornServer
 
 Role = Literal["system", "user", "assistant"]
 
@@ -74,6 +70,9 @@ class ChatCompletionsInterface(AbstractInterface):
         em_name: str,
         interface_config: ChatCompletionsInterfaceConfig,
     ):
+        from fastapi import FastAPI
+        from fastapi.middleware.cors import CORSMiddleware
+
         self.get_config: GetDiscordConfig = get_discord_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
@@ -168,6 +167,9 @@ class ChatCompletionsInterface(AbstractInterface):
             )
 
     async def start(self):
+        import uvicorn
+        from util.uvicorn_improved import RapidShutdownUvicornServer
+
         # TODO: read port from config, read config from env, read unix socket from env
         config = await self.get_config(None)
         uv_config = uvicorn.Config(

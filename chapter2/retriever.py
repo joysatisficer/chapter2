@@ -1,7 +1,6 @@
 from abc import abstractmethod, ABC
 from typing import List
 
-import faiss
 import embedapi
 import numpy as np
 from asgiref.sync import sync_to_async as asyncify
@@ -105,6 +104,8 @@ class KNNIndex(AbstractIndex):
     @AbstractIndex.dec_add_data
     @asyncify
     def add_data(self, indexates: list[str], keys: list):
+        import faiss
+
         self.strings.extend(keys)
         embeddings = embedapi.encode_passages(self.transformer, indexates)
         embeddings = np.copy(embeddings)
@@ -119,6 +120,8 @@ class KNNIndex(AbstractIndex):
     @AbstractIndex.dec_query
     @asyncify
     def query(self, query: str, k: int) -> List[str]:
+        import faiss
+
         if query == "":
             # todo: instead of the center of this embedding space, this should return
             #  the average of all the points indexed

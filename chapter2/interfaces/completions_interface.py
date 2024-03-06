@@ -2,11 +2,6 @@ import asyncio
 import time
 from typing import Optional, Literal
 
-import uvicorn
-import fastapi
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ValidationError
 
 from declarations import GenerateResponse, Message, UserID, Author
@@ -14,7 +9,6 @@ from resolve_config import Config, CompletionsInterfaceConfig
 from message_formats import IRCMessageFormat
 from abstractinterface import AbstractInterface, GetDiscordConfig
 from util.asyncutil import eager_iterable_to_async_iterable
-from util.uvicorn_improved import RapidShutdownUvicornServer
 
 
 class CompletionRequest(BaseModel):
@@ -53,6 +47,9 @@ class CompletionsInterface(AbstractInterface):
         em_name: str,
         interface_config: CompletionsInterfaceConfig,
     ):
+        from fastapi import FastAPI
+        from fastapi.middleware.cors import CORSMiddleware
+
         self.get_config: GetDiscordConfig = get_discord_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
@@ -118,6 +115,9 @@ class CompletionsInterface(AbstractInterface):
         )
 
     async def start(self):
+        import uvicorn
+        from util.uvicorn_improved import RapidShutdownUvicornServer
+
         # TODO: read port from config, read config from env, read unix socket from env
         uv_config = uvicorn.Config(
             self.app, port=6006, log_level="info", host="0.0.0.0"
