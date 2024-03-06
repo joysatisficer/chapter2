@@ -105,6 +105,8 @@ class DiscordGenerateAvatarAddonConfig(BaseModel):
     image_model: str = "auto"
     prompt: str
     regenerate_every: float | None = None
+    # image model parameters
+    scale: float = 5.0
 
     def __init__(self, **data):
         super().__init__(**data)
