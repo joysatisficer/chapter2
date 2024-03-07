@@ -202,10 +202,14 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
             message_type = "instructions"
         else:
             message_type = self.type
+        if "\n\n" in message.content:
+            content = message.content
+        else:
+            content = re.sub(r"(?<!\n)\n(?!\n)", "\n\n", message.content)
         return "[{role}](#{type})\n{content}\n\n".format(
             role=message.author.name,
             type=message_type,
-            content=message.content.replace("\n", "\n\n").rstrip(),
+            content=content.rstrip(),
         )
 
     def name_prefix(self, name: str) -> str:

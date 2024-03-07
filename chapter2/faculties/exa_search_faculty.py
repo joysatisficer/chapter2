@@ -1,3 +1,4 @@
+import re
 import time
 from typing import Callable
 
@@ -74,9 +75,12 @@ async def exa_search_faculty(
                 text = result.text
             else:
                 text = "\n".join(result.highlights)
-            if faculty_config.strip_leading_indentation:
-                text = strip_leading_indentation(text)
-            yield Message(Author(result.url), text, timestamp=published_timestamp)
+            cleaned_text = re.sub(
+                r"\n{3,}", "\n\n", strip_leading_indentation(text)
+            ).strip()
+            yield Message(
+                Author(result.url), cleaned_text, timestamp=published_timestamp
+            )
             yielded_urls.add(result.url)
         if n_results == faculty_config.max_results:
             break

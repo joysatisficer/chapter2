@@ -84,7 +84,6 @@ class ExaSearchFacultyConfig(FacultyConfig):
     output: ExaSearchHighlightsConfig = ExaSearchHighlightsConfig()
     # client-side filtering
     ignored_urls: list[str] = []
-    strip_leading_indentation: bool = True
     # performance hints
     impl_hint_initial_num_results: int = 10
     # set defaults
