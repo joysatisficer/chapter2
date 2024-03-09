@@ -3,6 +3,7 @@ import contextlib
 import time
 import urllib.parse
 import random
+from typing import Self
 
 import discord
 import discord.http
@@ -47,10 +48,15 @@ class DiscordInterface(discord.Client):
             and self.interface_config.proxy_url.startswith("socks")
         ):
             from aiohttp_socks import ProxyConnector
+            from discord.state import ConnectionState
 
             self.http = discord.http.HTTPClient(
                 self.loop, ProxyConnector.from_url(interface_config.proxy_url)
             )
+            self._connection: ConnectionState[Self] = self._get_state(intents=intents)
+            self._connection.shard_count = self.shard_count
+            self._connection._get_websocket = self._get_websocket
+            self._connection._get_client = lambda: self
 
     async def on_message(self, message: discord.Message) -> None:
         if is_continue_command(message.content):
