@@ -123,6 +123,7 @@ class DiscordInterfaceConfig(BaseModel):
     name: Literal["discord"] = "discord"
     auth: str | None = None
     addons: list[Union[DiscordGenerateAvatarAddonConfig]] = []
+    proxy_url: str | None = None
 
 
 class MikotoInterfaceConfig(BaseModel):
@@ -351,5 +352,11 @@ def load_config_from_kv(kv: dict, defaults: dict = DEFAULTS) -> Config:
             if interface["name"] == "discord":
                 interface["auth"] = discord_token
                 break
+        del kv["discord_token"]
+    if discord_proxy_url := kv.get("discord_proxy_url"):
+        for interface in kv["interfaces"]:
+            if interface["name"] == "discord":
+                interface["proxy_url"] = discord_proxy_url
+        del kv["discord_proxy_url"]
     dictionary = overlay(defaults, rename_keys(kv, ALIASES))
     return Config(**dictionary)

@@ -5,6 +5,7 @@ import urllib.parse
 import random
 
 import discord
+import discord.http
 import yaml
 from pydantic import ValidationError
 
@@ -28,13 +29,28 @@ class DiscordInterface(discord.Client):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.members = True
-        super().__init__(intents=intents)
+        if (
+            interface_config.proxy_url is None
+            or not interface_config.proxy_url.startswith("http")
+        ):
+            super().__init__(intents=intents)
+        else:
+            super().__init__(intents=intents, proxy=interface_config.proxy_url)
         self.get_config: GetDiscordConfig = get_discord_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
         self.interface_config = interface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
         self.pending_shutdown = False
+        if (
+            self.interface_config.proxy_url is not None
+            and self.interface_config.proxy_url.startswith("socks")
+        ):
+            from aiohttp_socks import ProxyConnector
+
+            self.http = discord.http.HTTPClient(
+                self.loop, ProxyConnector.from_url(interface_config.proxy_url)
+            )
 
     async def on_message(self, message: discord.Message) -> None:
         if is_continue_command(message.content):

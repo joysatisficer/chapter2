@@ -113,6 +113,21 @@ yarl = ">=1.0,<2.0"
 speedups = ["Brotli", "aiodns", "brotlicffi"]
 
 [[package]]
+name = "aiohttp-socks"
+version = "0.8.4"
+description = "Proxy connector for aiohttp"
+optional = false
+python-versions = "*"
+files = [
+    {file = "aiohttp_socks-0.8.4-py3-none-any.whl", hash = "sha256:74b21105634ed31d56ed6fee43701ca16218b53475e606d56950a4d17e8290ea"},
+    {file = "aiohttp_socks-0.8.4.tar.gz", hash = "sha256:6b611d4ce838e9cf2c2fed5e0dba447cc84824a6cba95dc5747606201da46cb4"},
+]
+
+[package.dependencies]
+aiohttp = ">=2.3.2"
+python-socks = {version = ">=2.4.3,<3.0.0", extras = ["asyncio"]}
+
+[[package]]
 name = "aioitertools"
 version = "0.11.0"
 description = "itertools and builtins for AsyncIO and mixed iterables"
@@ -315,6 +330,17 @@ files = [
 [package.dependencies]
 six = ">=1.6.1,<2.0"
 wheel = ">=0.23.0,<1.0"
+
+[[package]]
+name = "async-timeout"
+version = "4.0.3"
+description = "Timeout context manager for asyncio programs"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "async-timeout-4.0.3.tar.gz", hash = "sha256:4640d96be84d82d02ed59ea2b7105a0f7b33abe8703703cd0ab0bf87c427522f"},
+    {file = "async_timeout-4.0.3-py3-none-any.whl", hash = "sha256:7405140ff1230c310e51dc27b3145b9092d659ce68ff733fb0cefe3ee42be028"},
+]
 
 [[package]]
 name = "asyncstdlib"
@@ -3264,6 +3290,26 @@ client = ["requests (>=2.21.0)", "websocket-client (>=0.54.0)"]
 docs = ["sphinx"]
 
 [[package]]
+name = "python-socks"
+version = "2.4.4"
+description = "Core proxy (SOCKS4, SOCKS5, HTTP tunneling) functionality for Python"
+optional = false
+python-versions = "*"
+files = [
+    {file = "python-socks-2.4.4.tar.gz", hash = "sha256:e5a8e4f78203612c813946feacd87b98943965a04389fe221fa1e9ab263ad22e"},
+    {file = "python_socks-2.4.4-py3-none-any.whl", hash = "sha256:fda465d3ef229119ee614eb85f2b7c0ad28be6dd40e0ef8dd317c49e8725e514"},
+]
+
+[package.dependencies]
+async-timeout = {version = ">=3.0.1", optional = true, markers = "extra == \"asyncio\""}
+
+[package.extras]
+anyio = ["anyio (>=3.3.4,<5.0.0)"]
+asyncio = ["async-timeout (>=3.0.1)"]
+curio = ["curio (>=1.4)"]
+trio = ["trio (>=0.16.0)"]
+
+[[package]]
 name = "pytz"
 version = "2023.3.post1"
 description = "World timezone definitions, modern and historical"
@@ -5211,4 +5257,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4.0"
-content-hash = "3175f5547a7e2a32bfd05591a12d18d55c9cd2c602e2a03f5975df0a293fdb75"
+content-hash = "1731c787aa695bdc33fb5d5e82e13bd661c1c0af339d50d73390464cc5b6425d"
