@@ -207,7 +207,7 @@ class DiscordInterface(discord.Client):
             print(f"Invite the bot: {self.get_invite_link()}")
         await self.change_presence(
             activity=discord.Streaming(
-                name="Chapter 2", url="https://www.youtube.com/watch?v=ESx_hy1n7HA"
+                name="Chapter 2", url="https://www.youtube.com/watch?v=kCWX6yxg-iA"
             )
         )
         print("Discord interface ready")
@@ -218,7 +218,7 @@ class DiscordInterface(discord.Client):
         if self.user.id is None:
             raise ValueError("Tried to get invite link before bot user ID is known")
         return "https://discord.com/api/oauth2/authorize?" + urllib.parse.urlencode(
-            {"client_id": self.user.id, "permissions": 536879168, "scope": "bot"}
+            {"scope": "bot", "permissions": 536879168, "client_id": self.user.id}
         )
 
     async def start(self, token: str = None, *args, **kwargs) -> None:
