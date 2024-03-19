@@ -29,7 +29,7 @@ async def character_faculty(
         representation = ""
         messages = faculty_config.input_format.parse(string)
         for message in messages:
-            representation += ColonMessageFormat.render(message).strip()
+            representation += ColonMessageFormat.render(message).strip() + " "
         if representation != "":
             representations.append(representation)
             indexed_messages.append(tuple(messages))
