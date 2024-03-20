@@ -74,6 +74,7 @@ async def exa_search_faculty(
             if isinstance(faculty_config.output, ExaSearchFullTextConfig):
                 text = result.text
             else:
+                # todo: convert highlights into nested ensemble
                 text = "\n".join(result.highlights)
             cleaned_text = re.sub(
                 r"\n{3,}", "\n\n", strip_leading_indentation(text)

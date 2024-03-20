@@ -8,8 +8,8 @@ from resolve_config import Config, CharacterFacultyConfig
 from chr_loader import load_chr
 from retriever import KNNIndex, SVMIndex
 from message_formats import ColonMessageFormat
+from util.asyncutil import eager_iterable_to_async_iterable
 
-# todo: turn faculties into functions, make the KNN index maker a cached function using functools cache
 # todo: read character folder in the impure shell
 
 
@@ -28,8 +28,8 @@ async def character_faculty(
     for string in strings:
         representation = ""
         messages = faculty_config.input_format.parse(string)
-        for message in messages:
-            representation += ColonMessageFormat.render(message).strip() + " "
+        for message_tuple in messages:
+            representation += ColonMessageFormat.render(message_tuple).strip() + " "
         if representation != "":
             representations.append(representation)
             indexed_messages.append(tuple(messages))
@@ -47,17 +47,11 @@ async def character_faculty(
     )
     messages = await async_take(faculty_config.recent_message_attention, history)
     query = ""
-    for message in messages[::-1]:
-        query += ColonMessageFormat.render(message)
+    for message_tuple in messages[::-1]:
+        query += ColonMessageFormat.render(message_tuple)
     results = await index.query(query.replace("\n", " "), 1000)
-    for message in results:
-        # todo: refactor ontology to allow groups of messages to be yielded
-        # todo: native support for recursive ensembles when separator configuration?
-        # todo: alternatively, simpler approach where we hardcode the type
-        # todo: or, we do the full Lisp style thing... or we could do it as a set of
-        # todo: Python libraries
-        for message_ in message:
-            yield message_
+    for message_tuple in results:
+        yield eager_iterable_to_async_iterable(message_tuple)
 
 
 @cache

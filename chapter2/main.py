@@ -9,17 +9,17 @@ from typing import TypeVar, Iterable, Callable, AsyncIterable
 from pathlib import Path
 from functools import partial
 
+import asyncstdlib
 import yaml
 from aioitertools.more_itertools import take as async_take
 
 import resolve_config
 from faculties import FACULTY_NAME_TO_FUNCTION
 from interfaces import INTERFACE_NAME_TO_INTERFACE, INTERFACE_ADDON_NAME_TO_ADDON
-from resolve_config import Config
+from resolve_config import Config, EnsembleFormat, LayerOfEnsembleFormat
 from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
-from declarations import Message, UserID, ActionHistory, Author
-from message_formats import MessageFormat
+from declarations import Message, UserID, ActionHistory, Author, Ensemble, Action
 from interfaces.discord_interface import get_yaml_from_channel
 from mufflers import repeats_prompt_sentence, has_http
 from util.asyncutil import eager_iterable_to_async_iterable
@@ -34,45 +34,47 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
     # todo: message history normal ensemble configs including max_tokens
     message_history_ensemble = (
         (config.message_history_header.format(**ctx_vars) + "\n")
-        + await format_message_section(config.message_history_format, recent_messages)
+        + await format_ensemble(
+            recent_messages,
+            # todo: move to resolve_config
+            [
+                LayerOfEnsembleFormat(
+                    format=config.message_history_format,
+                    max_items=config.recency_window,
+                    separator="",
+                    footer="",
+                )
+            ],
+            config.continuation_model,
+        )
         + completion_prefix
     )
     ensembles = []
+    # TODO: Filter for empty ensembles
     for faculty_config in config.ensembles:
         faculty_results = FACULTY_NAME_TO_FUNCTION[faculty_config.faculty](
             history, faculty_config, config
         )
-        ensemble = (
-            faculty_config.header.format(**ctx_vars)
-            + await format_message_section(
-                faculty_config.format,
-                faculty_results,
-                separator=faculty_config.separator,
-                while_=has_not_reached_token_limit(
-                    config.continuation_model,
-                    min(
-                        (
-                            max_token_length(config.continuation_model)
-                            - sum(
-                                [
-                                    count_continuation_model_tokens(ensemble)
-                                    for ensemble in ensembles
-                                    + [message_history_ensemble]
-                                ]
-                            )
-                            - config.continuation_max_tokens
-                            - count_continuation_model_tokens(
-                                faculty_config.header.format(**ctx_vars)
-                            )
-                            - count_continuation_model_tokens(
-                                faculty_config.footer.format(**ctx_vars)
-                            )
-                        ),
-                        faculty_config.max_tokens,
-                    ),
-                ),
+        local_max_tokens = min(
+            (
+                max_token_length(config.continuation_model)
+                - sum(
+                    [
+                        count_continuation_model_tokens(ensemble)
+                        for ensemble in ensembles + [message_history_ensemble]
+                    ]
+                )
+                - config.continuation_max_tokens
+            ),
+            faculty_config.ensemble_format[0].max_tokens,
+        )
+        ensemble_format = [
+            faculty_config.ensemble_format[0].model_copy(
+                update=dict(max_tokens=local_max_tokens)
             )
-            + faculty_config.footer.format(**ctx_vars)
+        ] + faculty_config.ensemble_format[1:]
+        ensemble = await format_ensemble(
+            faculty_results, ensemble_format, config.continuation_model
         )
         ensembles.append(ensemble)
     prompt = "".join(ensembles + [message_history_ensemble])
@@ -185,33 +187,38 @@ def has_not_reached_token_limit(continuation_model: str, token_limit: int):
     return token_limit_not_reached
 
 
-async def format_message_section(
-    message_format: MessageFormat,
-    messages: AsyncIterable[Message] | Iterable[Message],
-    separator: str = "",
-    while_: Callable[[str], bool] = lambda _: True,
+async def format_ensemble(
+    ensemble: Ensemble,
+    ensemble_format: EnsembleFormat,
+    tokenization_model: str,
 ) -> str:
-    prompt = ""
-    if hasattr(messages, "__aiter__"):
-        async for message in messages:
-            if prompt == "":
-                new_prompt = message_format.render(message)
-            else:
-                new_prompt = message_format.render(message) + separator + prompt
-            if not while_(new_prompt):
-                break
+    prompt = None
+    local_format = ensemble_format[0]
+    async for i, subensemble in asyncstdlib.enumerate(ensemble):
+        if i >= local_format.max_items:
+            break
+        if isinstance(subensemble, Action):
+            string = local_format.format.render(subensemble)
+        else:
+            string = await format_ensemble(
+                subensemble, ensemble_format[1:], tokenization_model
+            )
+        if prompt is None:
+            new_prompt = local_format.header + string
+        else:
+            new_prompt = string + local_format.separator + prompt
+        if (
+            count_tokens(tokenization_model, new_prompt + local_format.footer)
+            > local_format.max_tokens
+        ):
+            break
+        else:
             prompt = new_prompt
-        return prompt
+    if prompt is None:
+        # if ensemble has no members, don't include header or footer
+        return ""
     else:
-        for message in messages:
-            if prompt == "":
-                new_prompt = message_format.render(message)
-            else:
-                new_prompt = message_format.render(message) + separator + prompt
-            if not while_(new_prompt):
-                break
-            prompt = new_prompt
-        return prompt
+        return prompt + local_format.footer
 
 
 T = TypeVar("T")

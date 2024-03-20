@@ -1,4 +1,5 @@
-from abc import ABC, abstractmethod
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Callable, Union, AsyncIterable, TYPE_CHECKING, Awaitable
 
@@ -28,6 +29,7 @@ class Message:
 
 Action = Union[Message]
 ActionHistory = AsyncIterable[Action]
+Ensemble = AsyncIterable[Action | AsyncIterable["Ensemble"]]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
 GenerateResponse = Callable[[UserID, ActionHistory, "Config"], AsyncIterable[Action]]
 Faculty = Callable[[ActionHistory, "FacultyConfig", "Config"], AsyncIterable[Message]]

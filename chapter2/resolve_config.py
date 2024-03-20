@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Annotated, Literal, Union
-from math import inf
+from math import inf as infinity
 import copy
 
 import pydantic
@@ -14,21 +14,29 @@ from pydantic_core import PydanticUndefined
 from message_formats import MessageFormat, IRCMessageFormat, WebDocumentMessageFormat
 
 
-class FacultyConfig(BaseModel):
-    faculty: str
-    input_format: MessageFormat = IRCMessageFormat()
+class LayerOfEnsembleFormat(BaseModel):
     format: MessageFormat
     separator: str = "***\n"
-    max_tokens: int | float = inf  # todo: parsing inf from yaml
+    max_tokens: int | float = infinity  # todo: parsing inf from yaml
+    max_items: int | float = infinity
     header: str = ""
     footer: str = "***"
-    recent_message_attention: int
 
     @field_validator("max_tokens")
     def check_integer_or_inf(cls, v):
-        if isinstance(v, int) or v == inf:
+        if isinstance(v, int) or v == infinity:
             return v
         raise ValueError('Value must be an integer or float("inf")')
+
+
+EnsembleFormat = list[LayerOfEnsembleFormat]
+
+
+class FacultyConfig(BaseModel):
+    faculty: str
+    input_format: MessageFormat = IRCMessageFormat()
+    ensemble_format: EnsembleFormat
+    recent_message_attention: int
 
 
 class FixedSizeChunker(BaseModel):
@@ -58,9 +66,14 @@ class CharacterFacultyConfig(FacultyConfig):
     name: str | None = None  # defaults to config.em_name
     chunk_size: int = 3
     retriever: UltratrieverConfig = UltratrieverConfig()
-    # set defaults
-    format: MessageFormat = IRCMessageFormat()
     recent_message_attention: int = 7
+    # set defaults
+    ensemble_format: EnsembleFormat = [
+        LayerOfEnsembleFormat(format=IRCMessageFormat()),
+        LayerOfEnsembleFormat(
+            format=IRCMessageFormat(), max_items=3, separator="", footer=""
+        ),
+    ]
 
 
 class ExaSearchFullTextConfig(BaseModel):
@@ -76,7 +89,6 @@ class ExaSearchHighlightsConfig(BaseModel):
 
 class ExaSearchFacultyConfig(FacultyConfig):
     faculty: Literal["metaphor_search"] | Literal["exa_search"] = "exa_search"
-    format: MessageFormat = WebDocumentMessageFormat()
     include_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
     max_results: int = 25  # 10 is the cap of the Wanderer plan
@@ -87,9 +99,14 @@ class ExaSearchFacultyConfig(FacultyConfig):
     # performance hints
     impl_hint_initial_num_results: int = 10
     # set defaults
-    max_tokens: int | float = 4000
-    footer: str = "***\n"
-    recent_message_attention: int = 5
+    ensemble_format: EnsembleFormat = [
+        LayerOfEnsembleFormat(
+            format=WebDocumentMessageFormat(),
+            max_tokens=4000,
+            footer="***\n",
+            recent_message_attention=5,
+        )
+    ]
 
 
 EnsembleConfig = Annotated[
