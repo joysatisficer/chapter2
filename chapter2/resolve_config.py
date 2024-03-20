@@ -91,7 +91,7 @@ class ExaSearchFacultyConfig(FacultyConfig):
     faculty: Literal["metaphor_search"] | Literal["exa_search"] = "exa_search"
     include_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
-    max_results: int = 25  # 10 is the cap of the Wanderer plan
+    max_results: int = 20  # 10 is the cap of the Wanderer plan
     use_autoprompt: bool = False
     output: ExaSearchHighlightsConfig = ExaSearchHighlightsConfig()
     # client-side filtering
