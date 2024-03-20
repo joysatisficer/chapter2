@@ -99,6 +99,7 @@ class ExaSearchFacultyConfig(FacultyConfig):
     # performance hints
     impl_hint_initial_num_results: int = 10
     # set defaults
+    recent_message_attention: int = 5
     ensemble_format: EnsembleFormat = [
         LayerOfEnsembleFormat(
             format=WebDocumentMessageFormat(),
