@@ -262,7 +262,11 @@ def is_mu_command(message_content: str):
 
 
 def realize_pings(channel: discord.TextChannel, message_content: str):
-    for member in channel.members:
+    if isinstance(channel, discord.DMChannel):
+        members = [channel.recipient]
+    else:
+        members = channel.members
+    for member in members:
         if "@" + member.name in message_content:
             message_content = message_content.replace(
                 "@" + member.name, f"<@!{member.id}>"
