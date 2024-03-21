@@ -156,16 +156,17 @@ async def get_replies(
             best_of=config.best_of,
         )
     )["completions"][0]["text"]
-    if callgpt.pick_vendor(config.continuation_model) == "fake-local":
+    if callgpt.pick_vendor(config.continuation_model, config.vendors) == "fake-local":
         print(
-            "Completion>>",
+            "Continues>>",
             "{",
             callgpt.count_tokens(config.continuation_model, completion),
             "tokens omitted}",
-            "<<Completion",
+            "<<Continues",
+            sep="",
         )
     else:
-        print("Completion>>", completion.replace("\n", r"\n"), "<<Completion", sep="")
+        print("Continues>>", completion.replace("\n", r"\n"), "<<Continues", sep="")
     # Todo: Client-side stop sequences
     for message in config.message_history_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes
