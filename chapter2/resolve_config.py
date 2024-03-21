@@ -71,7 +71,7 @@ class CharacterFacultyConfig(FacultyConfig):
     ensemble_format: EnsembleFormat = [
         LayerOfEnsembleFormat(format=IRCMessageFormat()),
         LayerOfEnsembleFormat(
-            format=IRCMessageFormat(), max_items=3, separator="", footer=""
+            format=IRCMessageFormat(), max_items=infinity, separator="", footer=""
         ),
     ]
 
