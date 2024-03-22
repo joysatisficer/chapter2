@@ -59,6 +59,7 @@ class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 
     @staticmethod
     def parse(continuation):
+        # todo: map `* user is walking` to `Message(user`
         return [
             Message(Author(name) if name != "" else None, content)
             for name, content in re.findall(
