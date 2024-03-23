@@ -11,6 +11,7 @@ for fname in sys.argv[1:]:
         jsonobj = json.load(f)
 
     irc = IRCMessageFormat()
+    # todo: insert "---" based on timestamps
     for message in jsonobj["messages"]:
         print(
             irc.render(

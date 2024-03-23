@@ -54,7 +54,7 @@ class UltratrieverConfig(BaseModel):
     chunker: FixedSizeChunker | PerplexityChunker = FixedSizeChunker()
     # message_reformat: pair of message formats
     # deduplication
-    representation_model: str = "intfloat/e5-large-v2"
+    representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"
     # metric: Literal["knn/euclid"] | Literal["hyperplane/"]
     ranking_metric: Literal["knn"] | Literal["svm"] = "knn"
     # deduplication
