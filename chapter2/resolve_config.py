@@ -176,7 +176,7 @@ class Config(BaseModel):
     continuation_model: str = "davinci-002"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     # todo: update default representation model
-    representation_model: str = "intfloat/e5-large-v2"
+    representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"
     message_history_format: MessageFormat = IRCMessageFormat()
     message_history_header: str = ""  # todo: rename
     scene_break: str = "***\n"  # todo: rename to scene_break_string
