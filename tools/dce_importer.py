@@ -6,13 +6,33 @@ from chapter2.message_formats import IRCMessageFormat
 import sys
 import json
 
+from datetime import datetime
+
+
+def parse_date_to_unix_timestamp(date_str):
+    # Format of the date string
+    date_format = "%Y-%m-%dT%H:%M:%S.%f%z"
+    # Parse the date string into a datetime object
+    parsed_date = datetime.strptime(date_str, date_format)
+    # Convert parsed date to UNIX timestamp
+    unix_timestamp = parsed_date.timestamp()
+    return unix_timestamp
+
+
+section_flag = True
 for fname in sys.argv[1:]:
     with open(fname) as f:
         jsonobj = json.load(f)
 
     irc = IRCMessageFormat()
     # todo: insert "---" based on timestamps
+    prev = None
+    if not section_flag:
+        print("---")
+        section_flag = True
     for message in jsonobj["messages"]:
+        unix_timestamp = parse_date_to_unix_timestamp(message["timestamp"])
+        prev = unix_timestamp
         print(
             irc.render(
                 Message(
@@ -25,3 +45,4 @@ for fname in sys.argv[1:]:
             ),
             end="",
         )
+        section_flag = False
