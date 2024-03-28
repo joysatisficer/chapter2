@@ -1,7 +1,7 @@
 # Chapter 2
 Document status: Draft
 
-Chapter 2 is a flexible ontology / type system for constructing language model simulacra, often for characters, known as ems.
+Chapter 2 is a flexible ontology / type system for constructing cognitive architectures and language model simulacra, often for characters, known as ems.
 
 It is made of highly decoupled components that work together very well. It is a set of simple primitives assembled by `Config` and `main.py` into a functioning em.
 
