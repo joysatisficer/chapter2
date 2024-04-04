@@ -167,7 +167,7 @@ if __name__ == "__main__":
     import fire
     import selectors
 
-    install(show_locals=not sys.__stdin__.isatty(), suppress=[asyncio, fire, selectors])
+    install(suppress=[asyncio, fire, selectors])
 
     def _(name, end_to_end_test=False):
         result = asyncio.run(run_em(name, end_to_end_test))

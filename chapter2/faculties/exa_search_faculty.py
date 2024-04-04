@@ -27,9 +27,8 @@ async def exa_search_faculty(
 ):
     message_history_string = format_message_section(
         faculty_config.input_format,
-        await async_take(faculty_config.recent_message_attention, history)
-        + [Message(Author(config.name), "")],
-    )
+        await async_take(faculty_config.recent_message_attention, history),
+    ) + faculty_config.input_format.name_prefix(config.name)
     exa_client = SharedExa(config.exa_search_api_key)
     kwparams = {
         "use_autoprompt": faculty_config.use_autoprompt,
