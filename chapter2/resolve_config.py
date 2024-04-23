@@ -173,7 +173,7 @@ InterfaceConfig = Annotated[
 
 class Config(BaseModel):
     name: str
-    continuation_model: str = "davinci-002"
+    continuation_model: str = "meta-llama/Meta-Llama-3-70B"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     # todo: update default representation model
     representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"
