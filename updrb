@@ -1,0 +1,5 @@
+#!/bin/bash
+./upd
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PARAM="${SCRIPT_DIR%%-*}-*"
+systemctl --user restart '"${PARAM}"'
