@@ -5,7 +5,5 @@ git stash
 wait
 poetry update intermodel embedapi
 poetry install
-git stash
 git add poetry.lock
 git commit -m "Update dependencies"
-git stash pop
