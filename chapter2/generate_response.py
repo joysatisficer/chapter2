@@ -119,7 +119,7 @@ async def get_replies(
             logit_bias[logit] = bias
         elif isinstance(logit, str):
             tokens = callgpt.tokenize(config.continuation_model, logit)
-            assert len(tokens) == 1, "logit_bias invalid string logit"
+            assert len(tokens) == 1, f"logit_bias invalid string {logit}"
             logit_bias[tokens[0]] = bias
         else:
             raise NotImplementedError("Unrecognized logit_bias key type")
