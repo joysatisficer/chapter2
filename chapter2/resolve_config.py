@@ -21,6 +21,7 @@ class LayerOfEnsembleFormat(BaseModel):
     max_items: int | float = infinity
     header: str = ""
     footer: str = "***"
+    operator: Literal["prepend"] | Literal["append"] = "append"
 
     @field_validator("max_tokens")
     def check_integer_or_inf(cls, v):
@@ -69,7 +70,7 @@ class CharacterFacultyConfig(FacultyConfig):
     recent_message_attention: int = 7
     # set defaults
     ensemble_format: EnsembleFormat = [
-        LayerOfEnsembleFormat(format=IRCMessageFormat()),
+        LayerOfEnsembleFormat(format=IRCMessageFormat(), operator="prepend"),
         LayerOfEnsembleFormat(
             format=IRCMessageFormat(), max_items=infinity, separator="", footer=""
         ),

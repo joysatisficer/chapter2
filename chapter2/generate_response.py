@@ -30,6 +30,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
                 LayerOfEnsembleFormat(
                     format=config.message_history_format,
                     max_items=config.recency_window,
+                    operator="prepend",
                     separator="",
                     footer="",
                 )
@@ -189,7 +190,10 @@ async def format_ensemble(
         if prompt is None:
             new_prompt = local_format.header + string
         else:
-            new_prompt = string + local_format.separator + prompt
+            if local_format.operator == "prepend":
+                new_prompt = string + local_format.separator + prompt
+            else:
+                new_prompt = prompt + local_format.separator + string
         if (
             count_tokens(tokenization_model, new_prompt + local_format.footer)
             > local_format.max_tokens

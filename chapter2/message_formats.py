@@ -207,11 +207,14 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
             content = message.content
         else:
             content = re.sub(r"(?<!\n)\n(?!\n)", "\n\n", message.content)
-        return "[{role}](#{type})\n{content}\n\n".format(
-            role=message.author.name,
-            type=message_type,
-            content=content.rstrip(),
-        )
+        if message.author.name in ("", None):
+            return content.rstrip()
+        else:
+            return "[{role}](#{type})\n{content}\n\n".format(
+                role=message.author.name,
+                type=message_type,
+                content=content.rstrip(),
+            )
 
     def name_prefix(self, name: str) -> str:
         return "[{role}](#{type})\n".format(
@@ -225,28 +228,35 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         cur_message_content = ""
         name = None
         first_message = True
+        message_type = None
         for line in continuation.splitlines(keepends=True):
             # allow usernames to be URLs
             if match := re.match(r"^\[([\w:/.-]+)]\(#(\w*)\)", line):
                 if not first_message:
-                    messages.append(Message(Author(name), cur_message_content))
+                    messages.append(
+                        Message(
+                            Author(name),
+                            cur_message_content.rstrip(),
+                            type=message_type,
+                        )
+                    )
                 first_message = False
                 name, message_type = match.groups()
+                if name == "system":
+                    if message_type == "instructions":
+                        message_type = None
+                elif message_type == "message":
+                    message_type = None
                 cur_message_content = ""
             elif line.strip() == "":
                 if not cur_message_content.endswith("\n"):
                     cur_message_content += "\n"
             elif line.strip() != "":
                 cur_message_content += line
-        if name == "system":
-            if message_type == "instructions":
-                message_type = None
-        elif message_type == "message":
-            message_type = None
 
         if cur_message_content != "" or name is not None:
             messages.append(
-                Message(Author(name), cur_message_content, type=message_type)
+                Message(Author(name), cur_message_content.rstrip(), type=message_type)
             )
         return messages
 
