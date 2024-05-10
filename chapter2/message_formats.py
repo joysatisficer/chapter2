@@ -231,7 +231,7 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         message_type = None
         for line in continuation.splitlines(keepends=True):
             # allow usernames to be URLs
-            if match := re.match(r"^\[([\w:/.-]+)]\(#(\w*)\)", line):
+            if match := re.match(r"^\[([\w:/.-]+)]\(#([\w-]*)\)", line):
                 if not first_message:
                     messages.append(
                         Message(
