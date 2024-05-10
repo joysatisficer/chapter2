@@ -22,14 +22,14 @@ class ChatCompletionsRequestMessage(BaseModel):
 class ChatCompletionsRequest(BaseModel):
     messages: list[ChatCompletionsRequestMessage]
     max_tokens: Optional[int] = None
-    # ignored or unimplemented parameters
-    model: str
     temperature: Optional[float] = None
     top_p: Optional[float] = None
     stop: Optional[Union[str, list[str]]] = None
+    logit_bias: Optional[dict] = None
+    # ignored or unimplemented parameters
+    model: str
     frequency_penalty: Optional[float] = None
     presence_penalty: Optional[float] = None
-    logit_bias: Optional[dict] = None
     function_call: Optional[Union[Literal["none", "auto"], dict]] = None
     functions: Optional[list[Any]] = None
     n: Optional[int] = 1
@@ -91,6 +91,20 @@ class ChatCompletionsInterface(AbstractInterface):
         async def chat_completions(chat_completions_request: ChatCompletionsRequest):
             config = await self.get_config(None)
             config.continuation_model = "gpt-4-base"  # TODO: XXX
+            if chat_completions_request.max_tokens is not None:
+                config.continuation_max_tokens = chat_completions_request.max_tokens
+            if chat_completions_request.temperature is not None:
+                config.temperature = chat_completions_request.temperature
+            if chat_completions_request.top_p is not None:
+                config.top_p = chat_completions_request.top_p
+            if chat_completions_request.stop is not None:
+                if isinstance(chat_completions_request.stop, list):
+                    config.stop_sequences.extend(chat_completions_request.stop)
+                else:
+                    config.stop_sequences.append(chat_completions_request.stop)
+            if chat_completions_request.logit_bias is not None:
+                config.logit_bias |= chat_completions_request.logit_bias
+
             my_user_id = UserID("em::" + self.em_name, "chatcompletions")
 
             # todo: error handling
