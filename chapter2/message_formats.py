@@ -210,7 +210,7 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         if message.author.name in ("", None):
             return content.rstrip()
         else:
-            return "[{role}](#{type})\n{content}\n\n".format(
+            return "[{role}](#{type})\n{content}".format(
                 role=message.author.name,
                 type=message_type,
                 content=content.rstrip(),

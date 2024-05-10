@@ -180,6 +180,8 @@ class Config(BaseModel):
     representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"
     message_history_format: MessageFormat = IRCMessageFormat()
     message_history_header: str = ""  # todo: rename
+    message_history_separator: str = ""
+    message_history_footer: str = ""
     scene_break: str = "***\n"  # todo: rename to scene_break_string
     recency_window: Annotated[int, Gt(0)] = 20
     ensembles: list[EnsembleConfig] = []

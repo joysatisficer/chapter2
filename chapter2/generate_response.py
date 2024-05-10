@@ -31,8 +31,8 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
                     format=config.message_history_format,
                     max_items=config.recency_window,
                     operator="prepend",
-                    separator="",
-                    footer="",
+                    separator=config.message_history_separator,
+                    footer=config.message_history_footer,
                 )
             ],
             config.continuation_model,
