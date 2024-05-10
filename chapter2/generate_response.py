@@ -188,14 +188,17 @@ async def format_ensemble(
                 subensemble, ensemble_format[1:], tokenization_model
             )
         if prompt is None:
-            new_prompt = local_format.header + string
+            new_prompt = string
         else:
             if local_format.operator == "prepend":
                 new_prompt = string + local_format.separator + prompt
             else:
                 new_prompt = prompt + local_format.separator + string
         if (
-            count_tokens(tokenization_model, new_prompt + local_format.footer)
+            count_tokens(
+                tokenization_model,
+                local_format.header + new_prompt + local_format.footer,
+            )
             > local_format.max_tokens
         ):
             break
@@ -205,7 +208,7 @@ async def format_ensemble(
         # if ensemble has no members, don't include header or footer
         return ""
     else:
-        return prompt + local_format.footer
+        return local_format.header + prompt + local_format.footer
 
 
 T = TypeVar("T")
