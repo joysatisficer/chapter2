@@ -132,6 +132,8 @@ async def get_replies(
     else:
         logit_bias = {}
     print(prompt)
+    if config.continuation_model_local_tokenization:
+        prompt = callgpt.tokenize(config.continuation_model, prompt)
     completion = (
         await callgpt.complete(
             prompt=prompt,

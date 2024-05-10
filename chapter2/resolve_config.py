@@ -199,6 +199,7 @@ class Config(BaseModel):
     stop_sequences: list[str] = []
     logit_bias: dict[int | str, float] = {}
     best_of: int = 1
+    continuation_model_local_tokenization: bool = False
 
     interfaces: list[InterfaceConfig] = [DiscordInterfaceConfig()]
     discord_mute: str | bool = False
