@@ -184,11 +184,15 @@ class ChatCompletionsInterface(AbstractInterface):
         import uvicorn
         from util.uvicorn_improved import RapidShutdownUvicornServer
 
-        # TODO: read port from config, read config from env, read unix socket from env
+        # TODO: Option for listening on an HTTP port (port 0 = random port)
         config = await self.get_config(None)
+        socket_loc = str(config.em_folder / "socket")
         uv_config = uvicorn.Config(
-            self.app, port=6005, log_level="info", host="0.0.0.0"
+            self.app,
+            log_level="info",
+            uds=socket_loc,
         )
+        print(f"Listening on {socket_loc}")
         self.uv_server = RapidShutdownUvicornServer(uv_config)
         self.uv_server.install_signal_handlers = lambda: None
         if config.end_to_end_test:
