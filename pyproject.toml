@@ -42,7 +42,7 @@ lmql = "^0.7.3"
 mikoto-py = "^0.0.6"
 exa-py = "^1.0.7"
 sentry-sdk = {extras = ["fastapi"], version = "^1.40.5"}
-novelai-api = "^0.23.1"
+novelai-api = "^0.27.0"
 aiohttp-socks = "^0.8.4"
 
 
