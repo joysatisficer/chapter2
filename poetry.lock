@@ -1614,7 +1614,7 @@ files = [
 
 [[package]]
 name = "intermodel"
-version = "0.0.37"
+version = "0.0.38"
 description = ""
 optional = false
 python-versions = "^3.8"
