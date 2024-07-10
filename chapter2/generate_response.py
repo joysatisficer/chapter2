@@ -146,6 +146,7 @@ async def get_replies(
             vendor_config=config.vendors,
             logit_bias=logit_bias,
             best_of=config.best_of,
+            **config.continuation_options,
         )
     )["completions"][0]["text"]
     if callgpt.pick_vendor(config.continuation_model, config.vendors) == "fake-local":
