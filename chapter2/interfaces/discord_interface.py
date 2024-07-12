@@ -191,7 +191,7 @@ class DiscordInterface(discord.Client):
             author_name = message.author.name
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
-            await parse_discord_content(message),
+            await parse_discord_content(message, self.user.id, config.name),
             message.created_at.timestamp(),
         )
 

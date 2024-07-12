@@ -28,11 +28,13 @@ class ScheduleTyping(discord.context_managers.Typing):
             await asyncio.sleep(9)
 
 
-async def parse_discord_content(self: discord.Message) -> str:
+async def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) -> str:
     """discord.Message.clean_content() where "name" is used in place of display_name"""
     if self.guild:
 
         def resolve_member(id: int) -> str:
+            if id == my_user_id:
+                return "@" + my_name
             m = self.guild.get_member(id) or discord.utils.get(self.mentions, id=id)  # type: ignore
             return f"@{m.name}" if m else "@deleted-user"
 
@@ -47,6 +49,8 @@ async def parse_discord_content(self: discord.Message) -> str:
     else:
 
         def resolve_member(id: int) -> str:
+            if id == my_user_id:
+                return "@" + my_name
             m = discord.utils.get(self.mentions, id=id)
             return f"@{m.name}" if m else "@deleted-user"
 
