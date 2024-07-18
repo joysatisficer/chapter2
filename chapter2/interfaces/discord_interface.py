@@ -183,12 +183,12 @@ class DiscordInterface(discord.Client):
                     config.reply_on_name
                     and any(
                         re.match(
-                            r"^(.+\b){0,3}" + re.escape(name),
+                            r"^([^\s]+\b){0,3}" + re.escape(name),
                             message.content,
                             re.IGNORECASE,
                         )
                         or re.match(
-                            re.escape(name) + r"(.+\b){0,3}$",
+                            re.escape(name) + r"([^\s]+\b){0,3}$",
                             message.content,
                             re.IGNORECASE,
                         )
