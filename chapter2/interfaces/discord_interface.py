@@ -119,7 +119,9 @@ class DiscordInterface(discord.Client):
                                 reply_message.timestamp, message.channel.typing
                             )
                             await message.channel.send(
-                                realize_pings(message.channel, reply_message.content)
+                                await realize_pings(
+                                    self, message.channel, reply_message.content
+                                )
                             )
             finally:
                 if command_message is not None:
@@ -263,9 +265,13 @@ def is_mu_command(message_content: str):
     return message_content.strip() == "/mu" or message_content.startswith("m mu")
 
 
-def realize_pings(channel: discord.TextChannel, message_content: str):
+async def realize_pings(self, channel: discord.TextChannel, message_content: str):
     if isinstance(channel, discord.DMChannel):
         members = [channel.recipient]
+    elif isinstance(channel, discord.Thread):
+        members = []
+        for member in channel.members:
+            members.append(await self.fetch_user(member.id))
     else:
         members = channel.members
     for member in members:
