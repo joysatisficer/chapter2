@@ -56,7 +56,7 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
                 preset = ImagePreset()
                 preset.resolution = ImageResolution.Small_Square
                 preset.scale = addon_config.scale
-                preset.seed  = 0
+                preset.seed = 0
                 image_model = ImageModel(addon_config.image_model)
                 if image_model in (ImageModel.Anime_v3, ImageModel.Anime_v2):
                     preset.uc_preset = UCPreset.Preset_Heavy

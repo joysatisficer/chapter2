@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import re
 import time
 import urllib.parse
 import random
@@ -42,6 +43,7 @@ class DiscordInterface(discord.Client):
         self.em_name = em_name
         self.interface_config = interface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
+        self.per_interlocutor_semaphore = {}
         self.pending_shutdown = False
         if (
             self.interface_config.proxy_url is not None
@@ -59,6 +61,11 @@ class DiscordInterface(discord.Client):
             self._connection._get_client = lambda: self
 
     async def on_message(self, message: discord.Message) -> None:
+        # XXX: Relies on Discord for IDs
+        if message.author.id not in self.per_interlocutor_semaphore:
+            # XXX: Might not be thread-safe
+            # XXX: This is not garbage-collected
+            self.per_interlocutor_semaphore[message.author.id] = asyncio.Semaphore()
         if is_continue_command(message.content):
             command_message = message
             message_to_react_to = [
@@ -77,7 +84,9 @@ class DiscordInterface(discord.Client):
         else:
             command_message = None
             message_to_react_to = message
-        async with self.handle_exceptions(message_to_react_to):
+        async with self.handle_exceptions(
+            message_to_react_to
+        ), self.per_interlocutor_semaphore[message.author.id]:
             try:
                 config = await self.get_config(message.channel)
             except (ValueError, ValidationError) as exc:
@@ -98,7 +107,11 @@ class DiscordInterface(discord.Client):
                     async for this_message in message.channel.history(
                         limit=None, before=command_message
                     ):
-                        if not is_continue_command(this_message.content):
+                        if is_continue_command(this_message.content):
+                            pass
+                        elif re.match("^[.,][^.,].", this_message.content):
+                            pass
+                        else:
                             yield await self.discord_message_to_message(
                                 config, this_message
                             )
@@ -159,7 +172,30 @@ class DiscordInterface(discord.Client):
                 config.thread_mute
                 and message.channel.type == discord.ChannelType.public_thread
             )
-            and (not config.only_reply_on_ping or self.user.mentioned_in(message))
+            and (
+                (config.reply_on_ping and self.user.mentioned_in(message))
+                or (
+                    config.reply_on_random
+                    and random.random() < (1 / config.reply_on_random)
+                )
+                or (
+                    # first or last four names
+                    config.reply_on_name
+                    and any(
+                        re.match(
+                            r"^(.+\b){0,3}" + re.escape(name),
+                            message.content,
+                            re.IGNORECASE,
+                        )
+                        or re.match(
+                            re.escape(name) + r"(.+\b){0,3}$",
+                            message.content,
+                            re.IGNORECASE,
+                        )
+                        for name in (config.name, self.em_name, *config.nicknames)
+                    )
+                )
+            )
         )
 
     @contextlib.asynccontextmanager
@@ -209,11 +245,6 @@ class DiscordInterface(discord.Client):
     async def on_ready(self):
         if len(self.guilds) == 0:
             print(f"Invite the bot: {self.get_invite_link()}")
-        await self.change_presence(
-            activity=discord.Streaming(
-                name="Chapter 2", url="https://www.youtube.com/watch?v=kCWX6yxg-iA"
-            )
-        )
         print("Discord interface ready")
         if (await self.get_config(None)).end_to_end_test:
             run_task(self.end_to_end_test())

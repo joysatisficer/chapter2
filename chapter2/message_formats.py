@@ -97,12 +97,20 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 
     @staticmethod
     def parse(continuation):
-        return [
-            Message(Author(name) if name != "" else None, content)
-            for name, content in re.findall(
-                r"^(?:([^\n]+):)? ([^:].*)$", continuation, re.MULTILINE
-            )
-        ]
+        messages = []
+        for line in continuation.splitlines():
+            match = re.match(r"^(?:(?:([^\n]+):)? )?([^:].*)$", line)
+            if match is not None:
+                groups = match.groups()
+                name, raw_content = groups
+                if name is None or name.strip() == "":
+                    author = None
+                else:
+                    author = Author(name.strip())
+                content = raw_content.strip()
+                messages.append(Message(author, content))
+
+        return messages
 
 
 class WebDocumentMessageFormat(AbstractMessageFormat, pydantic.BaseModel):

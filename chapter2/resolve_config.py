@@ -206,7 +206,10 @@ class Config(BaseModel):
     discord_mute: str | bool = False
     thread_mute: bool = True
     em_folder: Path
-    only_reply_on_ping: bool = False  # todo: implement dynamic interface config getting
+    reply_on_ping: bool = True
+    reply_on_random: int | bool = 53
+    reply_on_name: bool = True
+    nicknames: list = []
     discord_send_typing: bool = True
     discord_random_threshold: float = 1.0
 
@@ -360,7 +363,9 @@ if rename_keys(DEFAULTS, ALIASES) != DEFAULTS:
     raise ValueError("Default config keys shouldn't use aliases")
 
 
-def load_config_from_kv(kv: dict, defaults: dict = DEFAULTS) -> Config:
+def load_config_from_kv(kv: dict | None, defaults: dict = DEFAULTS) -> Config:
+    if kv is None:
+        kv = {}
     if active_interfaces := kv.get("active_interfaces"):
         assert (
             kv.get("interfaces") is None
