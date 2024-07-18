@@ -109,7 +109,7 @@ class DiscordInterface(discord.Client):
                     ):
                         if is_continue_command(this_message.content):
                             pass
-                        elif re.match("^[.,][^.,].", this_message.content):
+                        elif re.match("^[.,][^\s.,]", this_message.content):
                             pass
                         else:
                             yield await self.discord_message_to_message(

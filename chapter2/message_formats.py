@@ -105,6 +105,9 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                 name, raw_content = groups
                 if name is None or name.strip() == "":
                     author = None
+                elif "." in name and " " in name:
+                    author = None
+                    raw_content = name + ": " + raw_content
                 else:
                     author = Author(name.strip())
                 content = raw_content.strip()
