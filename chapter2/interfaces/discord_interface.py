@@ -187,7 +187,7 @@ class DiscordInterface(discord.Client):
                             message.content,
                             re.IGNORECASE,
                         )
-                        or re.match(
+                        or re.search(
                             re.escape(name) + r"([^\s]+\b){0,3}$",
                             message.content,
                             re.IGNORECASE,
