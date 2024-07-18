@@ -181,6 +181,8 @@ class DiscordInterface(discord.Client):
             )
             raise exc.__cause__
         except Exception as exc:
+            import traceback
+
             if config.end_to_end_test:
                 self.end_to_end_test_fail = True
             await message.add_reaction("⚠")
@@ -193,7 +195,7 @@ class DiscordInterface(discord.Client):
                     f"#{message.channel.name}",
                 ),
             )
-            print(exc)
+            print(traceback.format_exc())
             raise
         finally:
             if (
