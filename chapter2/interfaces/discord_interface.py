@@ -123,7 +123,7 @@ class DiscordInterface(discord.Client):
                             thread.id
                         )
                         if starter_message is not None:
-                            async for this_message in message.channel.history(
+                            async for this_message in starter_message.channel.history(
                                 limit=None, before=starter_message
                             ):
                                 if is_continue_command(this_message.content):
