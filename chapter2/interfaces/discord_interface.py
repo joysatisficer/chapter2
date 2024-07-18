@@ -8,6 +8,7 @@ from typing import Self
 
 import discord
 import discord.http
+import discord.threads
 import yaml
 from pydantic import ValidationError
 
@@ -115,6 +116,24 @@ class DiscordInterface(discord.Client):
                             yield await self.discord_message_to_message(
                                 config, this_message
                             )
+                    if isinstance(message.channel, discord.threads.Thread):
+                        thread = message.channel
+                        # starter message id is the same as the thread id
+                        starter_message = await message.channel.parent.fetch_message(
+                            thread.id
+                        )
+                        if starter_message is not None:
+                            async for this_message in message.channel.history(
+                                limit=None, before=starter_message
+                            ):
+                                if is_continue_command(this_message.content):
+                                    pass
+                                elif re.match("^[.,][^\s.,]", this_message.content):
+                                    pass
+                                else:
+                                    yield await self.discord_message_to_message(
+                                        config, this_message
+                                    )
 
                 response_messages = self.generate_response(
                     my_user_id,
