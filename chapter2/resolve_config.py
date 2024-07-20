@@ -204,7 +204,7 @@ class Config(BaseModel):
 
     interfaces: list[InterfaceConfig] = [DiscordInterfaceConfig()]
     discord_mute: str | bool = False
-    thread_mute: bool = True
+    thread_mute: bool = False
     em_folder: Path
     reply_on_ping: bool = True
     reply_on_random: int | bool = 53
