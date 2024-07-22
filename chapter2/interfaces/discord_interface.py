@@ -77,10 +77,6 @@ class DiscordInterface(discord.Client):
             message_to_react_to = [
                 message async for message in message.channel.history(limit=2)
             ][1]
-        elif config.ignore_dotted_messages and re.match(
-            "^[.,][^\s.,]", message.content
-        ):
-            return
         else:
             command_message = None
             message_to_react_to = message
@@ -208,6 +204,10 @@ class DiscordInterface(discord.Client):
             and not (
                 config.thread_mute
                 and message.channel.type == discord.ChannelType.public_thread
+            )
+            and not (
+                config.ignore_dotted_messages
+                and re.match("^[.,][^\s.,]", message.content)
             )
             and (
                 (config.reply_on_ping and self.user.mentioned_in(message))
