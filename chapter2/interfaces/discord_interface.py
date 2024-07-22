@@ -159,7 +159,11 @@ class DiscordInterface(discord.Client):
                             ):
                                 # send a new typing event if it's not the first message
                                 if not first_message:
-                                    run_task(message._state.http.send_typing())
+                                    run_task(
+                                        message._state.http.send_typing(
+                                            message.channel.id
+                                        )
+                                    )
                                 await wait_until_timestamp(
                                     reply_message.timestamp, message.channel.typing
                                 )
