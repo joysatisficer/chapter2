@@ -62,11 +62,6 @@ class DiscordInterface(discord.Client):
             self._connection._get_client = lambda: self
 
     async def on_message(self, message: discord.Message) -> None:
-        # XXX: Relies on Discord for IDs
-        if message.author.id not in self.per_interlocutor_semaphore:
-            # XXX: Might not be thread-safe
-            # XXX: This is not garbage-collected
-            self.per_interlocutor_semaphore[message.author.id] = asyncio.Semaphore()
         if is_continue_command(message.content):
             command_message = message
             message_to_react_to = [
@@ -82,12 +77,14 @@ class DiscordInterface(discord.Client):
             message_to_react_to = [
                 message async for message in message.channel.history(limit=2)
             ][1]
+        elif config.ignore_dotted_messages and re.match(
+            "^[.,][^\s.,]", message.content
+        ):
+            return
         else:
             command_message = None
             message_to_react_to = message
-        async with self.handle_exceptions(
-            message_to_react_to
-        ), self.per_interlocutor_semaphore[message.author.id]:
+        async with self.handle_exceptions(message_to_react_to):
             try:
                 config = await self.get_config(message.channel)
             except (ValueError, ValidationError) as exc:
@@ -100,64 +97,85 @@ class DiscordInterface(discord.Client):
                 and not self.user.mentioned_in(message)
             ):
                 return
-            try:
-                my_user_id = UserID(str(self.user.id), "discord")
+            # XXX: Relies on Discord for IDs
+            if message.author.id not in self.per_interlocutor_semaphore:
+                # XXX: Might not be thread-safe
+                # XXX: This is not garbage-collected
+                self.per_interlocutor_semaphore[message.author.id] = asyncio.Semaphore()
+            async with self.per_interlocutor_semaphore[message.author.id]:
+                try:
+                    my_user_id = UserID(str(self.user.id), "discord")
 
-                async def message_history():
-                    nonlocal message
-                    async for this_message in message.channel.history(
-                        limit=None, before=command_message
-                    ):
-                        if is_continue_command(this_message.content):
-                            pass
-                        elif re.match("^[.,][^\s.,]", this_message.content):
-                            pass
-                        else:
-                            yield await self.discord_message_to_message(
-                                config, this_message
-                            )
-                    if isinstance(message.channel, discord.threads.Thread):
-                        thread = message.channel
-                        # starter message id is the same as the thread id
-                        starter_message = await message.channel.parent.fetch_message(
-                            thread.id
-                        )
-                        if starter_message is not None:
-                            async for this_message in starter_message.channel.history(
-                                limit=None, before=starter_message
-                            ):
-                                if is_continue_command(this_message.content):
-                                    pass
-                                elif re.match("^[.,][^\s.,]", this_message.content):
-                                    pass
-                                else:
-                                    yield await self.discord_message_to_message(
-                                        config, this_message
-                                    )
-
-                response_messages = self.generate_response(
-                    my_user_id,
-                    async_generator_to_reusable_async_iterable(message_history),
-                    config,
-                )
-                async with ScheduleTyping(
-                    message.channel, typing=config.discord_send_typing
-                ):
-                    async for reply_message in response_messages:
-                        if reply_message.author.user_id == my_user_id and not isempty(
-                            reply_message.content
+                    async def message_history():
+                        nonlocal message
+                        async for this_message in message.channel.history(
+                            limit=None, before=command_message
                         ):
-                            await wait_until_timestamp(
-                                reply_message.timestamp, message.channel.typing
-                            )
-                            await message.channel.send(
-                                await realize_pings(
-                                    self, message.channel, reply_message.content
+                            if is_continue_command(this_message.content):
+                                pass
+                            elif config.ignore_dotted_messages and re.match(
+                                "^[.,][^\s.,]", this_message.content
+                            ):
+                                pass
+                            else:
+                                yield await self.discord_message_to_message(
+                                    config, this_message
                                 )
+                        if (
+                            self.interface_config.threads_inherit_history
+                            and isinstance(message.channel, discord.threads.Thread)
+                        ):
+                            thread = message.channel
+                            # starter message id is the same as the thread id
+                            starter_message = (
+                                await message.channel.parent.fetch_message(thread.id)
                             )
-            finally:
-                if command_message is not None:
-                    await command_message.delete()
+                            if starter_message is not None:
+                                async for (
+                                    this_message
+                                ) in starter_message.channel.history(
+                                    limit=None, before=starter_message
+                                ):
+                                    if is_continue_command(this_message.content):
+                                        pass
+                                    elif config.ignore_dotted_messages and re.match(
+                                        "^[.,][^\s.,]", this_message.content
+                                    ):
+                                        pass
+                                    else:
+                                        yield await self.discord_message_to_message(
+                                            config, this_message
+                                        )
+
+                    response_messages = self.generate_response(
+                        my_user_id,
+                        async_generator_to_reusable_async_iterable(message_history),
+                        config,
+                    )
+                    async with ScheduleTyping(
+                        message.channel, typing=config.discord_send_typing
+                    ):
+                        first_message = True
+                        async for reply_message in response_messages:
+                            if (
+                                reply_message.author.user_id == my_user_id
+                                and not isempty(reply_message.content)
+                            ):
+                                # send a new typing event if it's not the first message
+                                if not first_message:
+                                    run_task(message.channel.typing())
+                                await wait_until_timestamp(
+                                    reply_message.timestamp, message.channel.typing
+                                )
+                                await message.channel.send(
+                                    await realize_pings(
+                                        self, message.channel, reply_message.content
+                                    )
+                                )
+                                first_message = False
+                finally:
+                    if command_message is not None:
+                        await command_message.delete()
 
     async def discord_message_to_message(
         self, config, message: discord.Message

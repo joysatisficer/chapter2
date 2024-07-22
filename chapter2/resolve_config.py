@@ -143,6 +143,7 @@ class DiscordInterfaceConfig(BaseModel):
     auth: str | None = None
     addons: list[Union[DiscordGenerateAvatarAddonConfig]] = []
     proxy_url: str | None = None
+    threads_inherit_history: bool = True
 
 
 class MikotoInterfaceConfig(BaseModel):
@@ -210,6 +211,7 @@ class Config(BaseModel):
     reply_on_random: int | bool = 53
     reply_on_name: bool = True
     nicknames: list = []
+    ignore_dotted_messages: bool = True
     discord_send_typing: bool = True
     discord_random_threshold: float = 1.0
 
