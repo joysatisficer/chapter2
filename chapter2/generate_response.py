@@ -39,6 +39,9 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
         )
         + completion_prefix
     )
+    max_prompt_length = min(
+        max_token_length(config.continuation_model), config.prompt_max_tokens
+    )
     ensembles = []
     # TODO: Filter for empty ensembles
     for faculty_config in config.ensembles:
@@ -47,7 +50,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
         )
         local_max_tokens = min(
             (
-                max_token_length(config.continuation_model)
+                max_prompt_length
                 - sum(
                     [
                         count_continuation_model_tokens(ensemble)
@@ -68,9 +71,10 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
         )
         ensembles.append(ensemble)
     prompt = "".join(ensembles + [message_history_ensemble])
-    assert count_continuation_model_tokens(
-        prompt
-    ) + config.continuation_max_tokens < max_token_length(config.continuation_model)
+    assert (
+        count_continuation_model_tokens(prompt) + config.continuation_max_tokens
+        < max_prompt_length
+    )
     stop_sequences = unique(
         config.stop_sequences
         + [
