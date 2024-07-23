@@ -7,7 +7,7 @@ from pydantic import BaseModel, ValidationError
 from declarations import GenerateResponse, Message, UserID, Author
 from resolve_config import Config, CompletionsInterfaceConfig
 from message_formats import IRCMessageFormat
-from abstractinterface import AbstractInterface, GetDiscordConfig
+from abstractinterface import AbstractInterface
 from util.asyncutil import eager_iterable_to_async_iterable
 
 
@@ -42,7 +42,7 @@ class CompletionResponse(BaseModel):
 class CompletionsInterface(AbstractInterface):
     def __init__(
         self,
-        get_discord_config: GetDiscordConfig,
+        base_config: Config,
         generate_response: GenerateResponse,
         em_name: str,
         interface_config: CompletionsInterfaceConfig,
@@ -50,7 +50,7 @@ class CompletionsInterface(AbstractInterface):
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
 
-        self.get_config: GetDiscordConfig = get_discord_config
+        self.base_config = base_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
         self.interface_config = interface_config
@@ -69,7 +69,7 @@ class CompletionsInterface(AbstractInterface):
         irc_format = IRCMessageFormat
         messages = irc_format.parse(completion_request.prompt)
         em_user_id = UserID("em::" + self.em_name, "completions")
-        config: Config = await self.get_config(None)
+        config: Config = self.base_config.copy()
         if completion_request.temperature is not None:
             config.temperature = completion_request.temperature
         if completion_request.top_p is not None:

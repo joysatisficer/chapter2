@@ -6,8 +6,8 @@ from typing import Callable, Awaitable, Optional, AsyncIterable, Any, Union, Lit
 from pydantic import BaseModel
 
 from declarations import GenerateResponse, Message, UserID, Author
-from abstractinterface import AbstractInterface, GetDiscordConfig
-from resolve_config import ChatCompletionsInterfaceConfig
+from abstractinterface import AbstractInterface
+from resolve_config import Config, ChatCompletionsInterfaceConfig
 from util import asyncutil
 
 Role = Literal["system", "user", "assistant"]
@@ -65,7 +65,7 @@ class ChatCompletionsResponse(BaseModel):
 class ChatCompletionsInterface(AbstractInterface):
     def __init__(
         self,
-        get_discord_config: GetDiscordConfig,
+        base_config: Config,
         generate_response: GenerateResponse,
         em_name: str,
         interface_config: ChatCompletionsInterfaceConfig,
@@ -73,7 +73,7 @@ class ChatCompletionsInterface(AbstractInterface):
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
 
-        self.get_config: GetDiscordConfig = get_discord_config
+        self.base_config = base_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
         self.interface_config = interface_config
@@ -89,7 +89,7 @@ class ChatCompletionsInterface(AbstractInterface):
 
         @self.app.post("/v1/chat/completions")
         async def chat_completions(chat_completions_request: ChatCompletionsRequest):
-            config = await self.get_config(None)
+            config = self.base_config.copy()
             config.continuation_model = "gpt-4-base"  # TODO: XXX
             if chat_completions_request.max_tokens is not None:
                 config.continuation_max_tokens = chat_completions_request.max_tokens
@@ -185,8 +185,7 @@ class ChatCompletionsInterface(AbstractInterface):
         from util.uvicorn_improved import RapidShutdownUvicornServer
 
         # TODO: Option for listening on an HTTP port (port 0 = random port)
-        config = await self.get_config(None)
-        socket_loc = str(config.em_folder / "socket")
+        socket_loc = str(self.base_config.em_folder / "socket")
         uv_config = uvicorn.Config(
             self.app,
             log_level="info",
@@ -195,7 +194,7 @@ class ChatCompletionsInterface(AbstractInterface):
         print(f"Listening on {socket_loc}")
         self.uv_server = RapidShutdownUvicornServer(uv_config)
         self.uv_server.install_signal_handlers = lambda: None
-        if config.end_to_end_test:
+        if self.base_config.end_to_end_test:
             self.uv_server.on_ready = lambda: asyncutil.run_task(self.end_to_end_test())
         self.task_serve = asyncio.create_task(self.uv_server.serve())
         return await self.task_serve

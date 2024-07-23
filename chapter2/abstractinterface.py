@@ -5,20 +5,18 @@ from typing import Callable, Awaitable
 from resolve_config import Config, InterfaceConfig
 from declarations import GenerateResponse
 
-GetDiscordConfig = Callable[["discord.abc.MessageableChannel"], Awaitable[Config]]
-
 
 # todo: interface-specific configuration
 class AbstractInterface(ABC):
     @abstractmethod
     def __init__(
         self,
-        get_discord_config: GetDiscordConfig,
+        base_config: InterfaceConfig,
         generate_response: GenerateResponse,
         em_name: str,
         interface_config: InterfaceConfig,
     ):
-        self.get_config: GetDiscordConfig = get_discord_config
+        self.base_config = base_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
         # in 3.12, we can use type variables to replace this with a super() call

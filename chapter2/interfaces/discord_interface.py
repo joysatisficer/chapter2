@@ -4,7 +4,7 @@ import re
 import time
 import urllib.parse
 import random
-from typing import Self
+from typing import Self, Tuple
 
 import discord
 import discord.http
@@ -12,10 +12,10 @@ import discord.threads
 import yaml
 from pydantic import ValidationError
 
+import resolve_config
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON
-from abstractinterface import GetDiscordConfig
 from resolve_config import Config, DiscordInterfaceConfig
 
 
@@ -24,7 +24,7 @@ class DiscordInterface(discord.Client):
 
     def __init__(
         self,
-        get_discord_config: GetDiscordConfig,
+        base_config: Config,
         generate_response: GenerateResponse,
         em_name: str,
         interface_config: DiscordInterfaceConfig,
@@ -39,12 +39,12 @@ class DiscordInterface(discord.Client):
             super().__init__(intents=intents)
         else:
             super().__init__(intents=intents, proxy=interface_config.proxy_url)
-        self.get_config: GetDiscordConfig = get_discord_config
+        self.base_config: Config = base_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
         self.interface_config = interface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
-        self.per_interlocutor_semaphore = {}
+        self.per_interlocutor_semaphore: dict[int, asyncio.Semaphore] = {}
         self.pending_shutdown = False
         if (
             self.interface_config.proxy_url is not None
@@ -98,6 +98,11 @@ class DiscordInterface(discord.Client):
                 # XXX: Might not be thread-safe
                 # XXX: This is not garbage-collected
                 self.per_interlocutor_semaphore[message.author.id] = asyncio.Semaphore()
+            if (
+                len(self.per_interlocutor_semaphore[message.author.id]._waiters)
+                > self.interface_config.max_queued_replies
+            ) and command_message is None:
+                return
             async with self.per_interlocutor_semaphore[message.author.id]:
                 try:
                     my_user_id = UserID(str(self.user.id), "discord")
@@ -237,6 +242,31 @@ class DiscordInterface(discord.Client):
                     )
                 )
             )
+        )
+
+    async def get_config(
+        self, channel: "discord.abc.MessageableChannel"
+    ) -> Tuple[Config, DiscordInterfaceConfig]:
+        if isinstance(channel, dict):
+            kv = channel
+        elif channel is not None:
+            kv = await get_yaml_from_channel(channel)
+        else:
+            kv = {}
+        if "interface" in kv:
+            interface_config = DiscordInterfaceConfig(
+                **resolve_config.overlay(
+                    base=self.interface_config.model_dump(), updates=kv["interface"]
+                )
+            )
+        else:
+            interface_config = self.interface_config
+        return (
+            resolve_config.load_config_from_kv(
+                kv,
+                self.base_config.model_dump(),
+            ),
+            interface_config,
         )
 
     @contextlib.asynccontextmanager

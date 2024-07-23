@@ -16,23 +16,6 @@ from interfaces.discord_interface import get_yaml_from_channel
 from util.asyncutil import eager_iterable_to_async_iterable
 
 
-def get_config_getter(bot_config: Config):
-    # todo: config loaders as separate entities from interfaces
-    async def get_config(channel: "discord.abc.MessageableChannel") -> Config:
-        if isinstance(channel, dict):
-            kv = channel
-        elif channel is not None:
-            kv = await get_yaml_from_channel(channel)
-        else:
-            kv = {}
-        return resolve_config.load_config_from_kv(
-            kv,
-            bot_config.model_dump(),
-        )
-
-    return get_config
-
-
 async def rehearse_em(config: Config):
     """Run an em in mock mode to populate caches and test the em"""
     mock_messages = [
@@ -91,7 +74,7 @@ async def run_em(name, end_to_end_test=False):
         config.end_to_end_test = True
     if config.sentry_dsn_url is not None:
         setup_sentry(config)
-    args = get_config_getter(config), generate_response, config.name
+    args = config, generate_response, config.name
     interfaces = []
     for interface in config.interfaces:
         interface_name = interface.name

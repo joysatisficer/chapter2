@@ -144,6 +144,7 @@ class DiscordInterfaceConfig(BaseModel):
     addons: list[Union[DiscordGenerateAvatarAddonConfig]] = []
     proxy_url: str | None = None
     threads_inherit_history: bool = True
+    max_queued_replies: int = 2
 
 
 class MikotoInterfaceConfig(BaseModel):

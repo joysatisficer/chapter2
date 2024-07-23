@@ -7,22 +7,22 @@ import mikoto
 
 from util.asyncutil import async_generator_to_reusable_async_iterable
 from declarations import GenerateResponse, Message, Author, UserID
-from abstractinterface import AbstractInterface, GetDiscordConfig
 from resolve_config import MikotoInterfaceConfig, Config
 from interfaces.discord_interface import is_continue_command, isempty
+import resolve_config
 
 
 # todo: refactor so that subclassing and using super with AbstractInterface are possible
 class MikotoInterface(mikoto.MikotoClient):
     def __init__(
         self,
-        get_discord_config: GetDiscordConfig,
+        base_config: Config,
         generate_response: GenerateResponse,
         em_name: str,
         interface_config: MikotoInterfaceConfig,
     ):
         super().__init__()
-        self.get_config = get_discord_config
+        self.base_config = base_config
         self.generate_response = generate_response
         self.em_name = em_name
         self.interface_config = interface_config
@@ -35,7 +35,9 @@ class MikotoInterface(mikoto.MikotoClient):
             command_message = None
         try:
             my_user_id = UserID((await self.users.me()).id, "mikoto")
-            config = await self.get_config(self.interface_config.custom_config)
+            config = resolve_config.overlay(
+                self.base_config.model_dump(), self.interface_config.custom_config
+            )
             if not await self.should_reply(this_message, config):
                 return
 
