@@ -82,7 +82,7 @@ class DiscordInterface(discord.Client):
             message_to_react_to = message
         async with self.handle_exceptions(message_to_react_to):
             try:
-                config = await self.get_config(message.channel)
+                config, interface_config = await self.get_config(message.channel)
             except (ValueError, ValidationError) as exc:
                 raise ConfigError() from exc
             if not await self.should_reply(message, config):
@@ -99,8 +99,8 @@ class DiscordInterface(discord.Client):
                 # XXX: This is not garbage-collected
                 self.per_interlocutor_semaphore[message.author.id] = asyncio.Semaphore()
             if (
-                len(self.per_interlocutor_semaphore[message.author.id]._waiters)
-                > self.interface_config.max_queued_replies
+                len(self.per_interlocutor_semaphore[message.author.id]._waiters or [])
+                > interface_config.max_queued_replies
             ) and command_message is None:
                 return
             async with self.per_interlocutor_semaphore[message.author.id]:
@@ -122,9 +122,8 @@ class DiscordInterface(discord.Client):
                                 yield await self.discord_message_to_message(
                                     config, this_message
                                 )
-                        if (
-                            self.interface_config.threads_inherit_history
-                            and isinstance(message.channel, discord.threads.Thread)
+                        if interface_config.threads_inherit_history and isinstance(
+                            message.channel, discord.threads.Thread
                         ):
                             thread = message.channel
                             # starter message id is the same as the thread id
@@ -271,7 +270,7 @@ class DiscordInterface(discord.Client):
 
     @contextlib.asynccontextmanager
     async def handle_exceptions(self, message: discord.Message):
-        config = await self.get_config(None)
+        config, interface_config = await self.get_config(None)
         try:
             async with self.message_semaphore:
                 yield None
