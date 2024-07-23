@@ -190,6 +190,7 @@ class Config(BaseModel):
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )
     prevent_gpt_topic_change: bool = False
+    prompt_max_tokens: int | float = infinity
 
     temperature: Annotated[float, Ge(0)] = (
         0.9  # todo: vary on model; 0.9 for davinci-002, 1.0 for gpt-4-base
