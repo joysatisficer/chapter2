@@ -5,6 +5,7 @@ from typing import Callable
 from asgiref.sync import sync_to_async
 from aioitertools.more_itertools import take as async_take
 
+import arrow
 import dateutil.parser
 from functools import cache
 from exa_py import Exa
@@ -45,6 +46,15 @@ async def exa_search_faculty(
             "highlights_per_url": faculty_config.output.highlights_per_url,
             "num_sentences": faculty_config.output.sentences_per_highlight,
         }
+    to_iso8601 = lambda date_string: (
+        None
+        if date_string is None
+        else arrow.utcnow().dehumanize(faculty_config.start_crawl_date).isoformat()
+    )
+    kwparams["start_crawl_date"] = to_iso8601(faculty_config.start_crawl_date)
+    kwparams["end_crawl_date"] = to_iso8601(faculty_config.end_crawl_date)
+    kwparams["start_published_date"] = to_iso8601(faculty_config.start_published_date)
+    kwparams["end_published_date"] = to_iso8601(faculty_config.end_published_date)
     yielded_urls = set()
     n_results = faculty_config.impl_hint_initial_num_results
     while True:

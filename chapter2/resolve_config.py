@@ -95,6 +95,10 @@ class ExaSearchFacultyConfig(FacultyConfig):
     max_results: int = 20  # 10 is the cap of the Wanderer plan
     use_autoprompt: bool = False
     output: ExaSearchHighlightsConfig = ExaSearchHighlightsConfig()
+    start_crawl_date: str | None = None
+    end_crawl_date: str | None = None
+    start_published_date: str | None = None
+    end_published_date: str | None = None
     # client-side filtering
     ignored_urls: list[str] = []
     # performance hints
