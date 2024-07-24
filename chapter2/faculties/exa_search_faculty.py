@@ -49,7 +49,7 @@ async def exa_search_faculty(
     to_iso8601 = lambda date_string: (
         None
         if date_string is None
-        else arrow.utcnow().dehumanize(faculty_config.start_crawl_date).isoformat()
+        else arrow.utcnow().dehumanize(date_string).isoformat()
     )
     kwparams["start_crawl_date"] = to_iso8601(faculty_config.start_crawl_date)
     kwparams["end_crawl_date"] = to_iso8601(faculty_config.end_crawl_date)
