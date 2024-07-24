@@ -371,9 +371,11 @@ async def realize_pings(self, channel: discord.TextChannel, message_content: str
         members = [channel.recipient]
     elif isinstance(channel, discord.Thread):
         members = []
-        await channel.fetch_members()
-        for member in channel.members:
-            members.append(await self.fetch_user(member.id))
+        if channel.parent is not None:
+            members = channel.parent.members
+        else:
+            for member in await channel.fetch_members():
+                members.append(await self.fetch_user(member.id))
     else:
         members = channel.members
     for member in members:
