@@ -72,6 +72,8 @@ class DiscordInterface(discord.Client):
             async for this_message in message.channel.history(before=message):
                 if this_message.author.id == self.user.id:
                     await this_message.delete()
+                elif re.match("^[.,][^\s.,]", this_message.content):
+                    pass
                 else:
                     break
             message_to_react_to = [
