@@ -31,7 +31,5 @@ Action = Union[Message]
 ActionHistory = AsyncIterable[Action]
 Ensemble = AsyncIterable[Action | AsyncIterable["Ensemble"]]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
-GenerateResponse = Callable[
-    [UserID, ActionHistory, "ResponseConfig"], AsyncIterable[Action]
-]
+GenerateResponse = Callable[[UserID, ActionHistory, "EmConfig"], AsyncIterable[Action]]
 Faculty = Callable[[ActionHistory, "FacultyConfig", "Config"], AsyncIterable[Message]]
