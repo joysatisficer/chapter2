@@ -11,10 +11,12 @@ from intermodel.callgpt import count_tokens, max_token_length
 from declarations import UserID, ActionHistory, Author, Ensemble, Action
 from faculties import FACULTY_NAME_TO_FUNCTION
 from mufflers import repeats_prompt_sentence, has_http
-from resolve_config import Config, LayerOfEnsembleFormat, EnsembleFormat
+from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
 
 
-async def generate_response(my_user_id: UserID, history: ActionHistory, config: Config):
+async def generate_response(
+    my_user_id: UserID, history: ActionHistory, config: EmConfig
+):
     count_continuation_model_tokens = partial(count_tokens, config.continuation_model)
     author = Author(config.name, my_user_id)
     recent_messages = await async_take(config.recency_window, history)
@@ -25,7 +27,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
         (config.message_history_header.format(**ctx_vars) + "\n")
         + await format_ensemble(
             recent_messages,
-            # todo: move to resolve_config
+            # todo: move to ontology
             [
                 LayerOfEnsembleFormat(
                     format=config.message_history_format,
@@ -110,7 +112,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, config: 
 
 
 async def get_replies(
-    config: Config,
+    config: EmConfig,
     prompt: str,
     completion_prefix: str,
     my_name: str,

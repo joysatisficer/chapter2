@@ -5,7 +5,7 @@ from typing import Optional, Literal
 from pydantic import BaseModel, ValidationError
 
 from declarations import GenerateResponse, Message, UserID, Author
-from resolve_config import Config, CompletionsInterfaceConfig
+from ontology import Config, CompletionsInterfaceConfig
 from message_formats import IRCMessageFormat
 from abstractinterface import AbstractInterface
 from util.asyncutil import eager_iterable_to_async_iterable
@@ -80,7 +80,7 @@ class CompletionsInterface(AbstractInterface):
         async def get_response_messages():
             response_messages = []
             async for message in self.generate_response(
-                em_user_id, eager_iterable_to_async_iterable(messages), config
+                em_user_id, eager_iterable_to_async_iterable(messages), config.em
             ):
                 response_messages.append(message)
             return response_messages

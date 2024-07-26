@@ -4,7 +4,7 @@ from asyncstdlib.functools import cache as async_cache
 from aioitertools.more_itertools import take as async_take
 
 from declarations import Message, Author, ActionHistory, Faculty
-from resolve_config import Config, CharacterFacultyConfig
+from ontology import Config, CharacterFacultyConfig
 from chr_loader import load_chr
 from retriever import KNNIndex, SVMIndex
 from message_formats import ColonMessageFormat

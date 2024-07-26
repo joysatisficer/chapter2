@@ -7,7 +7,7 @@ import openai
 import aiohttp
 
 from interfaces.discord_interface import DiscordInterface
-from resolve_config import DiscordGenerateAvatarAddonConfig
+from ontology import DiscordGenerateAvatarAddonConfig
 
 
 def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):

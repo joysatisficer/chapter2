@@ -7,12 +7,11 @@ from pathlib import Path
 
 import yaml
 
-import resolve_config
+import ontology
 from generate_response import generate_response
 from interfaces import INTERFACE_NAME_TO_INTERFACE, INTERFACE_ADDON_NAME_TO_ADDON
-from resolve_config import Config
+from ontology import Config
 from declarations import Message, UserID, Author
-from interfaces.discord_interface import get_yaml_from_channel
 from util.asyncutil import eager_iterable_to_async_iterable
 
 
@@ -21,13 +20,13 @@ async def rehearse_em(config: Config):
     mock_messages = [
         Message(Author("alice"), "hello"),
         Message(Author("bob"), "hi alice!"),
-        Message(Author(config.name), "hi bob!"),
-        Message(Author("alice"), f"hi {config.name}!"),
+        Message(Author(config.em.name), "hi bob!"),
+        Message(Author("alice"), f"hi {config.em.name}!"),
     ][::-1]
     async for response in generate_response(
-        UserID("em::" + config.name, "rehearsal"),
+        UserID("em::" + config.em.name, "rehearsal"),
         eager_iterable_to_async_iterable(mock_messages),
-        config,
+        config.em,
     ):
         pass
 
@@ -51,20 +50,29 @@ def load_em(name) -> Config:
         pass
     kv["em_folder"] = em_folder
     for subpath in em_folder.iterdir():
-        if (
-            subpath.name in Config.model_fields.keys()
-            or subpath.name in resolve_config.ALIASES.keys()
-        ):
+        valid_key = (
+            lambda key: key in Config.model_fields.keys()
+            or key in Config.model_fields.keys()
+            or key in ontology.ALIASES.keys()
+            or subpath.name in ontology.EM_KEYS
+            or subpath.name in ontology.SHARED_INTERFACE_KEYS
+            or subpath.name in ontology.ALL_INTERFACE_KEYS
+        )
+        if valid_key(subpath.name):
             kv[subpath.name] = subpath.read_text()
+        elif subpath.name.endswith(".yaml") and valid_key(
+            key := subpath.name.removesuffix(".yaml")
+        ):
+            kv[key] = yaml.safe_load(subpath.read_text())
     if "name" not in kv:
         kv["name"] = name
     # TODO: Replace with defaults versioning system
     if kv.get("legacy", False):
-        defaults = resolve_config.LEGACY_DEFAULTS
+        defaults = ontology.LEGACY_DEFAULTS
         del kv["legacy"]
     else:
-        defaults = resolve_config.DEFAULTS
-    config = resolve_config.load_config_from_kv(kv, defaults)
+        defaults = ontology.DEFAULTS
+    config = ontology.load_config_from_kv(kv, defaults)
     return config
 
 
@@ -74,7 +82,6 @@ async def run_em(name, end_to_end_test=False):
         config.end_to_end_test = True
     if config.sentry_dsn_url is not None:
         setup_sentry(config)
-    args = config, generate_response, config.name
     interfaces = []
     for interface in config.interfaces:
         interface_name = interface.name
@@ -101,7 +108,11 @@ async def run_em(name, end_to_end_test=False):
 
     interface_instances = []
     for interface, interface_config in interfaces:
-        interface_instances.append(interface(*args, interface_config))
+        interface_instances.append(
+            interface(
+                config, generate_response, interface_config.name, interface_config
+            )
+        )
 
     def handle_interrupt(sig, frame):
         for interface_instance in interface_instances:
@@ -112,8 +123,8 @@ async def run_em(name, end_to_end_test=False):
     await asyncio.gather(
         asyncio.create_task(
             rehearse_em(
-                resolve_config.load_config_from_kv(
-                    config.model_dump(), resolve_config.REHEARSAL_CONFIG
+                ontology.load_config_from_kv(
+                    config.model_dump(), ontology.REHEARSAL_CONFIG
                 )
             )
         ),
@@ -150,7 +161,8 @@ if __name__ == "__main__":
     import fire
     import selectors
 
-    install(suppress=[asyncio, fire, selectors])
+    if "PYCHARM_HOSTED" not in os.environ:
+        install(suppress=[asyncio, fire, selectors])
 
     def _(name, end_to_end_test=False):
         result = asyncio.run(run_em(name, end_to_end_test))

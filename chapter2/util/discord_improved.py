@@ -28,7 +28,9 @@ class ScheduleTyping(discord.context_managers.Typing):
             await asyncio.sleep(9)
 
 
-async def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) -> str:
+async def parse_discord_content(
+    self: discord.Message, my_user_id: int, my_name: str
+) -> str:
     """discord.Message.clean_content() where "name" is used in place of display_name"""
     if self.guild:
 

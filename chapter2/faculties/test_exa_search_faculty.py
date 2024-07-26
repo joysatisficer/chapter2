@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from declarations import Message, Author
-from resolve_config import ExaSearchFacultyConfig, Config, load_config_from_kv
+from ontology import ExaSearchFacultyConfig, Config, load_config_from_kv
 from faculties.exa_search_faculty import exa_search_faculty
 
 

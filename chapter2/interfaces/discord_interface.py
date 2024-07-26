@@ -12,11 +12,11 @@ import discord.threads
 import yaml
 from pydantic import ValidationError
 
-import resolve_config
+import ontology
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON
-from resolve_config import Config, DiscordInterfaceConfig
+from ontology import Config, DiscordInterfaceConfig
 
 
 class DiscordInterface(discord.Client):
@@ -27,34 +27,34 @@ class DiscordInterface(discord.Client):
         base_config: Config,
         generate_response: GenerateResponse,
         em_name: str,
-        interface_config: DiscordInterfaceConfig,
+        iface_config: DiscordInterfaceConfig,
     ):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.members = True
         if (
-            interface_config.proxy_url is None
-            or not interface_config.proxy_url.startswith("http")
+            iface_config.discord_proxy_url is None
+            or not iface_config.discord_proxy_url.startswith("http")
         ):
             super().__init__(intents=intents)
         else:
-            super().__init__(intents=intents, proxy=interface_config.proxy_url)
+            super().__init__(intents=intents, proxy=iface_config.discord_proxy_url)
         self.base_config: Config = base_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
-        self.interface_config = interface_config
+        self.iface_config = iface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
         self.per_interlocutor_semaphore: dict[int, asyncio.Semaphore] = {}
         self.pending_shutdown = False
         if (
-            self.interface_config.proxy_url is not None
-            and self.interface_config.proxy_url.startswith("socks")
+            self.iface_config.discord_proxy_url is not None
+            and self.iface_config.discord_proxy_url.startswith("socks")
         ):
             from aiohttp_socks import ProxyConnector
             from discord.state import ConnectionState
 
             self.http = discord.http.HTTPClient(
-                self.loop, ProxyConnector.from_url(interface_config.proxy_url)
+                self.loop, ProxyConnector.from_url(iface_config.discord_proxy_url)
             )
             self._connection: ConnectionState[Self] = self._get_state(intents=intents)
             self._connection.shard_count = self.shard_count
@@ -84,16 +84,10 @@ class DiscordInterface(discord.Client):
             message_to_react_to = message
         async with self.handle_exceptions(message_to_react_to):
             try:
-                config, interface_config = await self.get_config(message.channel)
+                config, iface_config = await self.get_config(message.channel)
             except (ValueError, ValidationError) as exc:
                 raise ConfigError() from exc
-            if not await self.should_reply(message, config):
-                return
-            if (
-                config.discord_random_threshold < 1
-                and random.random() < config.discord_random_threshold
-                and not self.user.mentioned_in(message)
-            ):
+            if not await self.should_reply(message, config, iface_config):
                 return
             # XXX: Relies on Discord for IDs
             if message.author.id not in self.per_interlocutor_semaphore:
@@ -102,7 +96,7 @@ class DiscordInterface(discord.Client):
                 self.per_interlocutor_semaphore[message.author.id] = asyncio.Semaphore()
             if (
                 len(self.per_interlocutor_semaphore[message.author.id]._waiters or [])
-                > interface_config.max_queued_replies
+                > iface_config.max_queued_replies
             ) and command_message is None:
                 return
             async with self.per_interlocutor_semaphore[message.author.id]:
@@ -116,7 +110,7 @@ class DiscordInterface(discord.Client):
                         ):
                             if is_continue_command(this_message.content):
                                 pass
-                            elif config.ignore_dotted_messages and re.match(
+                            elif iface_config.ignore_dotted_messages and re.match(
                                 "^[.,][^\s.,]", this_message.content
                             ):
                                 pass
@@ -124,7 +118,7 @@ class DiscordInterface(discord.Client):
                                 yield await self.discord_message_to_message(
                                     config, this_message
                                 )
-                        if interface_config.threads_inherit_history and isinstance(
+                        if iface_config.threads_inherit_history and isinstance(
                             message.channel, discord.threads.Thread
                         ):
                             thread = message.channel
@@ -140,8 +134,11 @@ class DiscordInterface(discord.Client):
                                 ):
                                     if is_continue_command(this_message.content):
                                         pass
-                                    elif config.ignore_dotted_messages and re.match(
-                                        "^[.,][^\s.,]", this_message.content
+                                    elif (
+                                        iface_config.ignore_dotted_messages
+                                        and re.match(
+                                            "^[.,][^\s.,]", this_message.content
+                                        )
                                     ):
                                         pass
                                     else:
@@ -152,10 +149,10 @@ class DiscordInterface(discord.Client):
                     response_messages = self.generate_response(
                         my_user_id,
                         async_generator_to_reusable_async_iterable(message_history),
-                        config,
+                        config.em,
                     )
                     async with ScheduleTyping(
-                        message.channel, typing=config.discord_send_typing
+                        message.channel, typing=iface_config.send_typing
                     ):
                         first_message = True
                         async for reply_message in response_messages:
@@ -196,7 +193,12 @@ class DiscordInterface(discord.Client):
             message.created_at.timestamp(),
         )
 
-    async def should_reply(self, message: discord.Message, config: Config) -> bool:
+    async def should_reply(
+        self,
+        message: discord.Message,
+        config: Config,
+        iface_config: DiscordInterfaceConfig,
+    ) -> bool:
         return (
             message.author != self.user
             and (
@@ -204,30 +206,30 @@ class DiscordInterface(discord.Client):
                 or message.channel.permissions_for(message.guild.me).send_messages
             )
             and not (
-                config.discord_mute is True
-                or config.discord_mute == self.em_name
+                iface_config.mute is True
+                or iface_config.discord_mute == self.em_name
                 or (
-                    isinstance(config.discord_mute, list)
-                    and self.em_name in config.discord_mute
+                    isinstance(iface_config.mute, list)
+                    and self.em_name in iface_config.mute
                 )
             )
             and not (
-                config.thread_mute
+                iface_config.thread_mute
                 and message.channel.type == discord.ChannelType.public_thread
             )
             and not (
-                config.ignore_dotted_messages
+                iface_config.ignore_dotted_messages
                 and re.match("^[.,][^\s.,]", message.content)
             )
             and (
-                (config.reply_on_ping and self.user.mentioned_in(message))
+                (iface_config.reply_on_ping and self.user.mentioned_in(message))
                 or (
-                    config.reply_on_random
-                    and random.random() < (1 / config.reply_on_random)
+                    iface_config.reply_on_random
+                    and random.random() < (1 / iface_config.reply_on_random)
                 )
                 or (
                     # first or last four names
-                    config.reply_on_name
+                    iface_config.reply_on_name
                     and any(
                         re.match(
                             r"^([^\s]+\b){0,3}" + re.escape(name),
@@ -239,7 +241,7 @@ class DiscordInterface(discord.Client):
                             message.content,
                             re.IGNORECASE,
                         )
-                        for name in (config.name, self.em_name, *config.nicknames)
+                        for name in (config.name, self.em_name, *iface_config.nicknames)
                     )
                 )
             )
@@ -254,25 +256,17 @@ class DiscordInterface(discord.Client):
             kv = await get_yaml_from_channel(channel)
         else:
             kv = {}
-        if "interface" in kv:
-            interface_config = DiscordInterfaceConfig(
-                **resolve_config.overlay(
-                    base=self.interface_config.model_dump(), updates=kv["interface"]
-                )
-            )
-        else:
-            interface_config = self.interface_config
-        return (
-            resolve_config.load_config_from_kv(
-                kv,
-                self.base_config.model_dump(),
-            ),
-            interface_config,
+        config = ontology.load_config_from_kv(kv, self.base_config.model_dump())
+        iface_config = next(
+            ontology.transpose_keys(
+                ontology.overlay(kv, {"interfaces": self.iface_config.model_dump()})
+            )["interfaces"].items()
         )
+        return config, iface_config
 
     @contextlib.asynccontextmanager
     async def handle_exceptions(self, message: discord.Message):
-        config, interface_config = await self.get_config(None)
+        config, iface_config = await self.get_config(None)
         try:
             async with self.message_semaphore:
                 yield None
@@ -330,7 +324,7 @@ class DiscordInterface(discord.Client):
 
     async def start(self, token: str = None, *args, **kwargs) -> None:
         if token is None:
-            token = self.interface_config.auth
+            token = self.iface_config.discord_token
         return await super().start(token, *args, **kwargs)
 
     def stop(self, sig, frame):
@@ -343,19 +337,19 @@ class DiscordInterface(discord.Client):
         self.pending_shutdown = True
 
     async def end_to_end_test(self):
-        config = await self.get_config(None)
+        config, iface_config = await self.get_config(None)
         ch2_client = self
 
         class AutotesterClient(discord.Client):
             async def on_ready(self):
                 channel = await self.fetch_channel(
-                    config.end_to_end_test_discord_channel_id
+                    iface_config.end_to_end_test_discord_channel_id
                 )
                 await channel.send("Hello")
                 ch2_client.pending_shutdown = True
 
         client = AutotesterClient(intents=discord.Intents.default())
-        run_task(client.start(config.end_to_end_test_discord_token))
+        run_task(client.start(iface_config.end_to_end_test_discord_token))
 
 
 def is_continue_command(message_content: str):

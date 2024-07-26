@@ -13,7 +13,7 @@ from intermodel import callgpt
 
 from declarations import ActionHistory, Message, Author
 from message_formats import MessageFormat, IRCMessageFormat
-from resolve_config import (
+from ontology import (
     Config,
     ExaSearchFacultyConfig,
     ExaSearchFullTextConfig,

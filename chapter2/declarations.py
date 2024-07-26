@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Union, AsyncIterable, TYPE_CHECKING, Awaitable
 
 if TYPE_CHECKING:
-    from resolve_config import Config, FacultyConfig
+    from ontology import Config, FacultyConfig
 
 
 @dataclass(frozen=True)
@@ -31,5 +31,7 @@ Action = Union[Message]
 ActionHistory = AsyncIterable[Action]
 Ensemble = AsyncIterable[Action | AsyncIterable["Ensemble"]]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
-GenerateResponse = Callable[[UserID, ActionHistory, "Config"], AsyncIterable[Action]]
+GenerateResponse = Callable[
+    [UserID, ActionHistory, "ResponseConfig"], AsyncIterable[Action]
+]
 Faculty = Callable[[ActionHistory, "FacultyConfig", "Config"], AsyncIterable[Message]]

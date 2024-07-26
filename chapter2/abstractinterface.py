@@ -2,7 +2,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Callable, Awaitable
 
-from resolve_config import Config, InterfaceConfig
+from ontology import Config, InterfaceConfig
 from declarations import GenerateResponse
 
 

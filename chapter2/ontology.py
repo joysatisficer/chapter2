@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import types
+import typing
 from pathlib import Path
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal, Union, Type
 from math import inf as infinity
 import copy
 
@@ -11,7 +13,12 @@ from annotated_types import Gt, Ge, Interval
 from pydantic import BaseModel, field_validator, Field
 from pydantic_core import PydanticUndefined
 
-from message_formats import MessageFormat, IRCMessageFormat, WebDocumentMessageFormat
+from message_formats import (
+    MessageFormat,
+    IRCMessageFormat,
+    WebDocumentMessageFormat,
+    ColonMessageFormat,
+)
 
 
 class LayerOfEnsembleFormat(BaseModel):
@@ -45,14 +52,10 @@ class FixedSizeChunker(BaseModel):
     n_lines: int = 3
 
 
-class PerplexityChunker(BaseModel):
-    name: Literal["perplexity"] = "perplexity"
-
-
 class UltratrieverConfig(BaseModel):
     # nested array of steps with a type system
     # organize in order of steps
-    chunker: FixedSizeChunker | PerplexityChunker = FixedSizeChunker()
+    chunker: FixedSizeChunker = FixedSizeChunker()
     # message_reformat: pair of message formats
     # deduplication
     representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"
@@ -139,50 +142,10 @@ class DiscordGenerateAvatarAddonConfig(BaseModel):
                 self.image_model = "dall-e-3"
 
 
-# todo: support sets (concatenate instead of override)
-
-
-class DiscordInterfaceConfig(BaseModel):
-    name: Literal["discord"] = "discord"
-    auth: str | None = None
-    addons: list[Union[DiscordGenerateAvatarAddonConfig]] = []
-    proxy_url: str | None = None
-    threads_inherit_history: bool = True
-    max_queued_replies: int = 2
-
-
-class MikotoInterfaceConfig(BaseModel):
-    name: Literal["mikoto"] = "mikoto"
-    auth: str
-    # todo: high-level API for customizing if a message should be engaged with
-    allowed_users: list[str] | None = None
-    # todo: config loaders and interfaces as separate things
-    custom_config: dict = {}
-
-
-class CompletionsInterfaceConfig(BaseModel):
-    name: Literal["completions"] = "completions"
-
-
-class ChatCompletionsInterfaceConfig(BaseModel):
-    name: Literal["chatcompletions"] = "chatcompletions"
-    default_name: str = "user"
-
-
-InterfaceConfig = Annotated[
-    DiscordInterfaceConfig
-    | MikotoInterfaceConfig
-    | CompletionsInterfaceConfig
-    | ChatCompletionsInterfaceConfig,
-    Field(..., discriminator="name"),
-]
-
-
-class Config(BaseModel):
+class EmConfig(BaseModel):
     name: str
     continuation_model: str = "meta-llama/Meta-Llama-3-70B"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
-    # todo: update default representation model
     representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"
     message_history_format: MessageFormat = IRCMessageFormat()
     message_history_header: str = ""  # todo: rename
@@ -209,27 +172,81 @@ class Config(BaseModel):
     continuation_model_local_tokenization: bool = False
     continuation_options: dict = {}
 
-    interfaces: list[InterfaceConfig] = [DiscordInterfaceConfig()]
-    discord_mute: str | bool = False
-    thread_mute: bool = False
-    em_folder: Path
-    reply_on_ping: bool = True
-    reply_on_random: int | bool = 53
-    reply_on_name: bool = True
-    nicknames: list = []
-    ignore_dotted_messages: bool = True
-    discord_send_typing: bool = True
-    discord_random_threshold: float = 1.0
-
     # API keys
     vendors: dict[str, SingleVendorConfig] = {}
     exa_search_api_key: str | None = None
-    sentry_dsn_url: str | None = None
     novelai_api_key: str | None = None
 
+    em_folder: Path
+
+
+# todo: support sets (concatenate instead of override)
+
+
+class ReplyOnSimConfig(BaseModel):
+    em_overrides: dict = {
+        "continuation_model": "phi3:mini",
+        "username_prefix": False,
+        "ensembles": [],
+    }
+
+
+class SharedInterfaceConfig(BaseModel):
+    name: str = ""
+    mute: bool = False
+    reply_on_ping: bool = True
+    reply_on_random: int | bool = 53
+    reply_on_name: bool = True
+    nicknames: list = []  # for reply_on
+    reply_on_sim: ReplyOnSimConfig | Literal[False] = ReplyOnSimConfig()
+    ignore_dotted_messages: bool = True
     end_to_end_test: bool = False
-    end_to_end_test_discord_token: str | None = None
-    end_to_end_test_discord_channel_id: int | None = None
+
+
+class DiscordInterfaceConfig(SharedInterfaceConfig):
+    name: Literal["discord"] = "discord"
+    discord_token: str | None = None
+    addons: list[Union[DiscordGenerateAvatarAddonConfig]] = []
+    discord_proxy_url: str | None = None
+    threads_inherit_history: bool = True
+    max_queued_replies: int = 2
+    thread_mute: bool = False
+    send_typing: bool = True
+    end_to_end_test_token: str | None = None
+    end_to_end_test_channel_id: int | None = None
+
+
+class MikotoInterfaceConfig(SharedInterfaceConfig):
+    name: Literal["mikoto"] = "mikoto"
+    mikoto_token: str
+    # todo: high-level API for customizing if a message should be engaged with
+    allowed_users: list[str] | None = None
+    # todo: config loaders and interfaces as separate things
+    custom_config: dict = {}
+
+
+class CompletionsInterfaceConfig(SharedInterfaceConfig):
+    name: Literal["completions"] = "completions"
+
+
+class ChatCompletionsInterfaceConfig(BaseModel):
+    name: Literal["chatcompletions"] = "chatcompletions"
+    default_name: str = "user"
+
+
+InterfaceConfig = Annotated[
+    DiscordInterfaceConfig
+    | MikotoInterfaceConfig
+    | CompletionsInterfaceConfig
+    | ChatCompletionsInterfaceConfig,
+    Field(..., discriminator="name"),
+]
+
+
+class Config(BaseModel):
+    em: EmConfig
+    interfaces: list[InterfaceConfig] = [DiscordInterfaceConfig()]
+    sentry_dsn_url: str | None = None
 
 
 class LegacyConfig(Config):
@@ -251,7 +268,7 @@ REHEARSAL_CONFIG = {"vendors": {"fake-local": SingleVendorConfig(provides=[".*"]
 
 
 # todo: support defaults versioning
-def get_defaults(model: pydantic.BaseModel) -> dict:
+def get_defaults(model: Type[pydantic.BaseModel]) -> dict:
     defaults = {}
     for name, field in model.model_fields.items():
         if field.default != PydanticUndefined:
@@ -292,8 +309,6 @@ ALIASES = {
     },
     "chat.context": "message_history_header",
     "lookup_msg_cache": "character_faculty_recent_message_attention",
-    "active_interfaces": None,
-    "discord_token": None,
     "metaphor_search_api_key": "exa_search_api_key",
 }
 
@@ -371,6 +386,49 @@ if rename_keys(DEFAULTS, ALIASES) != DEFAULTS:
     raise ValueError("Default config keys shouldn't use aliases")
 
 
+def get_union_members(union: typing.Union | types.UnionType | typing.Annotated):
+    if typing.get_origin(union) == Annotated:
+        return get_union_members(typing.get_args(union)[0])
+    elif typing.get_origin(union) in (typing.Union, types.UnionType):
+        return typing.get_args(union)
+    else:
+        raise TypeError("Unrecognized union type: " + str(type(union)))
+
+
+EM_KEYS = set(EmConfig.model_fields.keys())
+SHARED_INTERFACE_KEYS = set(SharedInterfaceConfig.model_fields.keys())
+ALL_INTERFACE_KEYS = set()
+for interface_config_subclass in get_union_members(InterfaceConfig):
+    ALL_INTERFACE_KEYS.update(interface_config_subclass.model_fields.keys())
+
+
+def transpose_keys(kv: dict):
+    result = {
+        "em": {},
+        "interfaces": kv.get("interfaces", DEFAULTS["interfaces"]),
+    }
+    for key in kv.copy():
+        if key in EM_KEYS:
+            result["em"][key] = kv[key]
+            del kv[key]
+        elif key in SHARED_INTERFACE_KEYS:
+            for interface in result["interfaces"]:
+                interface[key] = kv[key]
+            del kv[key]
+        elif key in ALL_INTERFACE_KEYS:
+            for interface_config_subclass in get_union_members(InterfaceConfig):
+                if key in interface_config_subclass.model_fields.keys():
+                    for interface in result["interfaces"]:
+                        if (
+                            interface["name"]
+                            == interface_config_subclass.model_fields["name"].default
+                        ):
+                            interface[key] = kv[key]
+        else:
+            result[key] = kv[key]
+    return result
+
+
 def load_config_from_kv(kv: dict | None, defaults: dict = DEFAULTS) -> Config:
     if kv is None:
         kv = {}
@@ -381,18 +439,5 @@ def load_config_from_kv(kv: dict | None, defaults: dict = DEFAULTS) -> Config:
         interfaces = [{"name": interface_name} for interface_name in active_interfaces]
         kv["interfaces"] = interfaces
         del kv["active_interfaces"]
-    if discord_token := kv.get("discord_token"):
-        if "interfaces" not in kv:
-            kv["interfaces"] = defaults["interfaces"]
-        for interface in kv["interfaces"]:
-            if interface["name"] == "discord":
-                interface["auth"] = discord_token
-                break
-        del kv["discord_token"]
-    if discord_proxy_url := kv.get("discord_proxy_url"):
-        for interface in kv["interfaces"]:
-            if interface["name"] == "discord":
-                interface["proxy_url"] = discord_proxy_url
-        del kv["discord_proxy_url"]
-    dictionary = overlay(defaults, rename_keys(kv, ALIASES))
+    dictionary = overlay(defaults, transpose_keys(rename_keys(kv, ALIASES)))
     return Config(**dictionary)

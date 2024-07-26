@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from declarations import GenerateResponse, Message, UserID, Author
 from abstractinterface import AbstractInterface
-from resolve_config import Config, ChatCompletionsInterfaceConfig
+from ontology import Config, ChatCompletionsInterfaceConfig
 from util import asyncutil
 
 Role = Literal["system", "user", "assistant"]
@@ -144,7 +144,7 @@ class ChatCompletionsInterface(AbstractInterface):
 
             valid_messages = []
             async for reply_message in generate_response(
-                my_user_id, messages_iterator(), config
+                my_user_id, messages_iterator(), config.em
             ):
                 if reply_message.author.user_id == my_user_id and not isempty(
                     reply_message.content

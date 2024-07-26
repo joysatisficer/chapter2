@@ -7,9 +7,9 @@ import mikoto
 
 from util.asyncutil import async_generator_to_reusable_async_iterable
 from declarations import GenerateResponse, Message, Author, UserID
-from resolve_config import MikotoInterfaceConfig, Config
+from ontology import MikotoInterfaceConfig, Config
 from interfaces.discord_interface import is_continue_command, isempty
-import resolve_config
+import ontology
 
 
 # todo: refactor so that subclassing and using super with AbstractInterface are possible
@@ -35,7 +35,7 @@ class MikotoInterface(mikoto.MikotoClient):
             command_message = None
         try:
             my_user_id = UserID((await self.users.me()).id, "mikoto")
-            config = resolve_config.overlay(
+            config = ontology.overlay(
                 self.base_config.model_dump(), self.interface_config.custom_config
             )
             if not await self.should_reply(this_message, config):
@@ -60,7 +60,7 @@ class MikotoInterface(mikoto.MikotoClient):
             response_messages = self.generate_response(
                 my_user_id,
                 async_generator_to_reusable_async_iterable(message_history),
-                config,
+                config.em,
             )
             with typing(this_message.channelId, self.messages):
                 async for reply_message in response_messages:
