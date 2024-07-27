@@ -149,7 +149,7 @@ def setup_sentry(config: Config):
         traces_sample_rate=1.0,
         profiles_sample_rate=1.0,
     )
-    path = Path(config.em_folder)
+    path = Path(config.em.em_folder)
     em = path.parts[-1]
     deployment = path.parts[-3]
     hostname = platform.node().split(".")[0].lower()
