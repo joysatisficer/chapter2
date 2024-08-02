@@ -49,20 +49,20 @@ def load_em(name) -> Config:
     parent_dir = Path(__file__).resolve().parents[1]
     em_folder = parent_dir / "ems" / name
     with open(em_folder / "config.yaml") as file:
-        kv = yaml.safe_load(file)
-        if kv is None:
-            kv = {}
-    try:
-        with open(os.path.expanduser("~/.config/chapter2/vendors.yaml")) as file:
-            kv = {**kv, **yaml.safe_load(file)}
-    except FileNotFoundError:
-        pass
+        em_kv = yaml.safe_load(file)
+        if em_kv is None:
+            em_kv = {}
     try:
         with open(parent_dir / "ems/vendors.yaml") as file:
-            kv = {**kv, **yaml.safe_load(file)}
+            local_kv = yaml.safe_load(file)
     except FileNotFoundError:
         pass
-    kv["em_folder"] = em_folder
+    try:
+        with open(os.path.expanduser("~/.config/chapter2/vendors.yaml")) as file:
+            global_kv = yaml.safe_load(file)
+    except FileNotFoundError:
+        pass
+    kv = {**global_kv, **local_kv, **em_kv, "em_folder": em_folder}
     for subpath in em_folder.iterdir():
         valid_key = (
             lambda key: key in Config.model_fields.keys()
