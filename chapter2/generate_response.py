@@ -110,7 +110,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
 
 
 async def get_replies(
-    config: EmConfig,
+    em: EmConfig,
     prompt: str,
     completion_prefix: str,
     my_name: str,
@@ -118,46 +118,46 @@ async def get_replies(
     stop_sequences: list[str] = None,
 ):
     logit_bias = {}
-    for logit, bias in config.logit_bias.items():
+    for logit, bias in em.logit_bias.items():
         if isinstance(logit, int):
             logit_bias[logit] = bias
         elif isinstance(logit, str):
-            tokens = callgpt.tokenize(config.continuation_model, logit)
+            tokens = callgpt.tokenize(em.continuation_model, logit)
             assert len(tokens) == 1, f"logit_bias invalid string {logit}"
             logit_bias[tokens[0]] = bias
         else:
             raise NotImplementedError("Unrecognized logit_bias key type")
 
-    if config.prevent_scene_break:
+    if em.prevent_scene_break:
         scene_break_token = callgpt.tokenize(
-            config.continuation_model, config.scene_break.strip("\n")
+            em.continuation_model, em.scene_break.strip("\n")
         )[0]
         logit_bias[scene_break_token] = -100
     else:
         logit_bias = {}
     print(prompt)
-    if config.continuation_model_local_tokenization:
-        prompt = callgpt.tokenize(config.continuation_model, prompt)
+    if em.continuation_model_local_tokenization:
+        prompt = callgpt.tokenize(em.continuation_model, prompt)
     completion = (
         await callgpt.complete(
             prompt=prompt,
-            temperature=config.temperature,
-            max_tokens=config.continuation_max_tokens,
-            frequency_penalty=config.frequency_penalty,
-            presence_penalty=config.presence_penalty,
-            model=config.continuation_model,
+            temperature=em.temperature,
+            max_tokens=em.continuation_max_tokens,
+            frequency_penalty=em.frequency_penalty,
+            presence_penalty=em.presence_penalty,
+            model=em.continuation_model,
             stop=stop_sequences[:3] if stop_sequences is not None else None,
-            vendor_config=config.vendors,
+            vendor_config=em.vendors,
             logit_bias=logit_bias,
-            best_of=config.best_of,
-            **config.continuation_options,
+            best_of=em.best_of,
+            **em.continuation_options,
         )
     )["completions"][0]["text"]
-    if callgpt.pick_vendor(config.continuation_model, config.vendors) == "fake-local":
+    if callgpt.pick_vendor(em.continuation_model, em.vendors) == "fake-local":
         print(
             "Continues>>",
             "{",
-            callgpt.count_tokens(config.continuation_model, completion),
+            callgpt.count_tokens(em.continuation_model, completion),
             "tokens omitted}",
             "<<Continues",
             sep="",
@@ -165,11 +165,11 @@ async def get_replies(
     else:
         print("Continues>>", completion.replace("\n", r"\n"), "<<Continues", sep="")
     # Todo: Client-side stop sequences
-    for message in config.message_history_format.parse(completion_prefix + completion):
+    for message in em.message_history_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes
         if (
-            config.prevent_gpt_topic_change
-            and message.content.strip() == config.scene_break.strip()
+            em.prevent_gpt_topic_change
+            and message.content.strip() == em.scene_break.strip()
         ):
             break
         elif message.author is None or message.author.name == my_name:
