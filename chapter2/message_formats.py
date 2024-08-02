@@ -19,17 +19,14 @@ class AbstractMessageFormat:
     name: str
 
     @staticmethod
-    @abstractmethod
     def render(message: Message) -> str:
         pass
 
     @staticmethod
-    @abstractmethod
     def name_prefix(name: str) -> str:  # TODO: Refactor to Author
         pass
 
     @staticmethod
-    @abstractmethod
     def parse(continuation: str) -> list[Message]:
         pass
 

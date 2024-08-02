@@ -13,9 +13,10 @@ import yaml
 from pydantic import ValidationError
 
 import ontology
+from interfaces.inference import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
-from declarations import GenerateResponse, Message, UserID, Author, JSON
+from declarations import GenerateResponse, Message, UserID, Author, JSON, ActionHistory
 from ontology import Config, DiscordInterfaceConfig
 
 
@@ -87,8 +88,6 @@ class DiscordInterface(discord.Client):
                 config, iface_config = await self.get_config(message.channel)
             except (ValueError, ValidationError) as exc:
                 raise ConfigError() from exc
-            if not await self.should_reply(message, config, iface_config):
-                return
             # XXX: Relies on Discord for IDs
             if message.author.id not in self.per_interlocutor_semaphore:
                 # XXX: Might not be thread-safe
@@ -146,6 +145,14 @@ class DiscordInterface(discord.Client):
                                             config, this_message
                                         )
 
+                    if not await self.should_reply(
+                        message,
+                        config,
+                        iface_config,
+                        my_user_id,
+                        async_generator_to_reusable_async_iterable(message_history),
+                    ):
+                        return
                     response_messages = self.generate_response(
                         my_user_id,
                         async_generator_to_reusable_async_iterable(message_history),
@@ -198,6 +205,8 @@ class DiscordInterface(discord.Client):
         message: discord.Message,
         config: Config,
         iface_config: DiscordInterfaceConfig,
+        user_id: UserID,
+        message_history: ActionHistory,
     ) -> bool:
         return (
             message.author != self.user
@@ -246,6 +255,16 @@ class DiscordInterface(discord.Client):
                             self.em_name,
                             *iface_config.nicknames,
                         )
+                    )
+                )
+                or (
+                    iface_config.reply_on_sim
+                    and await deserves_reply(
+                        self.generate_response,
+                        config,
+                        user_id,
+                        message_history,
+                        iface_config.reply_on_sim,
                     )
                 )
             )

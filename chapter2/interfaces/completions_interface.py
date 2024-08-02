@@ -66,8 +66,7 @@ class CompletionsInterface(AbstractInterface):
         self.app.post("/v1/completions")(self.completions)
 
     async def completions(self, completion_request: CompletionRequest):
-        irc_format = IRCMessageFormat
-        messages = irc_format.parse(completion_request.prompt)
+        messages = IRCMessageFormat().parse(completion_request.prompt)
         em_user_id = UserID("em::" + self.em_name, "completions")
         config: Config = self.base_config.copy()
         if completion_request.temperature is not None:

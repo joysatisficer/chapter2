@@ -151,7 +151,7 @@ class EmConfig(BaseModel):
     message_history_header: str = ""  # todo: rename
     message_history_separator: str = ""
     message_history_footer: str = ""
-    scene_break: str = "***\n"  # todo: rename to scene_break_string
+    scene_break: str = "***\n"  # todo: remove
     recency_window: Annotated[int, Gt(0)] = 20
     ensembles: list[EnsembleConfig] = []
     prevent_scene_break: bool = (
@@ -159,13 +159,16 @@ class EmConfig(BaseModel):
     )
     prevent_gpt_topic_change: bool = False
     prompt_max_tokens: int | float = infinity
+    name_prefix: bool = True
+    name_prefix_optional: bool = True
 
     temperature: Annotated[float, Ge(0)] = (
         0.9  # todo: vary on model; 0.9 for davinci-002, 1.0 for gpt-4-base
     )
     top_p: Annotated[float, Interval(gt=0, le=1)] = 0.98
-    frequency_penalty: float = 0.75
-    presence_penalty: float = 2.0
+    # 0 until a way to adjust it automatically for long context windows is impl'd
+    frequency_penalty: float = 0
+    presence_penalty: float = 0
     stop_sequences: list[str] = []
     logit_bias: dict[int | str, float] = {}
     best_of: int = 1
@@ -185,10 +188,14 @@ class EmConfig(BaseModel):
 
 class ReplyOnSimConfig(BaseModel):
     em_overrides: dict = {
-        "continuation_model": "phi3:mini",
-        "username_prefix": False,
-        "ensembles": [],
+        "continuation_model": "gpt-4-base",  # "google/gemma-2b",
+        "name_prefix": False,
+        "name_prefix_optional": False,
+        "ensembles": [None],
+        "continuation_max_tokens": 7,
+        "prompt_max_tokens": 8000,
     }
+    match: Literal["predict_username"] = "predict_username"
 
 
 class SharedInterfaceConfig(BaseModel):
@@ -198,7 +205,7 @@ class SharedInterfaceConfig(BaseModel):
     reply_on_random: int | bool = 53
     reply_on_name: bool = True
     nicknames: list = []  # for reply_on
-    reply_on_sim: ReplyOnSimConfig | Literal[False] = ReplyOnSimConfig()
+    reply_on_sim: ReplyOnSimConfig | Literal[False] = False
     ignore_dotted_messages: bool = True
     end_to_end_test: bool = False
 
@@ -317,7 +324,7 @@ DEFAULTS = get_defaults(Config)
 LEGACY_DEFAULTS = {**copy.deepcopy(DEFAULTS), **get_defaults(LegacyConfig)}
 
 
-def overlay(base: dict | list, updates: dict | list):
+def overlay(base: dict | list, updates: dict | list, none_clears_array: bool = True):
     result = copy.copy(base)
     if isinstance(updates, list):
         keyvalues = enumerate(updates)
@@ -338,7 +345,10 @@ def overlay(base: dict | list, updates: dict | list):
                         assert 0, "impossible"
                 else:
                     result[key] = {}
-            result[key] = overlay(result[key], value)
+            if key == "em_overrides":
+                result[key] = overlay(result[key], value, none_clears_array=False)
+            else:
+                result[key] = overlay(result[key], value, none_clears_array)
         elif isinstance(value, list):
             # recurse inside lists
             if key not in keys:
@@ -349,11 +359,15 @@ def overlay(base: dict | list, updates: dict | list):
                         assert 0, "impossible"
                 else:
                     result[key] = []
-            result[key] = overlay(result[key], value)
+            result[key] = overlay(result[key], value, none_clears_array)
         else:
             if isinstance(result, list):
                 # assume lists of primitives act like sets
-                result.append(value)
+                if value is None and none_clears_array:
+                    # use null to mean unset
+                    result.clear()
+                else:
+                    result.append(value)
             else:
                 result[key] = value
     return result

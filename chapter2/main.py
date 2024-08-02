@@ -10,6 +10,7 @@ import yaml
 import ontology
 from generate_response import generate_response
 from interfaces import INTERFACE_NAME_TO_INTERFACE, INTERFACE_ADDON_NAME_TO_ADDON
+from interfaces.inference import deserves_reply
 from ontology import Config
 from declarations import Message, UserID, Author
 from util.asyncutil import eager_iterable_to_async_iterable
@@ -17,15 +18,28 @@ from util.asyncutil import eager_iterable_to_async_iterable
 
 async def rehearse_em(config: Config):
     """Run an em in mock mode to populate caches and test the em"""
-    mock_messages = [
-        Message(Author("alice"), "hello"),
-        Message(Author("bob"), "hi alice!"),
-        Message(Author(config.em.name), "hi bob!"),
-        Message(Author("alice"), f"hi {config.em.name}!"),
-    ][::-1]
+    mock_message_hist = eager_iterable_to_async_iterable(
+        [
+            Message(Author("alice"), "hello"),
+            Message(Author("bob"), "hi alice!"),
+            Message(Author(config.em.name), "hi bob!"),
+            Message(Author("alice"), f"hi {config.em.name}!"),
+        ][::-1]
+    )
+    user_id = UserID("em::" + config.em.name, "rehearsal")
+    for interface in config.interfaces:
+        if interface.reply_on_sim:
+            d = await deserves_reply(
+                generate_response,
+                config,
+                user_id,
+                mock_message_hist,
+                interface.reply_on_sim,
+            )
+            assert isinstance(d, bool)
     async for response in generate_response(
-        UserID("em::" + config.em.name, "rehearsal"),
-        eager_iterable_to_async_iterable(mock_messages),
+        user_id,
+        mock_message_hist,
         config.em,
     ):
         pass

@@ -18,7 +18,9 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
     count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
     author = Author(em.name, my_user_id)
     recent_messages = await async_take(em.recency_window, history)
-    completion_prefix = em.message_history_format.name_prefix(em.name)
+    completion_prefix = (
+        em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
+    )
     ctx_vars = {"now": datetime.now()}
     # todo: message history normal ensemble configs including max_tokens
     message_history_ensemble = (
@@ -172,7 +174,9 @@ async def get_replies(
             and message.content.strip() == em.scene_break.strip()
         ):
             break
-        elif message.author is None or message.author.name == my_name:
+        elif em.name_prefix_optional and (
+            message.author is None or message.author.name == my_name
+        ):
             yield dataclasses.replace(message, author=author)
         else:
             break
