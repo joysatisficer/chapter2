@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "chapter2"}, { include = "*", from="chapter2"}]
 
 [tool.poetry.dependencies]
-python =  ">=3.11,<4.0"
+python = "^3.11"
 "discord.py" = "*"
 openai = "*"
 tiktoken = ">=0.5.2"
@@ -51,7 +51,6 @@ pre-commit = "*"
 streamlit = "*"
 pytest = "*"
 snakeviz = "^2.2.0"
-pyre-check = "^0.9.18"
 
 [build-system]
 requires = ["poetry-core"]
