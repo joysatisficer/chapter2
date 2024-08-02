@@ -56,12 +56,12 @@ def load_em(name) -> Config:
         with open(parent_dir / "ems/vendors.yaml") as file:
             local_kv = yaml.safe_load(file)
     except FileNotFoundError:
-        pass
+        local_kv = {}
     try:
         with open(os.path.expanduser("~/.config/chapter2/vendors.yaml")) as file:
             global_kv = yaml.safe_load(file)
     except FileNotFoundError:
-        pass
+        global_kv = {}
     kv = {**global_kv, **local_kv, **em_kv, "em_folder": em_folder}
     for subpath in em_folder.iterdir():
         valid_key = (
