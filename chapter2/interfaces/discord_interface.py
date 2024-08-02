@@ -13,7 +13,7 @@ import yaml
 from pydantic import ValidationError
 
 import ontology
-from interfaces.inference import deserves_reply
+from interfaces.deserves_reply import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON, ActionHistory
