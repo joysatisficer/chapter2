@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from declarations import Message, Author
-from ontology import ExaSearchFacultyConfig, Config, load_config_from_kv
+from ontology import ExaSearchFacultyConfig, load_config_from_kv, EmConfig
 from faculties.exa_search_faculty import exa_search_faculty
 
 
@@ -26,20 +26,20 @@ async def test_exa_search_faculty():
             kv = {**kv, **yaml.safe_load(file)}
     except FileNotFoundError:
         pass
-    config = load_config_from_kv(kv)
+    em = load_config_from_kv(kv).em
     async for message in exa_search_faculty(
-        mock_message_history_iterator(config), ExaSearchFacultyConfig(), config
+        mock_message_history_iterator(em), ExaSearchFacultyConfig(), em
     ):
         print(message)
 
 
-async def mock_message_history_iterator(config: Config):
+async def mock_message_history_iterator(em: EmConfig):
     # todo: iterable to lazy iterable function
     messages = [
         Message(Author("alice"), "hello"),
         Message(Author("bob"), "hi alice!"),
-        Message(Author(config.name), "hi bob!"),
-        Message(Author("alice"), f"hi {config.name}!"),
+        Message(Author(em.name), "hi bob!"),
+        Message(Author("alice"), f"hi {em.name}!"),
     ][::-1]
     for message in messages:
         yield message

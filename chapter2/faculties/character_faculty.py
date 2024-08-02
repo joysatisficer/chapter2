@@ -4,7 +4,7 @@ from asyncstdlib.functools import cache as async_cache
 from aioitertools.more_itertools import take as async_take
 
 from declarations import Message, Author, ActionHistory, Faculty
-from ontology import Config, CharacterFacultyConfig
+from ontology import CharacterFacultyConfig, EmConfig
 from chr_loader import load_chr
 from retriever import KNNIndex, SVMIndex
 from message_formats import ColonMessageFormat
@@ -14,14 +14,14 @@ from util.asyncutil import eager_iterable_to_async_iterable
 
 
 async def character_faculty(
-    history: ActionHistory, faculty_config: CharacterFacultyConfig, config: Config
+    history: ActionHistory, faculty_config: CharacterFacultyConfig, em: EmConfig
 ):
     if faculty_config.name is None:
-        character_name = config.name
+        character_name = em.name
     else:
         character_name = faculty_config.name
     strings = load_chr(
-        str(config.em_folder / f"{character_name}.chr"), faculty_config.chunk_size
+        str(em.em_folder / f"{character_name}.chr"), faculty_config.chunk_size
     )
     representations = []
     indexed_messages = []
@@ -41,7 +41,7 @@ async def character_faculty(
     # todo: options for non-KNN indexes
     index = await create_index(
         {"knn": KNNIndex, "svm": SVMIndex}[faculty_config.retriever.ranking_metric],
-        config.representation_model,
+        em.representation_model,
         tuple(dedup_representations),
         tuple(dedup_indexed_messages),
     )

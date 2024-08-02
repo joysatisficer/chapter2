@@ -81,7 +81,7 @@ class MikotoInterface(mikoto.MikotoClient):
         self, config: Config, message: mikoto.Message
     ) -> Message:
         if message.author == await self.users.me():
-            author_name = config.name
+            author_name = config.em.name
         else:
             author_name = message.author.name
         if message.authorId is None:

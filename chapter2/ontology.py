@@ -212,8 +212,8 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     max_queued_replies: int = 2
     thread_mute: bool = False
     send_typing: bool = True
-    end_to_end_test_token: str | None = None
-    end_to_end_test_channel_id: int | None = None
+    end_to_end_test_discord_token: str | None = None
+    end_to_end_test_discord_channel_id: int | None = None
 
 
 class MikotoInterfaceConfig(SharedInterfaceConfig):

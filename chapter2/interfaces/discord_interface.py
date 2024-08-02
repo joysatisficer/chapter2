@@ -184,12 +184,12 @@ class DiscordInterface(discord.Client):
         self, config, message: discord.Message
     ) -> Message:
         if message.author.id == self.user.id:
-            author_name = config.name
+            author_name = config.em.name
         else:
             author_name = message.author.name
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
-            await parse_discord_content(message, self.user.id, config.name),
+            await parse_discord_content(message, self.user.id, config.em.name),
             message.created_at.timestamp(),
         )
 
@@ -207,7 +207,7 @@ class DiscordInterface(discord.Client):
             )
             and not (
                 iface_config.mute is True
-                or iface_config.discord_mute == self.em_name
+                or iface_config.mute == self.em_name
                 or (
                     isinstance(iface_config.mute, list)
                     and self.em_name in iface_config.mute
@@ -241,7 +241,11 @@ class DiscordInterface(discord.Client):
                             message.content,
                             re.IGNORECASE,
                         )
-                        for name in (config.name, self.em_name, *iface_config.nicknames)
+                        for name in (
+                            config.em.name,
+                            self.em_name,
+                            *iface_config.nicknames,
+                        )
                     )
                 )
             )
@@ -257,10 +261,10 @@ class DiscordInterface(discord.Client):
         else:
             kv = {}
         config = ontology.load_config_from_kv(kv, self.base_config.model_dump())
-        iface_config = next(
-            ontology.transpose_keys(
-                ontology.overlay(kv, {"interfaces": self.iface_config.model_dump()})
-            )["interfaces"].items()
+        iface_config = DiscordInterfaceConfig(
+            **ontology.transpose_keys(
+                ontology.overlay(kv, {"interfaces": [self.iface_config.model_dump()]})
+            )["interfaces"][0]
         )
         return config, iface_config
 
@@ -287,7 +291,7 @@ class DiscordInterface(discord.Client):
         except Exception as exc:
             import traceback
 
-            if config.end_to_end_test:
+            if iface_config.end_to_end_test:
                 self.end_to_end_test_fail = True
             await message.add_reaction("⚠")
             if isinstance(exc, ConnectionError):

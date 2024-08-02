@@ -14,23 +14,23 @@ from intermodel import callgpt
 from declarations import ActionHistory, Message, Author
 from message_formats import MessageFormat, IRCMessageFormat
 from ontology import (
-    Config,
     ExaSearchFacultyConfig,
     ExaSearchFullTextConfig,
     ExaSearchHighlightsConfig,
+    EmConfig,
 )
 
 SharedExa = cache(Exa)
 
 
 async def exa_search_faculty(
-    history: ActionHistory, faculty_config: ExaSearchFacultyConfig, config: Config
+    history: ActionHistory, faculty_config: ExaSearchFacultyConfig, em: EmConfig
 ):
     message_history_string = format_message_section(
         faculty_config.input_format,
         await async_take(faculty_config.recent_message_attention, history),
-    ) + faculty_config.input_format.name_prefix(config.name)
-    exa_client = SharedExa(config.exa_search_api_key)
+    ) + faculty_config.input_format.name_prefix(em.name)
+    exa_client = SharedExa(em.exa_search_api_key)
     kwparams = {
         "use_autoprompt": faculty_config.use_autoprompt,
         "include_domains": faculty_config.include_domains,

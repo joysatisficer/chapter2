@@ -14,41 +14,39 @@ from mufflers import repeats_prompt_sentence, has_http
 from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
 
 
-async def generate_response(
-    my_user_id: UserID, history: ActionHistory, config: EmConfig
-):
-    count_continuation_model_tokens = partial(count_tokens, config.continuation_model)
-    author = Author(config.name, my_user_id)
-    recent_messages = await async_take(config.recency_window, history)
-    completion_prefix = config.message_history_format.name_prefix(config.name)
+async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmConfig):
+    count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
+    author = Author(em.name, my_user_id)
+    recent_messages = await async_take(em.recency_window, history)
+    completion_prefix = em.message_history_format.name_prefix(em.name)
     ctx_vars = {"now": datetime.now()}
     # todo: message history normal ensemble configs including max_tokens
     message_history_ensemble = (
-        (config.message_history_header.format(**ctx_vars) + "\n")
+        (em.message_history_header.format(**ctx_vars) + "\n")
         + await format_ensemble(
             recent_messages,
             # todo: move to ontology
             [
                 LayerOfEnsembleFormat(
-                    format=config.message_history_format,
-                    max_items=config.recency_window,
+                    format=em.message_history_format,
+                    max_items=em.recency_window,
                     operator="prepend",
-                    separator=config.message_history_separator,
-                    footer=config.message_history_footer,
+                    separator=em.message_history_separator,
+                    footer=em.message_history_footer,
                 )
             ],
-            config.continuation_model,
+            em.continuation_model,
         )
         + completion_prefix
     )
     max_prompt_length = min(
-        max_token_length(config.continuation_model), config.prompt_max_tokens
+        max_token_length(em.continuation_model), em.prompt_max_tokens
     )
     ensembles = []
     # TODO: Filter for empty ensembles
-    for faculty_config in config.ensembles:
+    for faculty_config in em.ensembles:
         faculty_results = FACULTY_NAME_TO_FUNCTION[faculty_config.faculty](
-            history, faculty_config, config
+            history, faculty_config, em
         )
         local_max_tokens = min(
             (
@@ -59,7 +57,7 @@ async def generate_response(
                         for ensemble in ensembles + [message_history_ensemble]
                     ]
                 )
-                - config.continuation_max_tokens
+                - em.continuation_max_tokens
             ),
             faculty_config.ensemble_format[0].max_tokens,
         )
@@ -69,25 +67,25 @@ async def generate_response(
             )
         ] + faculty_config.ensemble_format[1:]
         ensemble = await format_ensemble(
-            faculty_results, ensemble_format, config.continuation_model
+            faculty_results, ensemble_format, em.continuation_model
         )
         ensembles.append(ensemble)
     prompt = "".join(ensembles + [message_history_ensemble])
     assert (
-        count_continuation_model_tokens(prompt) + config.continuation_max_tokens
+        count_continuation_model_tokens(prompt) + em.continuation_max_tokens
         < max_prompt_length
     )
     stop_sequences = unique(
-        config.stop_sequences
+        em.stop_sequences
         + [
             # if the completion prefix is an empty string,
             # it's possible for a stop sequence to be generated
             # immediately. if that's the case, we don't want to
             # prepend a newline to author-based stop sequences
             ("" if completion_prefix == "" else "\n")
-            + config.message_history_format.name_prefix(message.author.name)
+            + em.message_history_format.name_prefix(message.author.name)
             for message in recent_messages
-            if message.author.name != config.name
+            if message.author.name != em.name
         ]
     )
     has_valid_reply = False
@@ -96,7 +94,7 @@ async def generate_response(
         tries += 1
         has_valid_reply = True
         async for reply in get_replies(
-            config, prompt, completion_prefix, config.name, author, stop_sequences
+            em, prompt, completion_prefix, em.name, author, stop_sequences
         ):
             muffler_results = {
                 "repeats_prompt_sentence": repeats_prompt_sentence(
