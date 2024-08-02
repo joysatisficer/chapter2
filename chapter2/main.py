@@ -10,7 +10,7 @@ import yaml
 import ontology
 from generate_response import generate_response
 from interfaces import INTERFACE_NAME_TO_INTERFACE, INTERFACE_ADDON_NAME_TO_ADDON
-from interfaces.inference import deserves_reply
+from interfaces.deserves_reply import deserves_reply
 from ontology import Config
 from declarations import Message, UserID, Author
 from util.asyncutil import eager_iterable_to_async_iterable
