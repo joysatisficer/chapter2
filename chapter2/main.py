@@ -48,21 +48,15 @@ async def rehearse_em(config: Config):
 def load_em(name) -> Config:
     parent_dir = Path(__file__).resolve().parents[1]
     em_folder = parent_dir / "ems" / name
-    with open(em_folder / "config.yaml") as file:
-        em_kv = yaml.safe_load(file)
-        if em_kv is None:
-            em_kv = {}
-    try:
-        with open(parent_dir / "ems/vendors.yaml") as file:
-            local_kv = yaml.safe_load(file)
-    except FileNotFoundError:
-        local_kv = {}
-    try:
-        with open(os.path.expanduser("~/.config/chapter2/vendors.yaml")) as file:
-            global_kv = yaml.safe_load(file)
-    except FileNotFoundError:
-        global_kv = {}
-    kv = {**global_kv, **local_kv, **em_kv, "em_folder": em_folder}
+    kv = {
+        # vendors.yaml is deprecated
+        **load_optional(os.path.expanduser("~/.config/chapter2/vendors.yaml")),
+        **load_optional(parent_dir / "ems/vendors.yaml"),
+        **load_optional(os.path.expanduser("~/.config/chapter2/config.yaml")),
+        **load_optional(parent_dir / "ems/config.yaml"),
+        **load_optional(em_folder / "config.yaml"),
+        "em_folder": em_folder,
+    }
     for subpath in em_folder.iterdir():
         valid_key = (
             lambda key: key in Config.model_fields.keys()
@@ -153,6 +147,18 @@ async def run_em(name, end_to_end_test=False):
         ):
             exit_code = 1
     return exit_code
+
+
+def load_optional(filename):
+    try:
+        with open(filename) as file:
+            kv = yaml.safe_load(file)
+            if kv is None:
+                return {}
+            else:
+                return
+    except FileNotFoundError:
+        return {}
 
 
 def setup_sentry(config: Config):
