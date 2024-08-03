@@ -156,7 +156,7 @@ def load_optional(filename):
             if kv is None:
                 return {}
             else:
-                return
+                return kv
     except FileNotFoundError:
         return {}
 
