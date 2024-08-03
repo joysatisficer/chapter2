@@ -191,7 +191,7 @@ class ReplyOnSimConfig(BaseModel):
         "continuation_model": "gpt-4-base",  # "google/gemma-2b",
         "name_prefix": False,
         "name_prefix_optional": False,
-        "ensembles": [None],
+        "ensembles": [],
         "continuation_max_tokens": 7,
         "prompt_max_tokens": 8000,
     }
