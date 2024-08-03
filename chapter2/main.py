@@ -28,7 +28,7 @@ async def rehearse_em(config: Config):
     )
     user_id = UserID("em::" + config.em.name, "rehearsal")
     for interface in config.interfaces:
-        if interface.reply_on_sim:
+        if getattr(interface, "reply_on_sim", False):
             d = await deserves_reply(
                 generate_response,
                 config,
