@@ -9,6 +9,7 @@ from typing import Self, Tuple
 import discord
 import discord.http
 import discord.threads
+import openai.error
 import yaml
 from pydantic import ValidationError
 
@@ -315,6 +316,8 @@ class DiscordInterface(discord.Client):
             await message.add_reaction("⚠")
             if isinstance(exc, ConnectionError):
                 await message.add_reaction("📵")
+            if isinstance(exc, openai.error.APIConnectionError):
+                await message.add_reaction("🌩️")
             print(
                 "exception in channel",
                 format_cli_link(
