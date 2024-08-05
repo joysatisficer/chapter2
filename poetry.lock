@@ -1101,7 +1101,7 @@ idna = ">=2.0.0"
 
 [[package]]
 name = "embedapi"
-version = "0.0.12"
+version = "0.0.13"
 description = ""
 optional = false
 python-versions = "^3.8"
