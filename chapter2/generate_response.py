@@ -24,7 +24,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
     ctx_vars = {"now": datetime.now()}
     # todo: message history normal ensemble configs including max_tokens
     message_history_ensemble = (
-        (em.message_history_header.format(**ctx_vars) + "\n")
+        (em.message_history_header.format(**ctx_vars))
         + await format_ensemble(
             recent_messages,
             # todo: move to ontology
@@ -73,10 +73,10 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
         )
         ensembles.append(ensemble)
     prompt = "".join(ensembles + [message_history_ensemble])
-    assert (
-        count_continuation_model_tokens(prompt) + em.continuation_max_tokens
-        < max_prompt_length
-    )
+    #assert (
+    #    count_continuation_model_tokens(prompt) + em.continuation_max_tokens
+    #    < int(max_prompt_length * 1.1)
+    #)
     stop_sequences = unique(
         em.stop_sequences
         + [

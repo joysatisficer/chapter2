@@ -80,7 +80,7 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                         else line
                     )
                     for line in message.content.splitlines()
-                    if not line.isspace()
+                    if not line.strip() == ''
                 ],
                 "",  # initial value
             )
@@ -96,13 +96,13 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     def parse(continuation):
         messages = []
         for line in continuation.splitlines():
-            match = re.match(r"^(?:(?:([^\n]+):)? )?([^:].*)$", line)
+            match = re.match(r"^(?:(?:([^\n]+):)? ?)?([^:].*)$", line)
             if match is not None:
                 groups = match.groups()
                 name, raw_content = groups
                 if name is None or name.strip() == "":
                     author = None
-                elif "." in name and " " in name:
+                elif re.match(r"^\s*\d*\.", line) or re.match(r"^-|•", line):
                     author = None
                     raw_content = name + ": " + raw_content
                 else:
@@ -132,6 +132,60 @@ class WebDocumentMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
             + message.content
             + "\n"
         )
+
+
+# wait... this needs to layer with other message formats
+# InstructMessageFormat
+class LynnMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
+    name: Literal["lynn"] = "lynn"
+    # subformat # TODO: Validate, unimplemented, always colon atm
+    assistant_name: str = "lynn"
+    role_prefixes: dict[str, str] = {
+        "assistant": "<|start_header_id|>assistant<|end_header_id|>\n\n",
+        "user": "<|start_header_id|>user<|end_header_id|>\n\n",
+    }
+    role_suffixes: dict[str, str] = {
+        "assistant": "<|eot_id|>",
+        "user": "<|eot_id|>",
+    }
+    name_prefix_role: str = "assistant"
+
+    @staticmethod
+    def render(message: Message) -> str:
+        if message.author.name == self.assistant_name:
+            role = "assistant"
+        else:
+            role = "user" 
+        return self.role_prefixes[role] + message.content + \
+                self.role_suffixes[role]
+
+    @staticmethod
+    def name_prefix(name: str) -> str:
+        return self.role_prefixes[self.name_prefix_role] + ColonMessageFormat.name_prefix(name)
+
+    @staticmethod
+    def parse(continuation: str) -> list[Message]:
+        print(continuation)
+        messages = []
+        parts = continuation.split('<|start_header_id|>')
+
+        for part in parts:
+            try:
+                header, content = part.split('<|end_header_id|>\n\n', 1)
+                role = header.strip()
+                if '<|eot_id|>' in content:
+                    content, _ = content.rsplit('<|eot_id|>', 1)
+                content = content.strip()
+                
+                author = Author(name="lynn" if role == "assistant" else "user")
+                message = Message(author=author, content=content)
+                messages.append(message)
+            except ValueError:
+                # If splitting fails, it might be an incomplete message at the end
+                # We can choose to ignore it or handle it differently
+                pass
+        
+        return messages
 
 
 # contrib
@@ -275,4 +329,5 @@ MessageFormat = (
     | WebDocumentMessageFormat
     | PythonREPLMessageFormat
     | InfrastructMessageFormat
+    | LynnMessageFormat
 )

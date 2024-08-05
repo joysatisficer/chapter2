@@ -122,10 +122,17 @@ class DiscordInterface(discord.Client):
                             message.channel, discord.threads.Thread
                         ):
                             thread = message.channel
-                            # starter message id is the same as the thread id
-                            starter_message = (
-                                await message.channel.parent.fetch_message(thread.id)
-                            )
+                            # starter message id is the same as the thread id if the
+                            # thread is attached to a message
+                            if message.channel.starter_message is not None:
+                                starter_message_id = thread.id
+                            elif message.channel.name.startswith("past:"):
+                                starter_message_id = message.channel.name.split('past:')[1]
+                            else:
+                                return
+                            # TODO(perf): try to get from cache first
+                            starter_message = await \
+                            message.channel.parent.fetch_message(starter_message_id)
                             if starter_message is not None:
                                 async for (
                                     this_message
@@ -335,8 +342,7 @@ class DiscordInterface(discord.Client):
                 await self.close()
 
     async def on_ready(self):
-        if len(self.guilds) == 0:
-            print(f"Invite the bot: {self.get_invite_link()}")
+        print(f"Invite the bot: {self.get_invite_link()}")
         print("Discord interface ready")
         if (await self.get_config(None)).end_to_end_test:
             run_task(self.end_to_end_test())
