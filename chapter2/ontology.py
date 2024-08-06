@@ -44,7 +44,7 @@ class FacultyConfig(BaseModel):
     faculty: str
     input_format: MessageFormat = IRCMessageFormat()
     ensemble_format: EnsembleFormat
-    recent_message_attention: int
+    recent_message_attention: int | float | float
 
 
 class FixedSizeChunker(BaseModel):
@@ -70,8 +70,19 @@ class CharacterFacultyConfig(FacultyConfig):
     name: str | None = None  # defaults to config.em_name
     chunk_size: int = 3
     retriever: UltratrieverConfig = UltratrieverConfig()
-    recent_message_attention: int = 7
+    recent_message_attention: int | float = 7
     # set defaults
+    ensemble_format: EnsembleFormat = [
+        LayerOfEnsembleFormat(format=IRCMessageFormat(), operator="prepend"),
+        LayerOfEnsembleFormat(
+            format=IRCMessageFormat(), max_items=infinity, separator="", footer=""
+        ),
+    ]
+
+class SimFacultyConfig(FacultyConfig):
+    faculty: Literal["sim"] = "sim"
+    em: EmConfig
+    recent_message_attention: int | float = infinity
     ensemble_format: EnsembleFormat = [
         LayerOfEnsembleFormat(format=IRCMessageFormat(), operator="prepend"),
         LayerOfEnsembleFormat(
@@ -107,7 +118,7 @@ class ExaSearchFacultyConfig(FacultyConfig):
     # performance hints
     impl_hint_initial_num_results: int = 10
     # set defaults
-    recent_message_attention: int = 5
+    recent_message_attention: int | float = 5
     ensemble_format: EnsembleFormat = [
         LayerOfEnsembleFormat(
             format=WebDocumentMessageFormat(),
@@ -119,7 +130,7 @@ class ExaSearchFacultyConfig(FacultyConfig):
 
 
 EnsembleConfig = Annotated[
-    CharacterFacultyConfig | ExaSearchFacultyConfig,
+    CharacterFacultyConfig | ExaSearchFacultyConfig | SimFacultyConfig,
     Field(..., discriminator="faculty"),
 ]
 
