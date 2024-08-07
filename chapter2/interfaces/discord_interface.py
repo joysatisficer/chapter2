@@ -127,12 +127,17 @@ class DiscordInterface(discord.Client):
                             if message.channel.starter_message is not None:
                                 starter_message_id = thread.id
                             elif message.channel.name.startswith("past:"):
-                                starter_message_id = message.channel.name.split('past:')[1]
+                                starter_message_id = message.channel.name.split(
+                                    "past:"
+                                )[1]
                             else:
                                 return
                             # TODO(perf): try to get from cache first
-                            starter_message = await \
-                            message.channel.parent.fetch_message(starter_message_id)
+                            starter_message = (
+                                await message.channel.parent.fetch_message(
+                                    starter_message_id
+                                )
+                            )
                             if starter_message is not None:
                                 async for (
                                     this_message
@@ -261,6 +266,7 @@ class DiscordInterface(discord.Client):
                         for name in (
                             config.em.name,
                             self.em_name,
+                            self.user.name,
                             *iface_config.nicknames,
                         )
                     )
