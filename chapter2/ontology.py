@@ -79,6 +79,7 @@ class CharacterFacultyConfig(FacultyConfig):
         ),
     ]
 
+
 class SimFacultyConfig(FacultyConfig):
     faculty: Literal["sim"] = "sim"
     em: EmConfig
@@ -155,7 +156,7 @@ class DiscordGenerateAvatarAddonConfig(BaseModel):
 
 class EmConfig(BaseModel):
     name: str
-    continuation_model: str = "meta-llama/Meta-Llama-3-70B"
+    continuation_model: str = "meta-llama/Meta-Llama-3.1-405B-FP8"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"
     message_history_format: MessageFormat = IRCMessageFormat()
@@ -163,7 +164,7 @@ class EmConfig(BaseModel):
     message_history_separator: str = ""
     message_history_footer: str = ""
     scene_break: str = "***\n"  # todo: remove
-    recency_window: Annotated[int, Gt(0)] = 20
+    recency_window: Annotated[int, Gt(0)] = 35
     ensembles: list[EnsembleConfig] = []
     prevent_scene_break: bool = (
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
