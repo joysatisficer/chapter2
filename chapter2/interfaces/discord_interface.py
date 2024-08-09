@@ -105,9 +105,7 @@ class DiscordInterface(discord.Client):
 
                     async def message_history():
                         nonlocal message
-                        async for this_message in message.channel.history(
-                            limit=None, before=command_message
-                        ):
+                        async for this_message in message.channel.history(limit=None):
                             if is_continue_command(this_message.content):
                                 pass
                             elif iface_config.ignore_dotted_messages and re.match(
