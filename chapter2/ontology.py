@@ -23,11 +23,11 @@ from message_formats import (
 
 class LayerOfEnsembleFormat(BaseModel):
     format: MessageFormat
-    separator: str = "***\n"
+    separator: str = "###\n"
     max_tokens: int | float = infinity  # todo: parsing inf from yaml
     max_items: int | float = infinity
     header: str = ""
-    footer: str = "***"
+    footer: str = "###"
     operator: Literal["prepend"] | Literal["append"] = "append"
 
     @field_validator("max_tokens")
@@ -124,7 +124,7 @@ class ExaSearchFacultyConfig(FacultyConfig):
         LayerOfEnsembleFormat(
             format=WebDocumentMessageFormat(),
             max_tokens=4000,
-            footer="***\n",
+            footer="###\n",
             recent_message_attention=5,
         )
     ]
@@ -163,21 +163,19 @@ class EmConfig(BaseModel):
     message_history_header: str = ""  # todo: rename
     message_history_separator: str = ""
     message_history_footer: str = ""
-    scene_break: str = "***\n"  # todo: remove
+    scene_break: str = "###\n"  # todo: remove
     recency_window: Annotated[int, Gt(0)] = 35
     ensembles: list[EnsembleConfig] = []
     prevent_scene_break: bool = (
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )
-    prevent_gpt_topic_change: bool = False
-    prompt_max_tokens: int | float = infinity
+    prevent_gpt_topic_change: bool = True
+    total_max_tokens: int | float = 31_000
     name_prefix: bool = True
     name_prefix_optional: bool = True
 
-    temperature: Annotated[float, Ge(0)] = (
-        0.9  # todo: vary on model; 0.9 for davinci-002, 1.0 for gpt-4-base
-    )
-    top_p: Annotated[float, Interval(gt=0, le=1)] = 0.98
+    temperature: Annotated[float, Ge(0)] = 0.95  # todo: vary on model
+    top_p: Annotated[float, Interval(gt=0, le=1)] = 0.99
     # 0 until a way to adjust it automatically for long context windows is impl'd
     frequency_penalty: float = 0
     presence_penalty: float = 0
@@ -200,7 +198,7 @@ class EmConfig(BaseModel):
 
 class ReplyOnSimConfig(BaseModel):
     em_overrides: dict = {
-        "continuation_model": "gpt-4-base",  # "google/gemma-2b",
+        "continuation_model": "google/gemma-2b",
         "name_prefix": False,
         "name_prefix_optional": False,
         "ensembles": [],
@@ -329,6 +327,7 @@ ALIASES = {
     "chat.context": "message_history_header",
     "lookup_msg_cache": "character_faculty_recent_message_attention",
     "metaphor_search_api_key": "exa_search_api_key",
+    "prompt_max_tokens": "total_max_tokens",
 }
 
 # todo: namespaced default sets to allow for opt-in defaults upgrades

@@ -42,7 +42,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
         + completion_prefix
     )
     max_prompt_length = min(
-        max_token_length(em.continuation_model), em.prompt_max_tokens
+        max_token_length(em.continuation_model), em.total_max_tokens
     )
     ensembles = []
     # TODO: Filter for empty ensembles
@@ -73,10 +73,10 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
         )
         ensembles.append(ensemble)
     prompt = "".join(ensembles + [message_history_ensemble])
-    #assert (
+    # assert (
     #    count_continuation_model_tokens(prompt) + em.continuation_max_tokens
     #    < int(max_prompt_length * 1.1)
-    #)
+    # )
     stop_sequences = unique(
         em.stop_sequences
         + [
