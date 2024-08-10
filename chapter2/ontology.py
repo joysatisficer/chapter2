@@ -198,7 +198,7 @@ class EmConfig(BaseModel):
 
 class ReplyOnSimConfig(BaseModel):
     em_overrides: dict = {
-        "continuation_model": "google/gemma-2b",
+        "continuation_model": "google/gemma-2-2b",
         "name_prefix": False,
         "name_prefix_optional": False,
         "ensembles": [],
