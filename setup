@@ -6,8 +6,7 @@ git clone https://github.com/ampdot-io/embedapi ../modules/embedapi
 git clone https://github.com/ampdot-io/intermodel ../intermodel
 poetry env use 3.11
 poetry install
-
 poetry shell
 python3 -c "import nltk; nltk.download('punkt');"
 huggingface-cli login
-mkidr -p ~/.config/chapter2/
+mkdir -p ~/.config/chapter2/

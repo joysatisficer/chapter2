@@ -1,8 +1,11 @@
+[project]
+name = "chapter2"
+
 [tool.poetry]
 name = "chapter2"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["ampdot <ampdot@mesh.host>"]
 readme = "README.md"
 packages = [{include = "chapter2"}, { include = "*", from="chapter2"}]
 
