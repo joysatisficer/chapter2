@@ -10,7 +10,7 @@ packages = [{include = "chapter2"}, { include = "*", from="chapter2"}]
 python = "^3.11"
 "discord.py" = "*"
 openai = "*"
-tiktoken = ">=0.5.2"
+tiktoken = "^0.7.0"
 more-itertools = "*"
 aioitertools = "*"
 pyvespa = "*"
