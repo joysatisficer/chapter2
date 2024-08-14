@@ -181,7 +181,7 @@ class EmConfig(BaseModel):
     presence_penalty: float = 0
     stop_sequences: list[str] = []
     logit_bias: dict[int | str, float] = {}
-    best_of: int = 1
+    best_of: int | None = None
     continuation_model_local_tokenization: bool = False
     continuation_options: dict = {}
 
