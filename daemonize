@@ -20,5 +20,5 @@ Slice=ems-$ENV_PREFIX.slice
 WantedBy=default.target" > ~/.config/systemd/user/"$SERVICE_NAME".service
 systemctl --user daemon-reload
 systemctl --user enable --now "$SERVICE_NAME".service
-sleep 1
+sleep 3
 systemctl --user status "$SERVICE_NAME".service
