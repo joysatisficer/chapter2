@@ -67,12 +67,12 @@ class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 
 class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["colon"] = "colon"
+    suffix: str = '\n'
 
-    @staticmethod
-    def render(message):
+    def render(self, message):
         return (
             reduce(
-                lambda acc, line: acc + "\n" + line if acc != "" else line,
+                lambda acc, line: acc + self.suffix + line if acc != "" else line,
                 [
                     (
                         f"{message.author.name}: {line}"
@@ -86,7 +86,7 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
             )
             if message.author is not None
             else message.content
-        ) + "\n"
+        ) + self.suffix
 
     @staticmethod
     def name_prefix(name):
