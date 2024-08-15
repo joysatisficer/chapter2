@@ -159,10 +159,13 @@ class EmConfig(BaseModel):
     continuation_model: str = "meta-llama/Meta-Llama-3.1-405B-FP8"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"
+    # todo: make message_history coequal with other ensembles
+    message_history_max_tokens: int | float = infinity
     message_history_format: MessageFormat = IRCMessageFormat()
     message_history_header: str = ""  # todo: rename
     message_history_separator: str = ""
     message_history_footer: str = ""
+    message_history_operator: Literal["prepend"] | Literal["append"] = "prepend"
     scene_break: str = "###\n"  # todo: remove
     recency_window: Annotated[int, Gt(0)] = 35
     ensembles: list[EnsembleConfig] = []

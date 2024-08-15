@@ -17,22 +17,26 @@ from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
 async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmConfig):
     count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
     author = Author(em.name, my_user_id)
-    recent_messages = await async_take(em.recency_window, history)
     completion_prefix = (
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
+    recent_messages = await async_take(em.recency_window, history)
     ctx_vars = {"now": datetime.now()}
-    # todo: message history normal ensemble configs including max_tokens
+    max_prompt_length = (
+        min(max_token_length(em.continuation_model), em.total_max_tokens)
+        - em.continuation_max_tokens
+    )
     message_history_ensemble = (
         (em.message_history_header.format(**ctx_vars))
         + await format_ensemble(
-            recent_messages,
+            history,
             # todo: move to ontology
             [
                 LayerOfEnsembleFormat(
                     format=em.message_history_format,
                     max_items=em.recency_window,
-                    operator="prepend",
+                    max_tokens=min(max_prompt_length, em.message_history_max_tokens),
+                    operator=em.message_history_operator,
                     separator=em.message_history_separator,
                     footer=em.message_history_footer,
                 )
@@ -40,9 +44,6 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
             em.continuation_model,
         )
         + completion_prefix
-    )
-    max_prompt_length = min(
-        max_token_length(em.continuation_model), em.total_max_tokens
     )
     ensembles = []
     # TODO: Filter for empty ensembles
@@ -59,7 +60,6 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
                         for ensemble in ensembles + [message_history_ensemble]
                     ]
                 )
-                - em.continuation_max_tokens
             ),
             faculty_config.ensemble_format[0].max_tokens,
         )
