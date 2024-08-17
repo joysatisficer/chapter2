@@ -320,7 +320,8 @@ class DiscordInterface(discord.Client):
             )
             raise exc.__cause__
         except Exception as exc:
-            import traceback
+            import os, asyncio, fire, selectors
+            from rich.console import Console
 
             if iface_config.end_to_end_test:
                 self.end_to_end_test_fail = True
@@ -336,7 +337,10 @@ class DiscordInterface(discord.Client):
                     f"#{message.channel.name}",
                 ),
             )
-            print(traceback.format_exc())
+            if "PYCHARM_HOSTED" not in os.environ:
+                console.print_exception(
+                    suppress=(asyncio, fire, selectors), show_locals=True
+                )
             raise
         finally:
             if (

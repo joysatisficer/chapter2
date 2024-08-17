@@ -182,7 +182,7 @@ if __name__ == "__main__":
     import selectors
 
     if "PYCHARM_HOSTED" not in os.environ:
-        install(suppress=[asyncio, fire, selectors])
+        install(suppress=(asyncio, fire, selectors), show_locals=True)
 
     def _(name, end_to_end_test=False):
         result = asyncio.run(run_em(name, end_to_end_test))
