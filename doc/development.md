@@ -6,26 +6,22 @@ Running your own local instance is recommended.
 
 ## Building
 
-1. Clone [embedapi](https://github.com/ampdot-io/embedapi) to `../modules/embedapi` (relative to the root of Chapter 2)
-```bash
-git clone https://github.com/ampdot-io/embedapi ../modules/embedapi
-```
-2. Clone [intermodel](https://github.com/ampdot-io/intermodel) to ../intermodel
-```bash
-git clone https://github.com/ampdot-io/intermodel ../intermodel
-```
-3. Install [Rye](https://rye.astral.sh/guide/installation/), a one-stop-shop for Python dependency management written in Rust. On POSIX systems, you can use:
+1. Install [Rye](https://rye.astral.sh/guide/installation/), a one-stop-shop for Python dependency management written in Rust. On POSIX systems, you can use:
 ```bash
 curl -sSf https://rye.astral.sh/get | bash
 ```
-4. Install dependencies with Rye
+2. Install dependencies with Rye
 ```bash
 rye sync
 ```
-4. Get nltk data
+3. Get nltk data
 ```pycon
 >>> import nltk
 >>> nltk.download('punkt')
+```
+4. Log into huggingface (required for using open-source models)
+```bash
+huggingface-cli login
 ```
 
 ## Running

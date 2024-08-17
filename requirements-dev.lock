@@ -112,8 +112,7 @@ dulwich==0.21.7
     # via poetry
 email-validator==2.2.0
     # via fastapi
-embedapi @ file:///Users/amp/modules/embedapi
-    # via chapter2
+embedapi @ git+https://github.com/ampdot-io/embedapi
 exa-py==1.0.7
     # via chapter2
 faiss-cpu==1.8.0.post1
@@ -170,8 +169,7 @@ iniconfig==2.0.0
     # via pytest
 installer==0.7.0
     # via poetry
-intermodel @ file:///Users/amp/intermodel
-    # via chapter2
+intermodel @ git+https://github.com/ampdot-io/intermodel
 itsdangerous==2.2.0
     # via fastapi
 jaraco-classes==3.4.0

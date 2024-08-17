@@ -1,5 +1,9 @@
 [project]
 name = "chapter2"
+dependencies = [
+    "embedapi @ git+https://github.com/ampdot-io/embedapi",
+    "intermodel @ git+https://github.com/ampdot-io/intermodel",
+]
 
 [tool.poetry]
 name = "chapter2"
@@ -21,7 +25,6 @@ nltk = "*"
 pyyaml = "*"
 python-dotenv = "*"
 pydantic = ">=2.0a1"
-intermodel = {path = "../intermodel"}
 thundersvm-cpu = "^0.3.3"
 streamlit = "^1.24.0"
 scikit-learn = "^1.2.2"
@@ -35,7 +38,6 @@ asgiref = "^3.7.2"
 python-dateutil = "^2.8.2"
 pytest-asyncio = "^0.21.1"
 asyncstdlib = "^3.10.9"
-embedapi = {path = "../modules/embedapi"}
 fastapi = {extras = ["all"], version = "^0.104.1"}
 arrow = "^1.3.0"
 httpx = "^0.25.2"
