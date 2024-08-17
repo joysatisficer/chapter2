@@ -211,7 +211,7 @@ multidict==6.0.5
     # via yarl
 narwhals==1.3.0
     # via altair
-nltk==3.8.2
+nltk==3.8.1
     # via chapter2
 novelai-api==0.27.0
     # via chapter2
