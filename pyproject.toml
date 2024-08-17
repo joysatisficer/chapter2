@@ -5,6 +5,9 @@ dependencies = [
     "intermodel @ git+https://github.com/ampdot-io/intermodel",
 ]
 
+[tool.rye.scripts]
+em = "./chapter2/main.py"
+
 [tool.poetry]
 name = "chapter2"
 version = "0.1.0"
