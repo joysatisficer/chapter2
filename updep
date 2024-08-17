@@ -1,9 +1,0 @@
-#!/bin/bash
-git stash
-(pushd ../intermodel && git pull) &
-(pushd ../modules/embedapi && git pull) &
-wait
-poetry update intermodel embedapi
-poetry install
-git add poetry.lock
-git commit -m "Update dependencies"
