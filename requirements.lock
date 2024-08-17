@@ -86,7 +86,6 @@ cffi==1.17.0
     # via cryptography
     # via pycares
     # via pynacl
-    # via xattr
 charset-normalizer==3.3.2
     # via requests
 cleo==2.1.0
@@ -100,6 +99,7 @@ crashtest==0.4.1
     # via poetry
 cryptography==43.0.0
     # via pyvespa
+    # via secretstorage
 discord-py==2.4.0
     # via chapter2
 distlib==0.3.8
@@ -174,6 +174,9 @@ itsdangerous==2.2.0
     # via fastapi
 jaraco-classes==3.4.0
     # via keyring
+jeepney==0.8.0
+    # via keyring
+    # via secretstorage
 jinja2==3.1.4
     # via altair
     # via fastapi
@@ -365,6 +368,8 @@ scikit-learn==1.5.1
 scipy==1.14.0
     # via scikit-learn
     # via thundersvm-cpu
+secretstorage==3.3.3
+    # via keyring
 sentencepiece==0.2.0
     # via novelai-api
 sentry-sdk==1.45.1
@@ -448,6 +453,8 @@ uvloop==0.19.0
     # via uvicorn
 virtualenv==20.26.3
     # via poetry
+watchdog==4.0.2
+    # via streamlit
 watchfiles==0.23.0
     # via uvicorn
 wcwidth==0.2.13
@@ -458,8 +465,6 @@ wheel==0.44.0
     # via astunparse
 wsproto==1.2.0
     # via simple-websocket
-xattr==1.1.0
-    # via poetry
 yarl==1.9.4
     # via aiohttp
 zipp==3.20.0
