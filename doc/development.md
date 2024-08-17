@@ -2,7 +2,7 @@
 
 ## System services
 ### [`embed_server`](https://github.com/ampdot-io/embed_server)
-You can run it yourself or you can use my instance of it, just ask.
+Running your own local instance is recommended.
 
 ## Building
 
@@ -14,10 +14,13 @@ git clone https://github.com/ampdot-io/embedapi ../modules/embedapi
 ```bash
 git clone https://github.com/ampdot-io/intermodel ../intermodel
 ```
-3. Install dependencies
+3. Install [Rye](https://rye.astral.sh/guide/installation/), a one-stop-shop for Python dependency management written in Rust. On POSIX systems, you can use:
 ```bash
-poetry env use python3.11
-poetry install
+curl -sSf https://rye.astral.sh/get | bash
+```
+4. Install dependencies with Rye
+```bash
+rye sync
 ```
 4. Get nltk data
 ```pycon
