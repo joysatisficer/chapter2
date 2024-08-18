@@ -234,6 +234,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     send_typing: bool = True
     end_to_end_test_discord_token: str | None = None
     end_to_end_test_discord_channel_id: int | None = None
+    discord_user_whitelist: list[int] = []
 
 
 class MikotoInterfaceConfig(SharedInterfaceConfig):
