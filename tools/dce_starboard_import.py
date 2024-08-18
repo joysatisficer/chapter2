@@ -31,18 +31,25 @@ for fname in sys.argv[1:]:
         print("---")
         section_flag = True
     for message in jsonobj["messages"]:
-        unix_timestamp = parse_date_to_unix_timestamp(message["timestamp"])
-        prev = unix_timestamp
-        print(
-            irc.render(
-                Message(
-                    Author(
-                        message["author"]["name"],
-                        UserID(message["author"]["id"], "discord"),
-                    ),
-                    message["content"],
-                )
-            ),
-            end="",
-        )
-        section_flag = False
+        # unix_timestamp = parse_date_to_unix_timestamp(message["timestamp"])
+        # prev = unix_timestamp
+        if (
+            len(message["embeds"]) >= 1
+            and "author" in message["embeds"][0]
+            and "description" in message["embeds"][0]
+        ):
+            author_name = message["embeds"][0]["author"]["name"]
+            content = message["embeds"][0]["description"]
+            print(
+                irc.render(
+                    Message(
+                        Author(
+                            author_name,
+                            UserID(message["author"]["id"], "discord"),
+                        ),
+                        content,
+                    )
+                ),
+                end="",
+            )
+            section_flag = False
