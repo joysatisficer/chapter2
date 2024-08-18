@@ -338,9 +338,13 @@ class DiscordInterface(discord.Client):
                 ),
             )
             if "PYCHARM_HOSTED" not in os.environ:
-                console.print_exception(
+                Console().print_exception(
                     suppress=(asyncio, fire, selectors), show_locals=True
                 )
+            else:
+                import traceback
+
+                traceback.print_exc()
             raise
         finally:
             if (

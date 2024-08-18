@@ -62,9 +62,9 @@ def load_em(name) -> Config:
             lambda key: key in Config.model_fields.keys()
             or key in Config.model_fields.keys()
             or key in ontology.ALIASES.keys()
-            or subpath.name in ontology.EM_KEYS
-            or subpath.name in ontology.SHARED_INTERFACE_KEYS
-            or subpath.name in ontology.ALL_INTERFACE_KEYS
+            or key in ontology.EM_KEYS
+            or key in ontology.SHARED_INTERFACE_KEYS
+            or key in ontology.ALL_INTERFACE_KEYS
         )
         if valid_key(subpath.name):
             kv[subpath.name] = subpath.read_text()
