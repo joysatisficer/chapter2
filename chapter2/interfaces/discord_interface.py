@@ -242,7 +242,7 @@ class DiscordInterface(discord.Client):
                 and re.match("^[.,][^\s.,]", message.content)
             )
             and (
-                len(iface_config.discord_user_whitelist) != 0
+                len(iface_config.discord_user_whitelist) == 0
                 or message.author.id in iface_config.discord_user_whitelist
             )
             and (
