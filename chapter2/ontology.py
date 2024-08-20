@@ -250,7 +250,7 @@ class CompletionsInterfaceConfig(SharedInterfaceConfig):
     name: Literal["completions"] = "completions"
 
 
-class ChatCompletionsInterfaceConfig(BaseModel):
+class ChatCompletionsInterfaceConfig(ShareDInterfaceConfig):
     name: Literal["chatcompletions"] = "chatcompletions"
     default_name: str = "user"
 
