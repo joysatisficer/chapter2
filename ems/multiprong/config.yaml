@@ -8,5 +8,5 @@ interfaces:
     addons:
       - name: generate_avatar
         prompt: colorful, many colors, portrait, rainbow, jack of all trades, omnicompetent
-  - name: chatcompletions
+# - name: chatcompletions
 representation_model: text-embedding-3-large
