@@ -12,7 +12,7 @@ def eager_iterable_to_async_iterable(iterable: Iterable) -> AsyncIterable:
 
 
 def async_generator_to_reusable_async_iterable(
-    iterable: Callable[[], AsyncGenerator]
+    iterable: Callable[[], AsyncGenerator],
 ) -> AsyncIterable:
     class AsyncIterableWrapper:
         def __aiter__(self):

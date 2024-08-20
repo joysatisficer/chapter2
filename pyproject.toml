@@ -5,6 +5,11 @@ dependencies = [
     "intermodel @ git+https://github.com/ampdot-io/intermodel",
 ]
 
+[tool.rye]
+dev-dependencies = [
+    "black>=24.8.0",
+]
+
 [tool.rye.scripts]
 em = "./chapter2/main.py"
 dce_import = "./tools/dce_import.py"

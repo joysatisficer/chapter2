@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tool to import messages from Tyrrrz's Discord Chat Exporter tool"""
+
 from chapter2.declarations import Message, Author, UserID
 from chapter2.message_formats import IRCMessageFormat
 

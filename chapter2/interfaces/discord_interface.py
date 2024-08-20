@@ -310,7 +310,7 @@ class DiscordInterface(discord.Client):
             async with self.message_semaphore:
                 yield None
         except ConfigError as exc:
-            if config.end_to_end_test:
+            if iface_config.end_to_end_test:
                 self.end_to_end_test_fail = True
             await message.add_reaction("⚙️")
             # if the message is deleted, the url will still head to the channel
@@ -360,7 +360,7 @@ class DiscordInterface(discord.Client):
     async def on_ready(self):
         print(f"Invite the bot: {self.get_invite_link()}")
         print("Discord interface ready")
-        if (await self.get_config(None)).end_to_end_test:
+        if self.iface_config.end_to_end_test:
             run_task(self.end_to_end_test())
 
     def get_invite_link(self):

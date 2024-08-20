@@ -1,5 +1,5 @@
 """Utility library for quickly importing everything from a REPL. Example usage:
-  from repl import *
+from repl import *
 """
 
 from chapter2.declarations import *

@@ -194,7 +194,7 @@ class ChatCompletionsInterface(AbstractInterface):
         print(f"Listening on {socket_loc}")
         self.uv_server = RapidShutdownUvicornServer(uv_config)
         self.uv_server.install_signal_handlers = lambda: None
-        if self.base_config.end_to_end_test:
+        if self.interface_config.end_to_end_test:
             self.uv_server.on_ready = lambda: asyncutil.run_task(self.end_to_end_test())
         self.task_serve = asyncio.create_task(self.uv_server.serve())
         return await self.task_serve

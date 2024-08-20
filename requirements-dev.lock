@@ -65,6 +65,7 @@ banana-dev==6.3.0
     # via intermodel
 bidict==0.23.1
     # via python-socketio
+black==24.8.0
 blinker==1.8.2
     # via streamlit
 brotli==1.1.0
@@ -91,6 +92,7 @@ charset-normalizer==3.3.2
 cleo==2.1.0
     # via poetry
 click==8.1.7
+    # via black
     # via nltk
     # via streamlit
     # via uvicorn
@@ -210,6 +212,8 @@ msgpack==1.0.8
 multidict==6.0.5
     # via aiohttp
     # via yarl
+mypy-extensions==1.0.0
+    # via black
 narwhals==1.3.0
     # via altair
 nltk==3.8.1
@@ -234,6 +238,7 @@ orjson==3.10.7
     # via fastapi
 packaging==24.1
     # via altair
+    # via black
     # via build
     # via faiss-cpu
     # via huggingface-hub
@@ -243,6 +248,8 @@ packaging==24.1
     # via streamlit
 pandas==2.2.2
     # via streamlit
+pathspec==0.12.1
+    # via black
 pexpect==4.9.0
     # via poetry
 pillow==10.4.0
@@ -250,6 +257,7 @@ pillow==10.4.0
 pkginfo==1.11.1
     # via poetry
 platformdirs==4.2.2
+    # via black
     # via poetry
     # via virtualenv
 pluggy==1.5.0
