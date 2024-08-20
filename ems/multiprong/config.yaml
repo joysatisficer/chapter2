@@ -1,4 +1,5 @@
 # An em that uses as much functionality as possible for use in automated testing
+continuation_model: davinci-002
 ensembles:
   - faculty: exa_search
   - faculty: character
