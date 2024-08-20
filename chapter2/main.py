@@ -86,12 +86,12 @@ def load_em(name) -> Config:
 
 async def run_em(name, end_to_end_test=False):
     config = load_em(name)
-    if end_to_end_test:
-        config.end_to_end_test = True
     if config.sentry_dsn_url is not None:
         setup_sentry(config)
     interfaces = []
     for interface in config.interfaces:
+        if end_to_end_test and hasattr(interface, "end_to_end_test"):
+            interface.end_to_end_test = True
         interface_name = interface.name
         addons = []
         if hasattr(interface, "addons"):
