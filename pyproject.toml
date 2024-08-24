@@ -1,5 +1,6 @@
 [project]
 name = "chapter2"
+version = "0.1.0"
 dependencies = [
     "embedapi @ git+https://github.com/ampdot-io/embedapi",
     "intermodel @ git+https://github.com/ampdot-io/intermodel",
@@ -9,72 +10,54 @@ dependencies = [
     "opentelemetry-sdk>=1.26.0",
     "opentelemetry-exporter-otlp>=1.26.0",
     "opentelemetry-instrumentation-discordpy>=0.1.9",
+    "discord.py",
+    "openai",
+    "tiktoken>=0.7.0,<1.0",
+    "more-itertools",
+    "aioitertools",
+    "nltk",
+    "pyyaml",
+    "pydantic>=2.0a1",
+    "streamlit>=1.24.0,<2.0",
+    "scikit-learn>=1.2.2,<2.0",
+    "fire~=0.5.0",
+    "rich~=13.5.1",
+    "faiss-cpu>=1.7.4,<2.0",
+    "anthropic==0.2.10",
+    "asgiref>=3.7.2,<4.0",
+    "python-dateutil>=2.8.2,<3.0",
+    "pytest-asyncio~=0.21.1",
+    "asyncstdlib~=3.10.9,<4.0",
+    "fastapi[all]~=0.104.1",
+    "arrow>=1.3.0,<2.0",
+    "httpx~=0.25.2",
+    "aiohttp>=3.9.1,<4.0",
+    "mikoto-py~=0.0.6",
+    "exa-py==1.0.7",
+    "sentry-sdk[fastapi]>=1.40.5",
+    "novelai-api~=0.27.0",
 ]
 
 [tool.rye]
 dev-dependencies = [
     "black>=24.8.0",
 ]
+universal = true
 
 [tool.rye.scripts]
 em = "./chapter2/main.py"
 dce_import = "./tools/dce_import.py"
 dce_starboard_import = "./tools/dce_starboard_import.py"
 
-[tool.poetry]
-name = "chapter2"
-version = "0.1.0"
-description = ""
-authors = ["ampdot <ampdot@mesh.host>"]
-readme = "README.md"
-packages = [{include = "chapter2"}, { include = "*", from="chapter2"}]
-
-[tool.poetry.dependencies]
-python = "^3.11"
-"discord.py" = "*"
-openai = "*"
-tiktoken = "^0.7.0"
-more-itertools = "*"
-aioitertools = "*"
-pyvespa = "*"
-nltk = "*"
-pyyaml = "*"
-python-dotenv = "*"
-pydantic = ">=2.0a1"
-thundersvm-cpu = "^0.3.3"
-streamlit = "^1.24.0"
-scikit-learn = "^1.2.2"
-structlog = "^23.1.0"
-pytest-structlog = "^0.6"
-fire = "^0.5.0"
-rich = "^13.5.1"
-faiss-cpu = "^1.7.4"
-anthropic = "0.2.10"
-asgiref = "^3.7.2"
-python-dateutil = "^2.8.2"
-pytest-asyncio = "^0.21.1"
-asyncstdlib = "^3.10.9"
-fastapi = {extras = ["all"], version = "^0.104.1"}
-arrow = "^1.3.0"
-httpx = "^0.25.2"
-aiohttp = "^3.9.1"
-lmql = "^0.7.3"
-mikoto-py = "^0.0.6"
-exa-py = "1.0.7"
-sentry-sdk = {extras = ["fastapi"], version = "^1.40.5"}
-novelai-api = "^0.27.0"
-
-
-[tool.poetry.group.dev.dependencies]
-black = "^24"
-pre-commit = "*"
-streamlit = "*"
-pytest = "*"
-snakeviz = "^2.2.0"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["chapter2"]
 
 [tool.pytest.ini_options]
 filterwarnings = [
