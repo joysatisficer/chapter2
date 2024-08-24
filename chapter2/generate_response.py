@@ -12,8 +12,10 @@ from declarations import UserID, ActionHistory, Author, Ensemble, Action
 from faculties import FACULTY_NAME_TO_FUNCTION
 from mufflers import repeats_prompt_sentence, has_http
 from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
+from instrument import instrument
 
 
+@instrument
 async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmConfig):
     count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
     author = Author(em.name, my_user_id)

@@ -24,8 +24,7 @@ aiohttp==3.10.3
     # via novelai-api
     # via openai
     # via pyvespa
-aiohttp-socks==0.8.4
-    # via chapter2
+aiohttp-socks==0.9.0
 aioitertools==0.11.0
     # via chapter2
 aiosignal==1.3.1
@@ -61,6 +60,7 @@ attrs==24.2.0
     # via aiohttp
     # via jsonschema
     # via referencing
+axiom-py==0.4.0
 banana-dev==6.3.0
     # via intermodel
 bidict==0.23.1
@@ -87,6 +87,7 @@ cffi==1.17.0
     # via cryptography
     # via pycares
     # via pynacl
+    # via xattr
 charset-normalizer==3.3.2
     # via requests
 cleo==2.1.0
@@ -101,9 +102,16 @@ crashtest==0.4.1
     # via poetry
 cryptography==43.0.0
     # via pyvespa
-    # via secretstorage
+dacite==1.8.1
+    # via axiom-py
+deprecated==1.2.14
+    # via opentelemetry-api
+    # via opentelemetry-exporter-otlp-proto-grpc
+    # via opentelemetry-exporter-otlp-proto-http
+    # via opentelemetry-semantic-conventions
 discord-py==2.4.0
     # via chapter2
+    # via opentelemetry-instrumentation-discordpy
 distlib==0.3.8
     # via virtualenv
 dnspython==2.6.1
@@ -142,6 +150,11 @@ gitdb==4.0.11
     # via gitpython
 gitpython==3.1.43
     # via streamlit
+googleapis-common-protos==1.63.2
+    # via opentelemetry-exporter-otlp-proto-grpc
+    # via opentelemetry-exporter-otlp-proto-http
+grpcio==1.66.0
+    # via opentelemetry-exporter-otlp-proto-grpc
 h11==0.14.0
     # via httpcore
     # via uvicorn
@@ -167,18 +180,18 @@ idna==3.7
     # via yarl
 importlib-metadata==8.0.0
     # via keyring
+    # via opentelemetry-api
 iniconfig==2.0.0
     # via pytest
 installer==0.7.0
     # via poetry
 intermodel @ git+https://github.com/ampdot-io/intermodel
+iso8601==2.1.0
+    # via axiom-py
 itsdangerous==2.2.0
     # via fastapi
 jaraco-classes==3.4.0
     # via keyring
-jeepney==0.8.0
-    # via keyring
-    # via secretstorage
 jinja2==3.1.4
     # via altair
     # via fastapi
@@ -216,6 +229,8 @@ mypy-extensions==1.0.0
     # via black
 narwhals==1.3.0
     # via altair
+ndjson==0.3.1
+    # via axiom-py
 nltk==3.8.1
     # via chapter2
 novelai-api==0.27.0
@@ -234,6 +249,34 @@ openai==0.28.0
     # via chapter2
     # via intermodel
     # via lmql
+opentelemetry-api==1.26.0
+    # via opentelemetry-exporter-otlp-proto-grpc
+    # via opentelemetry-exporter-otlp-proto-http
+    # via opentelemetry-instrumentation
+    # via opentelemetry-instrumentation-discordpy
+    # via opentelemetry-sdk
+    # via opentelemetry-semantic-conventions
+opentelemetry-exporter-otlp==1.26.0
+opentelemetry-exporter-otlp-proto-common==1.26.0
+    # via opentelemetry-exporter-otlp-proto-grpc
+    # via opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-otlp-proto-grpc==1.26.0
+    # via opentelemetry-exporter-otlp
+opentelemetry-exporter-otlp-proto-http==1.26.0
+    # via opentelemetry-exporter-otlp
+opentelemetry-instrumentation==0.47b0
+    # via opentelemetry-instrumentation-discordpy
+opentelemetry-instrumentation-discordpy==0.1.9
+opentelemetry-proto==1.26.0
+    # via opentelemetry-exporter-otlp-proto-common
+    # via opentelemetry-exporter-otlp-proto-grpc
+    # via opentelemetry-exporter-otlp-proto-http
+opentelemetry-sdk==1.26.0
+    # via opentelemetry-exporter-otlp-proto-grpc
+    # via opentelemetry-exporter-otlp-proto-http
+    # via opentelemetry-instrumentation-discordpy
+opentelemetry-semantic-conventions==0.47b0
+    # via opentelemetry-sdk
 orjson==3.10.7
     # via fastapi
 packaging==24.1
@@ -270,7 +313,9 @@ poetry-core==1.9.0
     # via poetry-plugin-export
 poetry-plugin-export==1.8.0
     # via poetry
-protobuf==5.27.3
+protobuf==4.25.4
+    # via googleapis-common-protos
+    # via opentelemetry-proto
     # via streamlit
 ptyprocess==0.7.0
     # via pexpect
@@ -297,6 +342,8 @@ pydeck==0.9.1
     # via streamlit
 pygments==2.18.0
     # via rich
+pyhumps==3.8.0
+    # via axiom-py
 pynacl==1.5.0
     # via novelai-api
 pyproject-hooks==1.1.0
@@ -350,20 +397,25 @@ replicate==0.31.0
     # via intermodel
 requests==2.32.3
     # via anthropic
+    # via axiom-py
     # via banana-dev
     # via cachecontrol
     # via docker
     # via exa-py
     # via huggingface-hub
     # via openai
+    # via opentelemetry-exporter-otlp-proto-http
     # via poetry
     # via pyvespa
     # via requests-toolbelt
     # via streamlit
     # via tiktoken
 requests-toolbelt==1.0.0
+    # via axiom-py
     # via poetry
     # via pyvespa
+rfc3339==6.2
+    # via axiom-py
 rich==13.7.1
     # via chapter2
     # via streamlit
@@ -376,8 +428,6 @@ scikit-learn==1.5.1
 scipy==1.14.0
     # via scikit-learn
     # via thundersvm-cpu
-secretstorage==3.3.3
-    # via keyring
 sentencepiece==0.2.0
     # via novelai-api
 sentry-sdk==1.45.1
@@ -440,6 +490,7 @@ typing-extensions==4.12.2
     # via altair
     # via fastapi
     # via huggingface-hub
+    # via opentelemetry-sdk
     # via pydantic
     # via pydantic-core
     # via pyvespa
@@ -448,8 +499,10 @@ typing-extensions==4.12.2
 tzdata==2024.1
     # via pandas
 ujson==5.10.0
+    # via axiom-py
     # via fastapi
 urllib3==2.2.2
+    # via axiom-py
     # via docker
     # via dulwich
     # via requests
@@ -461,8 +514,6 @@ uvloop==0.19.0
     # via uvicorn
 virtualenv==20.26.3
     # via poetry
-watchdog==4.0.2
-    # via streamlit
 watchfiles==0.23.0
     # via uvicorn
 wcwidth==0.2.13
@@ -471,9 +522,16 @@ websockets==12.0
     # via uvicorn
 wheel==0.44.0
     # via astunparse
+wrapt==1.16.0
+    # via deprecated
+    # via opentelemetry-instrumentation
 wsproto==1.2.0
     # via simple-websocket
+xattr==1.1.0
+    # via poetry
 yarl==1.9.4
     # via aiohttp
 zipp==3.20.0
     # via importlib-metadata
+setuptools==73.0.1
+    # via opentelemetry-instrumentation

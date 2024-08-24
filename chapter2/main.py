@@ -45,7 +45,7 @@ async def rehearse_em(config: Config):
         pass
 
 
-def load_em(name) -> Config:
+def load_em(name) -> dict:
     parent_dir = Path(__file__).resolve().parents[1]
     em_folder = parent_dir / "ems" / name
     kv = {
@@ -80,8 +80,7 @@ def load_em(name) -> Config:
         del kv["legacy"]
     else:
         defaults = ontology.DEFAULTS
-    config = ontology.load_config_from_kv(kv, defaults)
-    return config
+    return ontology.load_config_from_kv(kv, defaults)
 
 
 async def run_em(name, end_to_end_test=False):
@@ -132,7 +131,7 @@ async def run_em(name, end_to_end_test=False):
         asyncio.create_task(
             rehearse_em(
                 ontology.load_config_from_kv(
-                    config.model_dump(), ontology.REHEARSAL_CONFIG
+                    ontology.REHEARSAL_CONFIG, config.model_dump()
                 )
             )
         ),

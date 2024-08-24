@@ -3,6 +3,12 @@ name = "chapter2"
 dependencies = [
     "embedapi @ git+https://github.com/ampdot-io/embedapi",
     "intermodel @ git+https://github.com/ampdot-io/intermodel",
+    "axiom-py>=0.4.0",
+    "aiohttp-socks>=0.9.0",
+    "opentelemetry-api>=1.26.0",
+    "opentelemetry-sdk>=1.26.0",
+    "opentelemetry-exporter-otlp>=1.26.0",
+    "opentelemetry-instrumentation-discordpy>=0.1.9",
 ]
 
 [tool.rye]
@@ -57,7 +63,6 @@ mikoto-py = "^0.0.6"
 exa-py = "1.0.7"
 sentry-sdk = {extras = ["fastapi"], version = "^1.40.5"}
 novelai-api = "^0.27.0"
-aiohttp-socks = "^0.8.4"
 
 
 [tool.poetry.group.dev.dependencies]
