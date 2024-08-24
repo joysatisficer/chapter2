@@ -1,11 +1,6 @@
 #!/bin/bash
 set -euxo pipefail
-echo "Downloading and installing dependencies"
-mkdir -p ../modules/
-git clone https://github.com/ampdot-io/embedapi ../modules/embedapi
-git clone https://github.com/ampdot-io/intermodel ../intermodel
 rye -v || (curl -sSf https://rye.astral.sh/get | bash)
 rye sync
-python3 -c "import nltk; nltk.download('punkt');"
 huggingface-cli login
-mkdir -p ~/.config/chapter2/
+mkdir -p ~/.config/chapter2
