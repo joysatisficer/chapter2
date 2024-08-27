@@ -35,3 +35,4 @@ jobs:
           printf "vendors: { openai: { config: { openai_api_key: %s, organization: %s } } }" >> ems/vendors.yaml
       - name: Run multiprong
         run: rye run em multiprong --end-to-end-test
+        timeout-minutes: 3
