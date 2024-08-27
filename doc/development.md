@@ -6,7 +6,9 @@ Running your own local instance is recommended.
 
 ## Building
 
-1. Install [Rye](https://rye.astral.sh/guide/installation/), a one-stop-shop for Python dependency management written in Rust. On POSIX systems, you can use:
+1. Install [Rye](https://rye.astral.sh/guide/installation/), a one-stop-shop
+for Python dependency management written in Rust. On POSIX systems, you can
+use:
 ```bash
 curl -sSf https://rye.astral.sh/get | bash
 ```
@@ -20,14 +22,41 @@ rye sync
 >>> nltk.download('punkt')
 ```
 4. Log into huggingface (required for using open-source models)
+You may need to agree to licenses to access gated models on huggingface.co in
+5. your web browser.
 ```bash
 huggingface-cli login
+```
+5. Configure API keys
+*This step is optional if you have OpenAI or Anthropic configured via environment 
+variables. (OPENAI_API_KEY, OPENAI_API_BASE, ANTHROPIC_API_KEY)*
+
+Elysium Conduit (hosted API, ask ampdot for a Tailscale invite link):
+```
+vendors:
+  openai-openrouter:
+    config:
+      openai_api_key: YOUR_OPENROUTER_KEY_HERE
+      api_base: https://conduit.elysium.mesh.host/v1
+    provides: [".*"]
+```
+
+OpenRouter:
+```
+vendors:
+  openai-openrouter:
+    config:
+      openai_api_key: YOUR_OPENROUTER_KEY_HERE
+      api_base: https://openrouter.ai/api/v1
+    provides: [".*"]
 ```
 
 ## Running
 
+(The entrypoint is `chapter2/main.py`)
+
 ```bash
-./chapter2/main.py [em-name]
+rye run em [em-name]
 ```
 
 will run the em in `ems/[em-name]`
@@ -51,11 +80,11 @@ gets you Chapter 2's IRCMessageFormat
 #### Method 2
 
 ```bash
-./chapter2/main.py -- --interactive
+rye run em -- --interactive
 ```
 or shorthand:
 ```bash
-./chapter2/main.py -- -i
+rye run em -- -i
 ```
 
 will activate a REPL with Chapter 2's libraries activated
