@@ -13,7 +13,8 @@ async def deserves_reply(
         user_id,
         message_history,
         ontology.load_config_from_kv(
-            {"em": reply_on_sim.em_overrides}, config.model_dump()
+            {"em": {"vendors": config.em.vendors, **reply_on_sim.em_overrides}},
+            config.model_dump(),
         ).em,
     )
     match reply_on_sim.match:

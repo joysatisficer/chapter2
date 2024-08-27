@@ -65,7 +65,11 @@ def divide_sentences(prompt):
 def sentence_tokenize(s):
     import nltk
 
-    nltk_sentences = nltk.sent_tokenize(s)
+    try:
+        nltk_sentences = nltk.sent_tokenize(s)
+    except LookupError:
+        nltk.download("punkt")
+        return sentence_tokenize(s)
     sentences = []
     for sentence in nltk_sentences:
         if re.match(r"^[\.\!\?\s]+$", sentence):

@@ -14,6 +14,7 @@ import yaml
 from pydantic import ValidationError
 
 import ontology
+from instrument import instrument
 from interfaces.deserves_reply import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
@@ -211,6 +212,7 @@ class DiscordInterface(discord.Client):
             message.created_at.timestamp(),
         )
 
+    @instrument
     async def should_reply(
         self,
         message: discord.Message,

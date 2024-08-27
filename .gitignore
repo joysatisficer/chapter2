@@ -4,7 +4,6 @@ doc/todo.md
 .pyre/*
 chapter2/.pyre/*
 chapter2/.pytest_cache/*
-people/vendors.yaml
 ems/*/discord_token
 ems/*
 ems/*/*

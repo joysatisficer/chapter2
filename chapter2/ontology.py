@@ -20,6 +20,8 @@ from message_formats import (
     ColonMessageFormat,
 )
 
+from instrument import *
+
 
 class LayerOfEnsembleFormat(BaseModel):
     format: MessageFormat
@@ -190,8 +192,8 @@ class EmConfig(BaseModel):
 
     # API keys
     vendors: dict[str, SingleVendorConfig] = {}
-    exa_search_api_key: str | None = None
-    novelai_api_key: str | None = None
+    exa_search_api_key: Redact[str | None] = None
+    novelai_api_key: Redact[str | None] = None
 
     em_folder: Path
 
@@ -225,7 +227,7 @@ class SharedInterfaceConfig(BaseModel):
 
 class DiscordInterfaceConfig(SharedInterfaceConfig):
     name: Literal["discord"] = "discord"
-    discord_token: str | None = None
+    discord_token: Redact[str | None] = None
     addons: list[Union[DiscordGenerateAvatarAddonConfig]] = []
     discord_proxy_url: str | None = None
     threads_inherit_history: bool = True
@@ -277,7 +279,7 @@ class LegacyConfig(Config):
 
 
 class SingleVendorConfig(BaseModel):
-    config: dict = {}
+    config: Redact[dict] = {}
     provides: list[str] = []
 
     def __getitem__(self, item):
