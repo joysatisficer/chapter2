@@ -86,6 +86,8 @@ cffi==1.17.0 ; python_version < '3.12' or python_version >= '3.13' or (python_ve
     # via pycares
     # via pynacl
     # via xattr
+cfgv==3.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via pre-commit
 charset-normalizer==3.3.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via requests
 cleo==2.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
@@ -174,6 +176,8 @@ httpx==0.25.2 ; python_version < '3.12' or python_version >= '3.13' or (python_v
     # via replicate
 huggingface-hub==0.24.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via tokenizers
+identify==2.6.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via pre-commit
 idna==3.7 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via anyio
     # via email-validator
@@ -237,6 +241,8 @@ ndjson==0.3.1 ; python_version < '3.12' or python_version >= '3.13' or (python_v
     # via axiom-py
 nltk==3.8.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
+nodeenv==1.9.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via pre-commit
 novelai-api==0.27.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
 numpy==1.26.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12') or (python_version < '3.13' and python_version >= '3.12')
@@ -316,6 +322,7 @@ poetry-core==1.9.0 ; python_version < '3.12' or python_version >= '3.13' or (pyt
     # via poetry-plugin-export
 poetry-plugin-export==1.8.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via poetry
+pre-commit==3.8.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
 protobuf==4.25.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via googleapis-common-protos
     # via opentelemetry-proto
@@ -387,6 +394,7 @@ pyyaml==6.0.2 ; python_version < '3.12' or python_version >= '3.13' or (python_v
     # via chapter2
     # via fastapi
     # via huggingface-hub
+    # via pre-commit
     # via uvicorn
 rapidfuzz==3.9.6 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via cleo
@@ -509,6 +517,7 @@ validators==0.33.0 ; python_version < '3.12' or python_version >= '3.13' or (pyt
     # via streamlit
 virtualenv==20.26.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via poetry
+    # via pre-commit
 watchdog==5.0.0 ; platform_system != 'Darwin' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
     # via streamlit
 watchfiles==0.23.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
