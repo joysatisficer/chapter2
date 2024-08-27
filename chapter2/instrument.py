@@ -19,7 +19,6 @@ REDACTED = "%%REDACTED%%"
 # This must be used at the top level of a field
 Redact = Annotated[T, "redact", Field(repr=False)]
 
-DiscordPyInstrumentor().instrument()
 provider = TracerProvider()
 provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
 if "CH2_ENABLE_TELEMETRY" in os.environ:
