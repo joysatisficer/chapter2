@@ -113,6 +113,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
                 yield reply
 
 
+@instrument
 async def get_replies(
     em: EmConfig,
     prompt: str,

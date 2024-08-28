@@ -289,7 +289,7 @@ class DiscordInterface(discord.Client):
         )
 
     async def get_config(
-        self, channel: "discord.abc.MessageableChannel"
+        self, channel: "discord.abc.MessageableChannel" | None
     ) -> Tuple[Config, DiscordInterfaceConfig]:
         if isinstance(channel, dict):
             kv = channel
@@ -310,7 +310,7 @@ class DiscordInterface(discord.Client):
         config, iface_config = await self.get_config(None)
         try:
             async with self.message_semaphore:
-                yield None
+                yield
         except ConfigError as exc:
             if iface_config.end_to_end_test:
                 self.end_to_end_test_fail = True

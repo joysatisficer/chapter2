@@ -69,7 +69,11 @@ class InstrumentationSingleton:
 
                 for param_name, param_value in bound_args.arguments.items():
                     add_arg(param_name, param_value)
-                return func(*args, **kwargs)
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    span.record_exception(e)
+                    raise
 
         return instrument_function
 
