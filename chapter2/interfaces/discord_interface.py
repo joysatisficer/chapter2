@@ -289,7 +289,7 @@ class DiscordInterface(discord.Client):
         )
 
     async def get_config(
-        self, channel: "discord.abc.MessageableChannel" | None
+        self, channel: "discord.abc.MessageableChannel"
     ) -> Tuple[Config, DiscordInterfaceConfig]:
         if isinstance(channel, dict):
             kv = channel
