@@ -51,7 +51,7 @@ class InstrumentationSingleton:
                         for k, v in value.model_dump(mode="json").items():
                             add_arg(name + "." + k, v)
                     elif dataclasses.is_dataclass(value):
-                        for k, v in dataclasses.asdict(value):
+                        for k, v in dataclasses.asdict(value).items():
                             add_arg(name + "." + k, v)
                     elif isinstance(value, dict):
                         for k, v in value.items():
