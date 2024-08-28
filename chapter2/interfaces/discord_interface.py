@@ -374,7 +374,7 @@ class DiscordInterface(discord.Client):
 
     async def start(self, token: str = None, *args, **kwargs) -> None:
         if token is None:
-            token = self.iface_config.discord_token
+            token = self.iface_config.discord_token.get_secret_value()
         return await super().start(token, *args, **kwargs)
 
     def stop(self, sig, frame):
@@ -435,12 +435,9 @@ async def realize_pings(self, channel: discord.TextChannel, message_content: str
 async def get_yaml_from_channel(
     channel: "discord.abc.MessageableChannel",
 ) -> JSON:
-    """
-    Reads a channel description, extracting yaml from it.
-    """
     topic = get_channel_topic(channel)
     if topic is not None and "---" in topic:
-        return yaml.safe_load(topic.split("---")[1])
+        return yaml.safe_load(topic.split("---")[1]) or {}
     else:
         return {}
 

@@ -151,13 +151,16 @@ async def get_replies(
             presence_penalty=em.presence_penalty,
             model=em.continuation_model,
             stop=stop_sequences[:3] if stop_sequences is not None else None,
-            vendor_config=em.vendors,
+            vendor_config=em.vendors.get_secret_value(),
             logit_bias=logit_bias,
             best_of=em.best_of,
             **em.continuation_options,
         )
     )["completions"][0]["text"]
-    if callgpt.pick_vendor(em.continuation_model, em.vendors) == "fake-local":
+    if (
+        callgpt.pick_vendor(em.continuation_model, em.vendors.get_secret_value())
+        == "fake-local"
+    ):
         print(
             "Continues>>",
             "{",

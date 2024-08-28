@@ -49,10 +49,12 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
                 UCPreset,
             )
 
-            config = await self.get_config(None)
+            config, _ = await self.get_config(None)
             async with aiohttp.ClientSession() as session:
                 api = novelai_api.NovelAIAPI(session)
-                await api.high_level.login_with_token(config.novelai_api_key)
+                await api.high_level.login_with_token(
+                    config.em.novelai_api_key.get_secret_value()
+                )
                 preset = ImagePreset()
                 preset.resolution = ImageResolution.Small_Square
                 preset.scale = addon_config.scale

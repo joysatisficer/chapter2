@@ -1,9 +1,10 @@
 import inspect
 import os
+import dataclasses
 from typing import TypeVar, Annotated
 
 from functools import wraps
-from pydantic import Field
+from pydantic import BaseModel, Field, Secret
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
@@ -44,12 +45,30 @@ class InstrumentationSingleton:
             bound_args.apply_defaults()
 
             with tracer.start_as_current_span(func.__qualname__) as span:
-                for param_name, param_value in bound_args.arguments.items():
-                    if param_name in redacted_attrs(func):
-                        value = REDACTED
+
+                def add_arg(name, value):
+                    if isinstance(value, BaseModel):
+                        for k, v in value.model_dump(mode="json").items():
+                            add_arg(name + "." + k, v)
+                    elif dataclasses.is_dataclass(value):
+                        for k, v in dataclasses.asdict(value):
+                            add_arg(name + "." + k, v)
+                    elif isinstance(value, dict):
+                        for k, v in value.items():
+                            add_arg(name + "." + k, v)
+                    elif isinstance(value, list):
+                        for k, v in enumerate(value):
+                            add_arg(name + "." + str(k), v)
+                    elif isinstance(value, Secret):
+                        pass
                     else:
-                        value = repr(param_value)
-                    span.set_attribute(f"arg.{param_name}", value)
+                        if param_name in redacted_attrs(func):
+                            span.set_attribute(f"arg.{name}", REDACTED)
+                        else:
+                            span.set_attribute(f"arg.{name}", repr(value))
+
+                for param_name, param_value in bound_args.arguments.items():
+                    add_arg(param_name, param_value)
                 return func(*args, **kwargs)
 
         return instrument_function

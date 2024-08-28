@@ -10,7 +10,7 @@ import copy
 import pydantic
 from annotated_types import Gt, Ge, Interval
 
-from pydantic import BaseModel, field_validator, Field
+from pydantic import field_validator, SecretStr, Secret
 from pydantic_core import PydanticUndefined
 
 from message_formats import (
@@ -191,9 +191,9 @@ class EmConfig(BaseModel):
     continuation_options: dict = {}
 
     # API keys
-    vendors: dict[str, SingleVendorConfig] = {}
-    exa_search_api_key: Redact[str | None] = None
-    novelai_api_key: Redact[str | None] = None
+    vendors: Secret[dict[str, SingleVendorConfig]] = {}
+    exa_search_api_key: SecretStr | None = None
+    novelai_api_key: SecretStr | None = None
 
     em_folder: Path
 
@@ -227,7 +227,7 @@ class SharedInterfaceConfig(BaseModel):
 
 class DiscordInterfaceConfig(SharedInterfaceConfig):
     name: Literal["discord"] = "discord"
-    discord_token: Redact[str | None] = None
+    discord_token: SecretStr | None = None
     addons: list[Union[DiscordGenerateAvatarAddonConfig]] = []
     discord_proxy_url: str | None = None
     threads_inherit_history: bool = True
@@ -279,7 +279,7 @@ class LegacyConfig(Config):
 
 
 class SingleVendorConfig(BaseModel):
-    config: Redact[dict] = {}
+    config: dict = {}
     provides: list[str] = []
 
     def __getitem__(self, item):
@@ -342,6 +342,10 @@ LEGACY_DEFAULTS = {**copy.deepcopy(DEFAULTS), **get_defaults(LegacyConfig)}
 
 
 def overlay(base: dict | list, updates: dict | list, none_clears_array: bool = True):
+    if isinstance(base, Secret):
+        base = base.get_secret_value()
+    if isinstance(updates, Secret):
+        updates = updates.get_secret_value()
     result = copy.copy(base)
     if isinstance(updates, list):
         keyvalues = enumerate(updates)
