@@ -189,6 +189,8 @@ class DiscordInterface(discord.Client):
                                 await wait_until_timestamp(
                                     reply_message.timestamp, message.channel.typing
                                 )
+                                if reply_message.content.isspace():
+                                    continue
                                 await message.channel.send(
                                     await realize_pings(
                                         self, message.channel, reply_message.content
