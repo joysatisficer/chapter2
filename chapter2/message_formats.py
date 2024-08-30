@@ -60,7 +60,7 @@ class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         return [
             Message(Author(name) if name != "" else None, content)
             for name, content in re.findall(
-                r"^(?:<([^\n]+)> )?([^<].*)$", continuation, re.MULTILINE
+                r"^(?:<([^\n]+)> ?)?([^<].*)$", continuation, re.MULTILINE
             )
         ]
 
