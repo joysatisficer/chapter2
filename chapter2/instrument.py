@@ -21,7 +21,6 @@ REDACTED = "%%REDACTED%%"
 Redact = Annotated[T, "redact", Field(repr=False)]
 
 provider = TracerProvider()
-provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
 if "CH2_ENABLE_TELEMETRY" in os.environ:
     provider.add_span_processor(
         SimpleSpanProcessor(OTLPSpanExporter(endpoint="localhost:4317", insecure=True))
