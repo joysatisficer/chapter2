@@ -229,7 +229,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     name: Literal["discord"] = "discord"
     discord_token: SecretStr | None = None
     addons: list[Union[DiscordGenerateAvatarAddonConfig]] = []
-    discord_proxy_url: str | None = None
+    discord_proxy_url: SecretStr | None = None
     threads_inherit_history: bool = True
     max_queued_replies: int = 2
     thread_mute: bool = False

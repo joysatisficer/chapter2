@@ -37,11 +37,13 @@ class DiscordInterface(discord.Client):
         intents.members = True
         if (
             iface_config.discord_proxy_url is None
-            or not iface_config.discord_proxy_url.startswith("http")
+            or not iface_config.discord_proxy_url.get_secret_value().startswith("http")
         ):
             super().__init__(intents=intents)
         else:
-            super().__init__(intents=intents, proxy=iface_config.discord_proxy_url)
+            super().__init__(
+                intents=intents, proxy=iface_config.discord_proxy_url.get_secret_value()
+            )
         self.base_config: Config = base_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
