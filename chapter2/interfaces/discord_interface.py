@@ -53,13 +53,18 @@ class DiscordInterface(discord.Client):
         self.pending_shutdown = False
         if (
             self.iface_config.discord_proxy_url is not None
-            and self.iface_config.discord_proxy_url.startswith("socks")
+            and self.iface_config.discord_proxy_url.get_secret_value().startswith(
+                "socks"
+            )
         ):
             from aiohttp_socks import ProxyConnector
             from discord.state import ConnectionState
 
             self.http = discord.http.HTTPClient(
-                self.loop, ProxyConnector.from_url(iface_config.discord_proxy_url)
+                self.loop,
+                ProxyConnector.from_url(
+                    iface_config.discord_proxy_url.get_secret_value()
+                ),
             )
             self._connection: ConnectionState[Self] = self._get_state(intents=intents)
             self._connection.shard_count = self.shard_count
