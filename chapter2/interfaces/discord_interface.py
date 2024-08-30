@@ -215,11 +215,9 @@ class DiscordInterface(discord.Client):
             author_name = config.em.name
         else:
             author_name = message.author.name
-        content = await parse_discord_content(message, self.user.id, config.em.name),
-
+        content = await parse_discord_content(message, self.user.id, config.em.name)
         for attachment in message.attachments:
             content += f'<|begin_of_img_url|>{attachment.url}<|end_of_img_url|>'
-
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
             content,
