@@ -108,7 +108,9 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
             }
             if any(filter(lambda n: not n, muffler_results.keys())):
                 has_valid_reply = False
-                print("Muffled>>", reply, "<<Muffled", muffler_results, sep="")
+                print(
+                    "Muffled>>", reply, "<<Muffled", muffler_results, sep="", flush=True
+                )
             else:
                 yield reply
 
@@ -140,7 +142,7 @@ async def get_replies(
         logit_bias[scene_break_token] = -100
     else:
         logit_bias = {}
-    print(prompt)
+    print(prompt, flush=True)
     if em.continuation_model_local_tokenization:
         prompt = callgpt.tokenize(em.continuation_model, prompt)
     completion = (
@@ -169,9 +171,16 @@ async def get_replies(
             "tokens omitted}",
             "<<Continues",
             sep="",
+            flush=True,
         )
     else:
-        print("Continues>>", completion.replace("\n", r"\n"), "<<Continues", sep="")
+        print(
+            "Continues>>",
+            completion.replace("\n", r"\n"),
+            "<<Continues",
+            sep="",
+            flush=True,
+        )
     # Todo: Client-side stop sequences
     for message in em.message_history_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes
