@@ -122,7 +122,7 @@ class DiscordInterface(discord.Client):
                                 pass
                             else:
                                 yield await self.discord_message_to_message(
-                                    config, this_message
+                                    config, iface_config, this_message
                                 )
                         if iface_config.threads_inherit_history and isinstance(
                             message.channel, discord.threads.Thread
@@ -161,7 +161,7 @@ class DiscordInterface(discord.Client):
                                         pass
                                     else:
                                         yield await self.discord_message_to_message(
-                                            config, this_message
+                                            config, iface_config, this_message
                                         )
 
                     if not await self.should_reply(
@@ -209,18 +209,35 @@ class DiscordInterface(discord.Client):
                         await command_message.delete()
 
     async def discord_message_to_message(
-        self, config, message: discord.Message
+        self, config, iface_config, message: discord.Message
     ) -> Message:
         if message.author.id == self.user.id:
             author_name = config.em.name
         else:
             author_name = message.author.name
         content = await parse_discord_content(message, self.user.id, config.em.name)
-        for attachment in message.attachments:
-            # if the image is larger than 2000px, skip it
-            if attachment.width is None or attachment.height is None or attachment.width > 2000 or attachment.height > 2000:
-                continue
-            content += f'<|begin_of_img_url|>{attachment.url}<|end_of_img_url|>'
+        if iface_config.include_images:
+            for attachment in message.attachments:
+                if attachment.width is None or attachment.height is None:
+                    continue
+                elif (
+                    attachment.width > iface_config.image_limits.max_width
+                    or attachment.height > iface_config.image_limits.max_height
+                ):
+                    width_ratio = iface_config.image_limits.max_width / attachment.width
+                    height_ratio = (
+                        iface_config.image_limits.max_height / attachment.height
+                    )
+                    scale_factor = min(width_ratio, height_ratio)
+                    width = int(attachment.width * scale_factor)
+                    height = int(attachment.height * scale_factor)
+                    url = (
+                        attachment.proxy_url.rstrip("&")
+                        + f"&width={width}&height={height}"
+                    )
+                else:
+                    url = attachment.proxy_url
+                content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
             content,

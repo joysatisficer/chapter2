@@ -225,6 +225,11 @@ class SharedInterfaceConfig(BaseModel):
     end_to_end_test: bool = False
 
 
+class ImageLimits(BaseModel):
+    max_width: int = 2000
+    max_height: int = 2000
+
+
 class DiscordInterfaceConfig(SharedInterfaceConfig):
     name: Literal["discord"] = "discord"
     discord_token: SecretStr | None = None
@@ -237,6 +242,8 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     end_to_end_test_discord_token: str | None = None
     end_to_end_test_discord_channel_id: int | None = None
     discord_user_whitelist: list[int] = []
+    include_images: bool = True
+    image_limits: ImageLimits = ImageLimits()
 
 
 class MikotoInterfaceConfig(SharedInterfaceConfig):
