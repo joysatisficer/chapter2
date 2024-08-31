@@ -226,8 +226,8 @@ class SharedInterfaceConfig(BaseModel):
 
 
 class ImageLimits(BaseModel):
-    max_width: int = 2000
-    max_height: int = 2000
+    max_width: int = 1568
+    max_height: int = 1568
 
 
 class DiscordInterfaceConfig(SharedInterfaceConfig):
