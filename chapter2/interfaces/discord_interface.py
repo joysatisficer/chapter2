@@ -343,9 +343,7 @@ class DiscordInterface(discord.Client):
     async def handle_exceptions(self, message: discord.Message):
         config, iface_config = await self.get_config(None)
         try:
-            async with ot_tracer.start_as_current_span(
-                self.handle_exceptions.__qualname__
-            ):
+            with ot_tracer.start_as_current_span(self.handle_exceptions.__qualname__):
                 async with self.message_semaphore:
                     yield
         except ConfigError as exc:
