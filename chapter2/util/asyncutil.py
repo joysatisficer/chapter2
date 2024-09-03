@@ -9,7 +9,7 @@ def eager_iterable_to_async_iterable(iterable: Iterable) -> AsyncIterable:
                 yield item
 
         def __repr__(self):
-            return iterable
+            return repr(iterable)
 
     return AsyncIterableWrapper()
 
