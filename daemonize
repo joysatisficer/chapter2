@@ -4,7 +4,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 EM_NAME="$1"
 SERVICE_NAME="$ENV_PREFIX"-"$EM_NAME"
 echo "[Unit]
-Description=Language model simulacrum based on Chapter 2
+Description=Chapter II em
 After=network.target
 Wants=network-online.target
 
@@ -21,6 +21,8 @@ Environment=\"OTEL_SERVICE_NAME=$ENV_PREFIX-$EM_NAME\"
 [Install]
 WantedBy=default.target" > ~/.config/systemd/user/"$SERVICE_NAME".service
 systemctl --user daemon-reload
-systemctl --user enable --now "$SERVICE_NAME".service
-sleep 3
-systemctl --user status "$SERVICE_NAME".service
+if [[ "$2" != "--refresh" ]]; then
+  systemctl --user enable --now "$SERVICE_NAME".service
+  sleep 3
+  systemctl --user status "$SERVICE_NAME".service
+fi
