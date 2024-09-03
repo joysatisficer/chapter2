@@ -36,7 +36,10 @@ def dehydrate(name: str, value) -> dict:
             return {}
         else:
             return {name: repr(value)}
-    return {k: dehydrate(k, v) for k, v in iterator}
+    result = {}
+    for k, v in iterator:
+        result.update(dehydrate(name + "." + k, v))
+    return result
 
 
 class TraceGenerator:
@@ -60,19 +63,25 @@ class TraceGenerator:
                 span.set_attribute("halt", True)
                 raise
             else:
-                span.set_attribute("yield", dehydrate("", ret))
+                span.set_attributes(dehydrate("yield", ret))
+                return ret
 
     async def __anext__(self):
+        e_func = None
         with tracer.start_as_current_span(
             self.gen.__qualname__, links=self.links
         ) as span:
+            span: ot_trace.Span
             try:
                 ret = await anext(self.gen)
-            except StopAsyncIteration:
+            except StopAsyncIteration as e:
+                e_func = e
                 span.set_attribute("halt", True)
-                raise
             else:
-                span.set_attribute("yield", dehydrate("", ret))
+                span.set_attributes(dehydrate("yield", ret))
+                return ret
+        if e_func is not None:
+            raise e_func
 
 
 class TraceSingleton:
@@ -81,7 +90,7 @@ class TraceSingleton:
         def trace_function(*args, **kwargs):
             bound_args = inspect.signature(func).bind(*args, **kwargs)
             bound_args.apply_defaults()
-            attributes = dehydrate("arg.", bound_args.arguments)
+            attributes = dehydrate("arg", bound_args.arguments)
             if inspect.isgeneratorfunction(func) or inspect.isasyncgenfunction(func):
                 with tracer.start_as_current_span(func.__qualname__) as span:
                     span.set_attributes(attributes)
@@ -91,7 +100,7 @@ class TraceSingleton:
                 with tracer.start_as_current_span(func.__qualname__) as span:
                     span.set_attributes(attributes)
                     ret = func(*args, **kwargs)
-                    span.set_attribute("return", dehydrate("", ret))
+                    span.set_attributes(dehydrate("return", ret))
                     return ret
 
         return trace_function
@@ -100,10 +109,12 @@ class TraceSingleton:
         def instrument_log(*args, attr=False, **kwargs):
             span = ot_trace.get_current_span()
             if attr:
-                assert len(args) == 0
+                assert len(args) == 1
                 span.set_attribute(name, args[0])
             else:
-                span.add_event(name, {**dehydrate("", args), **dehydrate("", kwargs)})
+                span.add_event(
+                    name, {**dehydrate("value", args), **dehydrate("value", kwargs)}
+                )
                 if len(args) == 1 and len(kwargs) == 0:
                     return args[0]
                 elif len(args) > 1 and len(kwargs) == 0:
