@@ -11,7 +11,9 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry_instrumentation_discordpy import DiscordPyInstrumentor
 
-tracer = ot_trace.get_tracer("chapter2")
+
+__all__ = ["trace", "TraceSingleton", "ot_tracer"]
+ot_tracer = ot_trace.get_tracer("chapter2")
 T = TypeVar("T")
 
 provider = TracerProvider()
@@ -54,7 +56,7 @@ class TraceGenerator:
         return self
 
     def __next__(self):
-        with tracer.start_as_current_span(
+        with ot_tracer.start_as_current_span(
             self.gen.__qualname__, links=self.links
         ) as span:
             try:
@@ -68,7 +70,7 @@ class TraceGenerator:
 
     async def __anext__(self):
         e_func = None
-        with tracer.start_as_current_span(
+        with ot_tracer.start_as_current_span(
             self.gen.__qualname__, links=self.links
         ) as span:
             span: ot_trace.Span
@@ -92,12 +94,12 @@ class TraceSingleton:
             bound_args.apply_defaults()
             attributes = dehydrate("arg", bound_args.arguments)
             if inspect.isgeneratorfunction(func) or inspect.isasyncgenfunction(func):
-                with tracer.start_as_current_span(func.__qualname__) as span:
+                with ot_tracer.start_as_current_span(func.__qualname__) as span:
                     span.set_attributes(attributes)
                     links = [ot_trace.Link(span.get_span_context())]
                     return TraceGenerator(func(*args, **kwargs), links)
             else:
-                with tracer.start_as_current_span(func.__qualname__) as span:
+                with ot_tracer.start_as_current_span(func.__qualname__) as span:
                     span.set_attributes(attributes)
                     ret = func(*args, **kwargs)
                     span.set_attributes(dehydrate("return", ret))

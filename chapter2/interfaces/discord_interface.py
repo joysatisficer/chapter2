@@ -14,7 +14,7 @@ import yaml
 from pydantic import ValidationError
 
 import ontology
-from trace import trace
+from trace import trace, ot_tracer
 from interfaces.deserves_reply import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
@@ -340,12 +340,14 @@ class DiscordInterface(discord.Client):
         return config, iface_config
 
     @contextlib.asynccontextmanager
-    @trace
     async def handle_exceptions(self, message: discord.Message):
         config, iface_config = await self.get_config(None)
         try:
-            async with self.message_semaphore:
-                yield
+            async with ot_tracer.start_as_current_span(
+                self.handle_exceptions.__qualname__
+            ):
+                async with self.message_semaphore:
+                    yield
         except ConfigError as exc:
             if iface_config.end_to_end_test:
                 self.end_to_end_test_fail = True
