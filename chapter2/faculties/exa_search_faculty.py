@@ -19,10 +19,12 @@ from ontology import (
     ExaSearchHighlightsConfig,
     EmConfig,
 )
+from trace import trace
 
 SharedExa = cache(Exa)
 
 
+@trace
 async def exa_search_faculty(
     history: ActionHistory, faculty_config: ExaSearchFacultyConfig, em: EmConfig
 ):

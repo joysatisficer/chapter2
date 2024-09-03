@@ -14,7 +14,7 @@ import yaml
 from pydantic import ValidationError
 
 import ontology
-from trace import trace, ot_tracer
+from trace import trace, ot_tracer, log_trace_id_to_console
 from interfaces.deserves_reply import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
@@ -371,13 +371,7 @@ class DiscordInterface(discord.Client):
                 await message.add_reaction("📵")
             if isinstance(exc, openai.error.APIConnectionError):
                 await message.add_reaction("🌩️")
-            print(
-                "exception in channel",
-                format_cli_link(
-                    message.jump_url,
-                    f"#{message.channel.name}",
-                ),
-            )
+            print("exception in channel", f"#{message.channel.name}")
             if "PYCHARM_HOSTED" not in os.environ:
                 Console().print_exception(
                     suppress=(asyncio, fire, selectors), show_locals=True
@@ -386,6 +380,7 @@ class DiscordInterface(discord.Client):
                 import traceback
 
                 traceback.print_exc()
+            log_trace_id_to_console()
             raise
         finally:
             if (

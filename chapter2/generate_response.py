@@ -12,7 +12,7 @@ from declarations import UserID, ActionHistory, Author, Ensemble, Action
 from faculties import FACULTY_NAME_TO_FUNCTION
 from mufflers import repeats_prompt_sentence, has_http
 from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
-from trace import trace
+from trace import trace, log_trace_id_to_console
 
 
 @trace
@@ -182,6 +182,7 @@ async def get_replies(
             sep="",
             flush=True,
         )
+    log_trace_id_to_console()
     # Todo: Client-side stop sequences
     for message in em.message_history_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes

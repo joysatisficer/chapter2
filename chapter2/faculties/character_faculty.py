@@ -9,10 +9,12 @@ from chr_loader import load_chr
 from retriever import KNNIndex, SVMIndex
 from message_formats import ColonMessageFormat
 from util.asyncutil import eager_iterable_to_async_iterable
+from trace import trace
 
 # todo: read character folder in the impure shell
 
 
+@trace
 async def character_faculty(
     history: ActionHistory, faculty_config: CharacterFacultyConfig, em: EmConfig
 ):

@@ -12,7 +12,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry_instrumentation_discordpy import DiscordPyInstrumentor
 
 
-__all__ = ["trace", "TraceSingleton", "ot_tracer"]
+__all__ = ["trace", "TraceSingleton", "ot_tracer", "log_trace_id_to_console"]
 ot_tracer = ot_trace.get_tracer("chapter2")
 T = TypeVar("T")
 
@@ -125,6 +125,11 @@ class TraceSingleton:
                     return None
 
         return instrument_log
+
+
+def log_trace_id_to_console():
+    trace_id = ot_trace.get_current_span().get_span_context().trace_id
+    print(f"Trace ID {trace_id}")
 
 
 trace = TraceSingleton()
