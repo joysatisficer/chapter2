@@ -16,6 +16,7 @@ WorkingDirectory=$SCRIPT_DIR
 ExecStart=/usr/bin/rye run em $EM_NAME
 Slice=ems-$ENV_PREFIX.slice
 Environment=\"PYTHONUNBUFFERED=1\"
+Environment=\"OTEL_SERVICE_NAME=$ENV_PREFIX-$EM_NAME\"
 
 [Install]
 WantedBy=default.target" > ~/.config/systemd/user/"$SERVICE_NAME".service
