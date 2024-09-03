@@ -20,7 +20,7 @@ from message_formats import (
     ColonMessageFormat,
 )
 
-from instrument import *
+from trace import *
 
 
 class LayerOfEnsembleFormat(BaseModel):

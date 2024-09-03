@@ -14,7 +14,7 @@ import yaml
 from pydantic import ValidationError
 
 import ontology
-from instrument import instrument
+from trace import trace
 from interfaces.deserves_reply import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
@@ -111,6 +111,7 @@ class DiscordInterface(discord.Client):
                 try:
                     my_user_id = UserID(str(self.user.id), "discord")
 
+                    @trace
                     async def message_history():
                         nonlocal message
                         async for this_message in message.channel.history(limit=None):
@@ -244,7 +245,7 @@ class DiscordInterface(discord.Client):
             message.created_at.timestamp(),
         )
 
-    @instrument
+    @trace
     async def should_reply(
         self,
         message: discord.Message,
@@ -338,6 +339,7 @@ class DiscordInterface(discord.Client):
         return config, iface_config
 
     @contextlib.asynccontextmanager
+    @trace
     async def handle_exceptions(self, message: discord.Message):
         config, iface_config = await self.get_config(None)
         try:
