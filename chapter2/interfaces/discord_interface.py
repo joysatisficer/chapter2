@@ -199,6 +199,7 @@ class DiscordInterface(discord.Client):
                                 )
                                 if reply_message.content.isspace():
                                     continue
+                                trace.send_message(reply_message.content)
                                 await message.channel.send(
                                     await realize_pings(
                                         self, message.channel, reply_message.content
