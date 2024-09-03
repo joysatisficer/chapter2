@@ -90,7 +90,9 @@ class TraceSingleton:
             else:
                 with tracer.start_as_current_span(func.__qualname__) as span:
                     span.set_attributes(attributes)
-                    return func(*args, **kwargs)
+                    ret = func(*args, **kwargs)
+                    span.set_attribute("return", dehydrate("", ret))
+                    return ret
 
         return trace_function
 
