@@ -81,7 +81,7 @@ class TraceSingleton:
         def trace_function(*args, **kwargs):
             bound_args = inspect.signature(func).bind(*args, **kwargs)
             bound_args.apply_defaults()
-            attributes = dehydrate("arg.", bound_args.arguments.items())
+            attributes = dehydrate("arg.", bound_args.arguments)
             if inspect.isgeneratorfunction(func) or inspect.isasyncgenfunction(func):
                 with tracer.start_as_current_span(func.__qualname__) as span:
                     span.set_attributes(attributes)
