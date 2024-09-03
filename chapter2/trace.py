@@ -97,15 +97,19 @@ class TraceSingleton:
         return trace_function
 
     def __getattr__(self, name):
-        def instrument_log(*args, **kwargs):
+        def instrument_log(*args, attr=False, **kwargs):
             span = ot_trace.get_current_span()
-            span.add_event(name, {**dehydrate("", args), **dehydrate("", kwargs)})
-            if len(args) == 1 and len(kwargs) == 0:
-                return args[0]
-            elif len(args) > 1 and len(kwargs) == 0:
-                return args
+            if attr:
+                assert len(args) == 0
+                span.set_attribute(name, args[0])
             else:
-                return None
+                span.add_event(name, {**dehydrate("", args), **dehydrate("", kwargs)})
+                if len(args) == 1 and len(kwargs) == 0:
+                    return args[0]
+                elif len(args) > 1 and len(kwargs) == 0:
+                    return args
+                else:
+                    return None
 
         return instrument_log
 

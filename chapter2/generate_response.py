@@ -147,7 +147,7 @@ async def get_replies(
         prompt = callgpt.tokenize(em.continuation_model, prompt)
     completion = (
         await callgpt.complete(
-            prompt=prompt,
+            prompt=trace.prompt(prompt),
             temperature=em.temperature,
             max_tokens=em.continuation_max_tokens,
             frequency_penalty=em.frequency_penalty,
@@ -174,6 +174,7 @@ async def get_replies(
             flush=True,
         )
     else:
+        trace.continuation(completion, attr=True)
         print(
             "Continues>>",
             completion.replace("\n", r"\n"),
