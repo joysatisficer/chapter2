@@ -276,7 +276,6 @@ InterfaceConfig = Annotated[
 class Config(BaseModel):
     em: EmConfig
     interfaces: list[InterfaceConfig] = [DiscordInterfaceConfig()]
-    sentry_dsn_url: str | None = None
 
 
 class LegacyConfig(Config):

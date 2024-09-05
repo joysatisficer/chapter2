@@ -34,7 +34,6 @@ dependencies = [
     "aiohttp>=3.9.1,<4.0",
     "mikoto-py~=0.0.6",
     "exa-py==1.0.7",
-    "sentry-sdk[fastapi]>=1.40.5",
     "novelai-api~=0.27.0",
 ]
 

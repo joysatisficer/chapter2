@@ -85,8 +85,6 @@ def load_em(name) -> dict:
 
 async def run_em(name, end_to_end_test=False):
     config = load_em(name)
-    if config.sentry_dsn_url is not None:
-        setup_sentry(config)
     interfaces = []
     for interface in config.interfaces:
         if end_to_end_test and hasattr(interface, "end_to_end_test"):
@@ -158,21 +156,6 @@ def load_optional(filename):
                 return kv
     except FileNotFoundError:
         return {}
-
-
-def setup_sentry(config: Config):
-    import sentry_sdk, platform
-
-    sentry_sdk.init(
-        dsn=config.sentry_dsn_url,
-        traces_sample_rate=1.0,
-        profiles_sample_rate=1.0,
-    )
-    path = Path(config.em.em_folder)
-    em = path.parts[-1]
-    deployment = path.parts[-3]
-    hostname = platform.node().split(".")[0].lower()
-    sentry_sdk.set_tag("instance", f"{em}/{deployment}@{hostname}")
 
 
 if __name__ == "__main__":
