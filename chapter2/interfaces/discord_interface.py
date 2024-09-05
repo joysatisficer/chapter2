@@ -23,6 +23,7 @@ from ontology import Config, DiscordInterfaceConfig
 
 
 class DiscordInterface(discord.Client):
+    DOTTED_MESSAGE_RE = r"^[.,][^\s.,]"
     MAX_CONCURRENT_MESSAGES = 100_000
 
     def __init__(
@@ -118,7 +119,7 @@ class DiscordInterface(discord.Client):
                             if is_continue_command(this_message.content):
                                 pass
                             elif iface_config.ignore_dotted_messages and re.match(
-                                "^[.,][^\s.,]", this_message.content
+                                self.DOTTED_MESSAGE_RE, this_message.content
                             ):
                                 pass
                             else:
@@ -156,7 +157,7 @@ class DiscordInterface(discord.Client):
                                     elif (
                                         iface_config.ignore_dotted_messages
                                         and re.match(
-                                            "^[.,][^\s.,]", this_message.content
+                                            self.DOTTED_MESSAGE_RE, this_message.content
                                         )
                                     ):
                                         pass
@@ -275,7 +276,7 @@ class DiscordInterface(discord.Client):
             )
             and not (
                 iface_config.ignore_dotted_messages
-                and re.match("^[.,][^\s.,]", message.content)
+                and re.match(self.DOTTED_MESSAGE_RE, message.content)
             )
             and (
                 len(iface_config.discord_user_whitelist) == 0
