@@ -343,52 +343,52 @@ class DiscordInterface(discord.Client):
     @contextlib.asynccontextmanager
     async def handle_exceptions(self, message: discord.Message):
         config, iface_config = await self.get_config(None)
-        try:
-            with ot_tracer.start_as_current_span(self.handle_exceptions.__qualname__):
+        with ot_tracer.start_as_current_span(self.handle_exceptions.__qualname__):
+            try:
                 async with self.message_semaphore:
                     yield
-        except ConfigError as exc:
-            if iface_config.end_to_end_test:
-                self.end_to_end_test_fail = True
-            await message.add_reaction("⚙️")
-            # if the message is deleted, the url will still head to the channel
-            print(
-                "bad config in channel",
-                format_cli_link(
-                    message.jump_url,
-                    f"#{message.channel.name}",
-                ),
-                get_channel_topic(message.channel),
-            )
-            raise exc.__cause__
-        except Exception as exc:
-            import os, asyncio, fire, selectors
-            from rich.console import Console
-
-            if iface_config.end_to_end_test:
-                self.end_to_end_test_fail = True
-            await message.add_reaction("⚠")
-            if isinstance(exc, ConnectionError):
-                await message.add_reaction("📵")
-            if isinstance(exc, openai.error.APIConnectionError):
-                await message.add_reaction("🌩️")
-            print("exception in channel", f"#{message.channel.name}")
-            if "PYCHARM_HOSTED" not in os.environ:
-                Console().print_exception(
-                    suppress=(asyncio, fire, selectors), show_locals=True
+            except ConfigError as exc:
+                if iface_config.end_to_end_test:
+                    self.end_to_end_test_fail = True
+                await message.add_reaction("⚙️")
+                # if the message is deleted, the url will still head to the channel
+                print(
+                    "bad config in channel",
+                    format_cli_link(
+                        message.jump_url,
+                        f"#{message.channel.name}",
+                    ),
+                    get_channel_topic(message.channel),
                 )
-            else:
-                import traceback
+                raise exc.__cause__
+            except Exception as exc:
+                import os, asyncio, fire, selectors
+                from rich.console import Console
 
-                traceback.print_exc()
-            log_trace_id_to_console()
-            raise
-        finally:
-            if (
-                self.pending_shutdown
-                and self.message_semaphore._value == self.MAX_CONCURRENT_MESSAGES
-            ):
-                await self.close()
+                if iface_config.end_to_end_test:
+                    self.end_to_end_test_fail = True
+                await message.add_reaction("⚠")
+                if isinstance(exc, ConnectionError):
+                    await message.add_reaction("📵")
+                if isinstance(exc, openai.error.APIConnectionError):
+                    await message.add_reaction("🌩️")
+                print("exception in channel", f"#{message.channel.name}")
+                if "PYCHARM_HOSTED" not in os.environ:
+                    Console().print_exception(
+                        suppress=(asyncio, fire, selectors), show_locals=True
+                    )
+                else:
+                    import traceback
+
+                    traceback.print_exc()
+                log_trace_id_to_console()
+                raise
+            finally:
+                if (
+                    self.pending_shutdown
+                    and self.message_semaphore._value == self.MAX_CONCURRENT_MESSAGES
+                ):
+                    await self.close()
 
     async def on_ready(self):
         print(f"Invite the bot: {self.get_invite_link()}")

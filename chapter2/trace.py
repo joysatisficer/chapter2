@@ -2,19 +2,16 @@ import inspect
 import os
 import dataclasses
 import functools
-from typing import TypeVar, Annotated
 
-from pydantic import BaseModel, Field, Secret
+from pydantic import BaseModel, Secret
 from opentelemetry import trace as ot_trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry_instrumentation_discordpy import DiscordPyInstrumentor
 
 
 __all__ = ["trace", "TraceSingleton", "ot_tracer", "log_trace_id_to_console"]
 ot_tracer = ot_trace.get_tracer("chapter2")
-T = TypeVar("T")
 
 provider = TracerProvider()
 if "CH2_ENABLE_TELEMETRY" in os.environ:
@@ -24,7 +21,7 @@ if "CH2_ENABLE_TELEMETRY" in os.environ:
 ot_trace.set_tracer_provider(provider)
 
 
-def dehydrate(name: str, value) -> dict:
+def to_json(name: str, value) -> dict:
     if isinstance(value, BaseModel):
         iterator = value.model_dump(mode="json").items()
     elif dataclasses.is_dataclass(value):
@@ -40,7 +37,7 @@ def dehydrate(name: str, value) -> dict:
             return {name: repr(value)}
     result = {}
     for k, v in iterator:
-        result.update(dehydrate(name + "." + k, v))
+        result.update(to_json(name + "." + k, v))
     return result
 
 
@@ -65,7 +62,7 @@ class TraceGenerator:
                 span.set_attribute("halt", True)
                 raise
             else:
-                span.set_attributes(dehydrate("yield", ret))
+                span.set_attributes(to_json("yield", ret))
                 return ret
 
     async def __anext__(self):
@@ -80,7 +77,7 @@ class TraceGenerator:
                 e_func = e
                 span.set_attribute("halt", True)
             else:
-                span.set_attributes(dehydrate("yield", ret))
+                span.set_attributes(to_json("yield", ret))
                 return ret
         if e_func is not None:
             raise e_func
@@ -92,7 +89,7 @@ class TraceSingleton:
         def trace_function(*args, **kwargs):
             bound_args = inspect.signature(func).bind(*args, **kwargs)
             bound_args.apply_defaults()
-            attributes = dehydrate("arg", bound_args.arguments)
+            attributes = to_json("arg", bound_args.arguments)
             if inspect.isgeneratorfunction(func) or inspect.isasyncgenfunction(func):
                 with ot_tracer.start_as_current_span(func.__qualname__) as span:
                     span.set_attributes(attributes)
@@ -102,7 +99,7 @@ class TraceSingleton:
                 with ot_tracer.start_as_current_span(func.__qualname__) as span:
                     span.set_attributes(attributes)
                     ret = func(*args, **kwargs)
-                    span.set_attributes(dehydrate("return", ret))
+                    span.set_attributes(to_json("return", ret))
                     return ret
 
         return trace_function
@@ -115,7 +112,7 @@ class TraceSingleton:
                 span.set_attribute(name, args[0])
             else:
                 span.add_event(
-                    name, {**dehydrate("value", args), **dehydrate("value", kwargs)}
+                    name, {**to_json("value", args), **to_json("value", kwargs)}
                 )
                 if len(args) == 1 and len(kwargs) == 0:
                     return args[0]
@@ -129,7 +126,7 @@ class TraceSingleton:
 
 def log_trace_id_to_console():
     trace_id = ot_trace.get_current_span().get_span_context().trace_id
-    print(f"Trace ID {trace_id}")
+    print(f"Trace ID:", trace_id)
 
 
 trace = TraceSingleton()
