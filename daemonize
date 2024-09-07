@@ -21,7 +21,7 @@ Environment=\"OTEL_SERVICE_NAME=$ENV_PREFIX-$EM_NAME\"
 [Install]
 WantedBy=default.target" > ~/.config/systemd/user/"$SERVICE_NAME".service
 systemctl --user daemon-reload
-if [[ "$2" != "--refresh" ]]; then
+if [[ "$#" -lt 2 ]] || [[ "$2" != "--refresh" ]]; then
   systemctl --user enable --now "$SERVICE_NAME".service
   sleep 3
   systemctl --user status "$SERVICE_NAME".service
