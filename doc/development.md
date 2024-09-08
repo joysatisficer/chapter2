@@ -26,7 +26,7 @@ curl -sSf https://rye.astral.sh/get | bash
 ```bash
 rye sync
 ```
-3Log into huggingface (required for using open-source models)
+3. Log into huggingface (required for using open-source models)
 You may need to agree to licenses to access gated models on huggingface.co in your web browser.
 For example, [agree to the terms of service for LLaMa 3.1](https://huggingface.co/meta-llama/Meta-Llama-3.1-405B)
 ```bash
