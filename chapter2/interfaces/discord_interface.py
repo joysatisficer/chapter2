@@ -154,6 +154,8 @@ class DiscordInterface(discord.Client):
                                 ):
                                     if is_continue_command(this_message.content):
                                         pass
+                                    elif is_mu_command(this_message.content):
+                                        pass
                                     elif (
                                         iface_config.ignore_dotted_messages
                                         and re.match(
