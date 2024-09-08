@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+cat chapter2/**.py | ttok -m gpt-4
