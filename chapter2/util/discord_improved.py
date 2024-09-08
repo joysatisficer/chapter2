@@ -75,6 +75,6 @@ async def parse_discord_content(
         transformed = transforms[type](id)
         return transformed
 
-    result = re.sub(r"<(@[!&]?|#)([0-9]{15,20})>", repl, self.content)
+    result = re.sub(r"<(@[!&]?|#)([0-9]{15,20})>", repl, self.system_content)
 
     return discord.utils.escape_mentions(result)
