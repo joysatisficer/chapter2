@@ -96,7 +96,7 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
                     with open(config.em.folder / "avatar_changed_at") as f:
                         timestamp = int(f.read())
                 except FileNotFoundError:
-                    timestamp = time.time()
+                    timestamp = 0
                 time_elapsed = time.time() - timestamp
                 await asyncio.sleep(interval - time_elapsed)
                 await self.generate_and_set_avatar()
