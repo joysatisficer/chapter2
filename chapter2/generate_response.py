@@ -10,7 +10,7 @@ from intermodel.callgpt import count_tokens, max_token_length
 
 from declarations import UserID, ActionHistory, Author, Ensemble, Action
 from faculties import FACULTY_NAME_TO_FUNCTION
-from mufflers import repeats_prompt_sentence, has_http
+from mufflers import context_sentence_repetition, has_url, mufflers
 from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
 from trace import trace, log_trace_id_to_console
 
@@ -92,25 +92,19 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
             if message.author.name != em.name
         ]
     )
-    has_valid_reply = False
+    retry = True
     tries = 0
-    while not has_valid_reply and tries < 3:
+    while retry and tries < 3:
         tries += 1
-        has_valid_reply = True
+        retry = False
         async for reply in get_replies(
             em, prompt, completion_prefix, em.name, author, stop_sequences
         ):
-            muffler_results = {
-                "repeats_prompt_sentence": repeats_prompt_sentence(
-                    reply.content, prompt
-                ),
-                "has_http": has_http(reply.content, prompt),
-            }
-            if any(filter(lambda n: not n, muffler_results.keys())):
-                has_valid_reply = False
-                print(
-                    "Muffled>>", reply, "<<Muffled", muffler_results, sep="", flush=True
-                )
+            for muffler in em.mufflers:
+                if mufflers[muffler](prompt, reply.content):
+                    retry = True
+                    print("Muffled>>", muffler, "<<Muffled", sep="", flush=True)
+                    break
             else:
                 yield reply
 

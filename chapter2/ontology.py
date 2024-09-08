@@ -164,7 +164,7 @@ class EmConfig(BaseModel):
     # todo: make message_history coequal with other ensembles
     message_history_max_tokens: int | float = infinity
     message_history_format: MessageFormat = IRCMessageFormat()
-    message_history_header: str = ""  # todo: rename
+    message_history_header: str = ""
     message_history_separator: str = ""
     message_history_footer: str = ""
     message_history_operator: Literal["prepend"] | Literal["append"] = "prepend"
@@ -178,6 +178,7 @@ class EmConfig(BaseModel):
     total_max_tokens: int | float = 31_000
     name_prefix: bool = True
     name_prefix_optional: bool = True
+    mufflers: list[str] = ["context_sentence_repetition", "has_url"]
 
     temperature: Annotated[float, Ge(0)] = 0.95  # todo: vary on model
     top_p: Annotated[float, Interval(gt=0, le=1)] = 0.99

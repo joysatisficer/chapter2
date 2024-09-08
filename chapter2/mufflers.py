@@ -2,29 +2,28 @@ import re
 from re import sub, match, compile as re_compile, I, M
 from typing import Callable, Union, Literal
 
-__all__ = ["Muffler", "repeats_prompt_sentence", "has_http"]
-
-Muffler = Callable[[str, str], Union[Literal[False], str]]
+Muffler = Callable[[str, str], bool]
 
 
-def repeats_prompt_sentence(reply: str, prompt: str) -> Union[Literal[False], str]:
+def context_sentence_repetition(context: str, reply: str):
     """
     Determine if result repeats any of the prompt sentences
     """
-    prompt_sentences = divide_sentences(prompt) or []
+    prompt_sentences = divide_sentences(context) or []
     completion_sentences = divide_sentences(reply) or []
-    return (
-        any(sentence in prompt_sentences for sentence in completion_sentences)
-        and "repeat"
+    return any(sentence in prompt_sentences for sentence in completion_sentences)
+
+
+def has_url(context: str, reply: str):
+    return match("https?://", reply) and not match(
+        r"https://(cdn\.)?discord(app)?.com/", reply
     )
 
 
-def has_http(reply: str, prompt: str) -> Union[Literal[False], str]:
-    return (
-        match("https?://", reply)
-        and not match(r"https://(cdn\.)?discord(app)?.com/", reply)
-        and "url"
-    )
+mufflers: dict[str, Muffler] = {
+    "context_sentence_repetition": context_sentence_repetition,
+    "has_url": has_url,
+}
 
 
 def divide_sentences(prompt):
