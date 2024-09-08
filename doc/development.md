@@ -42,14 +42,13 @@ vendors:
     provides: [".*"]
 ```
 5. Set up `embed_server`
-Download and install:
 ```bash
 git clone git@github.com:ampdot-io/embed_server.git
 cd embed_server
 rye sync
 ```
 
-Run:
+Run: (You need to always keep this running while Chapter II is active)
 ```bash
 rye run embed_server
 ```
