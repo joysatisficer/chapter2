@@ -354,10 +354,7 @@ class DiscordInterface(discord.Client):
                 # if the message is deleted, the url will still head to the channel
                 print(
                     "bad config in channel",
-                    format_cli_link(
-                        message.jump_url,
-                        f"#{message.channel.name}",
-                    ),
+                    f"#{message.channel.name}",
                     get_channel_topic(message.channel),
                 )
                 raise exc.__cause__
@@ -494,17 +491,6 @@ async def wait_until_timestamp(timestamp, coroutine):
 
 def isempty(string):
     return string == "" or string.isspace()
-
-
-def format_cli_link(uri, label=None):
-    if label is None:
-        label = uri
-    parameters = ""
-
-    # OSC 8 ; params ; URI ST <name> OSC 8 ;; ST
-    escape_mask = "\033]8;{};{}\033\\{}\033]8;;\033\\"
-
-    return escape_mask.format(parameters, uri, label)
 
 
 class ConfigError(ValueError):
