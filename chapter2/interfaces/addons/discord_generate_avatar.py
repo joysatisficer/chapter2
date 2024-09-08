@@ -24,7 +24,7 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
         @log_async_task_exceptions
         async def generate_and_set_avatar(self):
             start_time = time.time()
-            config = await self.get_config(None)
+            config, _ = await self.get_config(None)
             match addon_config.image_vendor:
                 case "novelai":
                     contents = await self.generate_avatar_novelai()
@@ -55,7 +55,7 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
                 await api.high_level.login_with_token(
                     config.em.novelai_api_key.get_secret_value()
                 )
-                preset = ImagePreset()
+                preset = ImagePreset.from_v3_config()
                 preset.resolution = ImageResolution.Small_Square
                 preset.scale = addon_config.scale
                 preset.seed = 0
