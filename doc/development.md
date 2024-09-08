@@ -1,20 +1,6 @@
 # Development
 
-## System services
-### [`embed_server`](https://github.com/ampdot-io/embed_server)
-Download and install:
-```bash
-git clone git@github.com:ampdot-io/embed_server.git
-cd embed_server
-rye sync
-```
-
-Run:
-```bash
-rye run embed_server
-```
-
-## Building
+## Setup
 
 1. Install [Rye](https://rye.astral.sh/guide/installation/), a one-stop-shop
 for Python dependency management written in Rust. On POSIX systems, you can
@@ -39,9 +25,9 @@ variables. (OPENAI_API_KEY, OPENAI_API_BASE, ANTHROPIC_API_KEY)*
 Elysium Conduit (hosted API, ask ampdot for a Tailscale invite link):
 ```
 vendors:
-  openai-openrouter:
+  openai-conduit:
     config:
-      openai_api_key: YOUR_OPENROUTER_KEY_HERE
+      openai_api_key: asdf
       api_base: https://conduit.elysium.mesh.host/v1
     provides: [".*"]
 ```
@@ -54,6 +40,18 @@ vendors:
       openai_api_key: YOUR_OPENROUTER_KEY_HERE
       api_base: https://openrouter.ai/api/v1
     provides: [".*"]
+```
+5. Set up `embed_server`
+Download and install:
+```bash
+git clone git@github.com:ampdot-io/embed_server.git
+cd embed_server
+rye sync
+```
+
+Run:
+```bash
+rye run embed_server
 ```
 
 ## Running
