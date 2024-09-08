@@ -2,7 +2,17 @@
 
 ## System services
 ### [`embed_server`](https://github.com/ampdot-io/embed_server)
-Running your own local instance is recommended.
+Download and install:
+```bash
+git clone git@github.com:ampdot-io/embed_server.git
+cd embed_server
+rye sync
+```
+
+Run:
+```bash
+rye run embed_server
+```
 
 ## Building
 
@@ -16,18 +26,13 @@ curl -sSf https://rye.astral.sh/get | bash
 ```bash
 rye sync
 ```
-3. Get nltk data
-```pycon
->>> import nltk
->>> nltk.download('punkt')
-```
-4. Log into huggingface (required for using open-source models)
-You may need to agree to licenses to access gated models on huggingface.co in
-5. your web browser.
+3Log into huggingface (required for using open-source models)
+You may need to agree to licenses to access gated models on huggingface.co in your web browser.
+For example, [agree to the terms of service for LLaMa 3.1](https://huggingface.co/meta-llama/Meta-Llama-3.1-405B)
 ```bash
 huggingface-cli login
 ```
-5. Configure API keys
+4. Configure API keys
 *This step is optional if you have OpenAI or Anthropic configured via environment 
 variables. (OPENAI_API_KEY, OPENAI_API_BASE, ANTHROPIC_API_KEY)*
 
