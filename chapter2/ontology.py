@@ -195,7 +195,7 @@ class EmConfig(BaseModel):
     exa_search_api_key: SecretStr | None = None
     novelai_api_key: SecretStr | None = None
 
-    em_folder: Path
+    folder: Path
 
 
 # todo: support sets (concatenate instead of override)

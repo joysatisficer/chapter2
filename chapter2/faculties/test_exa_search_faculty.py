@@ -12,7 +12,7 @@ from faculties.exa_search_faculty import exa_search_faculty
 @pytest.mark.asyncio
 async def test_exa_search_faculty():
     kv = {
-        "em_folder": "/tmp",
+        "folder": "/tmp",
         "name": "tmp",
     }
     parent_dir = Path(__file__).resolve().parents[1]

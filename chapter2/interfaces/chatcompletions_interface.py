@@ -185,7 +185,7 @@ class ChatCompletionsInterface(AbstractInterface):
         from util.uvicorn_improved import RapidShutdownUvicornServer
 
         # TODO: Option for listening on an HTTP port (port 0 = random port)
-        socket_loc = str(self.base_config.em.em_folder / "socket")
+        socket_loc = str(self.base_config.em.folder / "socket")
         uv_config = uvicorn.Config(
             self.app,
             log_level="info",

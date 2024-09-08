@@ -30,14 +30,14 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
                     contents = await self.generate_avatar_novelai()
                 case "openai":
                     contents = await self.generate_avatar_openai()
-            avatars_folder = config.em_folder / "avatars"
+            avatars_folder = config.em.folder / "avatars"
             avatars_folder.mkdir(exist_ok=True)
             hasher = hashlib.sha256(usedforsecurity=False)
             hasher.update(contents)
             with open(avatars_folder / (hasher.hexdigest() + ".png"), "wb") as f:
                 f.write(contents)
             await self.user.edit(avatar=contents)
-            with open(config.em_folder / "avatar_changed_at", "w") as f:
+            with open(config.em.folder / "avatar_changed_at", "w") as f:
                 f.write(str(int(start_time)))
 
         async def generate_avatar_novelai(self) -> bytes:
@@ -89,11 +89,11 @@ def discord_generate_avatar(addon_config: DiscordGenerateAvatarAddonConfig):
 
         @log_async_task_exceptions
         async def regenerate_avatar_loop(self, interval):
-            config = await self.get_config(None)
+            config, _ = await self.get_config(None)
             while True:
                 # todo: log exceptions and retry
                 try:
-                    with open(config.em_folder / "avatar_changed_at") as f:
+                    with open(config.em.folder / "avatar_changed_at") as f:
                         timestamp = int(f.read())
                 except FileNotFoundError:
                     timestamp = time.time()

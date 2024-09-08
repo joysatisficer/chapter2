@@ -23,7 +23,7 @@ async def character_faculty(
     else:
         character_name = faculty_config.name
     strings = load_chr(
-        str(em.em_folder / f"{character_name}.chr"), faculty_config.chunk_size
+        str(em.folder / f"{character_name}.chr"), faculty_config.chunk_size
     )
     representations = []
     indexed_messages = []

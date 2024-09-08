@@ -55,7 +55,7 @@ def load_em(name) -> dict:
         **load_optional(os.path.expanduser("~/.config/chapter2/config.yaml")),
         **load_optional(parent_dir / "ems/config.yaml"),
         **load_optional(em_folder / "config.yaml"),
-        "em_folder": em_folder,
+        "folder": em_folder,
     }
     for subpath in em_folder.iterdir():
         valid_key = (
