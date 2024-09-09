@@ -8,7 +8,6 @@ from declarations import GenerateResponse
 
 # todo: interface-specific configuration
 class AbstractInterface(ABC):
-    @abstractmethod
     def __init__(
         self,
         base_config: InterfaceConfig,

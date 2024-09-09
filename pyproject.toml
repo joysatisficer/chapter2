@@ -5,7 +5,7 @@ dependencies = [
     "embedapi @ git+https://github.com/ampdot-io/embedapi",
     "intermodel @ git+https://github.com/ampdot-io/intermodel",
     "axiom-py>=0.4.0",
-    "aiohttp-socks>=0.9.0",
+    "aiohttp-socks>=0.8.0",
     "opentelemetry-api>=1.26.0",
     "opentelemetry-sdk>=1.26.0",
     "opentelemetry-exporter-otlp>=1.26.0",
@@ -35,6 +35,7 @@ dependencies = [
     "mikoto-py~=0.0.6",
     "exa-py==1.0.7",
     "novelai-api>=0.30.0",
+    "matrix-nio>=0.25.0",
 ]
 
 [tool.rye]
