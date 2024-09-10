@@ -10,7 +10,7 @@ Wants=network-online.target
 
 [Service]
 Restart=always
-RestartSec=3
+RestartSec=3s
 Type=simple
 WorkingDirectory=$SCRIPT_DIR
 ExecStart=/usr/bin/rye run em $EM_NAME
