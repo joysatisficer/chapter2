@@ -227,8 +227,8 @@ class SharedInterfaceConfig(BaseModel):
 
 
 class ImageLimits(BaseModel):
-    max_width: int = 1000#1568
-    max_height: int = 1000#1568
+    max_width: int = 1568
+    max_height: int = 1568
     max_images: int = 5
 
 
