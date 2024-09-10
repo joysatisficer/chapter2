@@ -139,9 +139,6 @@ async def get_replies(
     print(prompt, flush=True)
     if em.continuation_model_local_tokenization:
         prompt = callgpt.tokenize(em.continuation_model, prompt)
-    print('continuation options:', em.continuation_options, flush=True)
-    print('em:', em, flush=True)
-    print('vendors:', em.vendors.get_secret_value(), flush=True)
     completion = (
         await callgpt.complete(
             prompt=trace.prompt(prompt),
