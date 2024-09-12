@@ -141,16 +141,11 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     turn_end: str
 
     def render(self, message: Message) -> str:
-        role = "user"
         if message.author is not None and message.author.name != "":
             name = message.author.name
-            if self.assistant_name == message.author.name:
-                role = "assistant"
         else:
             name = ""
-        part_change_name = self.name_prefix(name)
-        part_role = self.role_start + role + self.role_end
-        return part_role + part_change_name + message.content + self.turn_end
+        return self.name_prefix(name) + message.content + self.turn_end
 
     def name_prefix(self, name: str) -> str:
         cleaned_name = "".join(
