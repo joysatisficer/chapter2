@@ -151,12 +151,15 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         return part_role + part_change_name + message.content + self.turn_end
 
     def name_prefix(self, name: str) -> str:
+        cleaned_name = "".join(
+            [c if re.match("[a-zA-Z0-9_-]", c) else "-" for c in name]
+        )
         role = "user"
         part_change_name = ""
-        if name != "":
-            if self.assistant_name == name:
+        if cleaned_name != "":
+            if self.assistant_name == cleaned_name:
                 role = "assistant"
-            part_change_name = self.name_start + name + self.name_end
+            part_change_name = self.name_start + cleaned_name + self.name_end
         part_role = self.role_start + role + self.role_end
         return part_role + part_change_name
 
