@@ -18,16 +18,13 @@ class AbstractMessageFormat:
 
     name: str
 
-    @staticmethod
-    def render(message: Message) -> str:
+    def render(self, message: Message) -> str:
         pass
 
-    @staticmethod
-    def name_prefix(name: str) -> str:  # TODO: Refactor to Author
+    def name_prefix(self, name: str) -> str:  # TODO: Refactor to Author
         pass
 
-    @staticmethod
-    def parse(continuation: str) -> list[Message]:
+    def parse(self, continuation: str) -> list[Message]:
         pass
 
 
@@ -134,59 +131,42 @@ class WebDocumentMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         )
 
 
-# wait... this needs to layer with other message formats
-# InstructMessageFormat
-class LynnMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
-    name: Literal["lynn"] = "lynn"
-    # subformat # TODO: Validate, unimplemented, always colon atm
-    assistant_name: str = "lynn"
-    role_prefixes: dict[str, str] = {
-        "assistant": "<|start_header_id|>assistant<|end_header_id|>\n\n",
-        "user": "<|start_header_id|>user<|end_header_id|>\n\n",
-    }
-    role_suffixes: dict[str, str] = {
-        "assistant": "<|eot_id|>",
-        "user": "<|eot_id|>",
-    }
-    name_prefix_role: str = "assistant"
+class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
+    name: Literal["chat"] = "chat"
+    assistant_name: str | None
+    name_start: str
+    name_end: str
+    role_start: str
+    role_end: str
+    turn_end: str
 
-    @staticmethod
-    def render(message: Message) -> str:
-        if message.author.name == self.assistant_name:
-            role = "assistant"
-        else:
-            role = "user"
-        return self.role_prefixes[role] + message.content + self.role_suffixes[role]
+    def render(self, message: Message) -> str:
+        role = "user"
+        part_change_name = ""
+        if message.author is not None and message.author.name != "":
+            if self.assistant_name == message.author.name:
+                role = "assistant"
+            part_change_name = self.name_start + message.author.name + self.name_end
+        part_role = self.role_start + role + self.role_end
+        return part_role + part_change_name + message.content + self.turn_end
 
-    @staticmethod
-    def name_prefix(name: str) -> str:
-        return self.role_prefixes[
-            self.name_prefix_role
-        ] + ColonMessageFormat.name_prefix(name)
+    def name_prefix(self, name: str) -> str:
+        role = "user"
+        part_change_name = ""
+        if name != "":
+            if self.assistant_name == name:
+                role = "assistant"
+            part_change_name = self.name_start + name + self.name_end
+        part_role = self.role_start + role + self.role_end
+        return part_role + part_change_name
 
-    @staticmethod
-    def parse(continuation: str) -> list[Message]:
-        print(continuation)
-        messages = []
-        parts = continuation.split("<|start_header_id|>")
-
-        for part in parts:
-            try:
-                header, content = part.split("<|end_header_id|>\n\n", 1)
-                role = header.strip()
-                if "<|eot_id|>" in content:
-                    content, _ = content.rsplit("<|eot_id|>", 1)
-                content = content.strip()
-
-                author = Author(name="lynn" if role == "assistant" else "user")
-                message = Message(author=author, content=content)
-                messages.append(message)
-            except ValueError:
-                # If splitting fails, it might be an incomplete message at the end
-                # We can choose to ignore it or handle it differently
-                pass
-
-        return messages
+    def parse(self, continuation: str) -> list[Message]:
+        # todo: fix for open-source models
+        a = continuation.removeprefix(self.name_prefix(self.assistant_name))
+        return [
+            Message(author=Author(self.assistant_name), content=line)
+            for line in a.split()
+        ]
 
 
 # contrib
@@ -330,5 +310,5 @@ MessageFormat = (
     | WebDocumentMessageFormat
     | PythonREPLMessageFormat
     | InfrastructMessageFormat
-    | LynnMessageFormat
+    | ChatMessageFormat
 )
