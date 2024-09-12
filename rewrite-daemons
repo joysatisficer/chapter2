@@ -1,0 +1,14 @@
+#!/bin/bash
+
+dry_run=${1:-false}
+
+ls ~/.config/systemd/user/prod* | xargs -n 1 basename | sed 's/^.\{5\}//; s/.\{8\}$//' | while read service; do
+    cmd="ENV_PREFIX=prod ./daemonize \"$service\" --refresh"
+    if [ "$dry_run" = "--dry-run" ]; then
+        echo "Would run: $cmd"
+    else
+        echo "Running: $cmd"
+        eval $cmd
+    fi
+done
+
