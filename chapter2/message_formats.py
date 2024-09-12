@@ -165,7 +165,7 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         a = continuation.removeprefix(self.name_prefix(self.assistant_name))
         return [
             Message(author=Author(self.assistant_name), content=line)
-            for line in a.split()
+            for line in a.splitlines()
         ]
 
 
