@@ -46,7 +46,7 @@ async def rehearse_em(config: Config):
         pass
 
 
-def load_em(name) -> dict:
+def load_em(name) -> Config:
     parent_dir = Path(__file__).resolve().parents[1]
     em_folder = parent_dir / "ems" / name
     kv = {
@@ -127,7 +127,7 @@ async def run_em(name, end_to_end_test=False):
     signal.signal(signal.SIGINT, handle_interrupt)
 
     await asyncio.gather(
-        asyncio.create_task(rehearse_em(config.model_dump())),
+        asyncio.create_task(rehearse_em(config)),
         *[interface_instance.start() for interface_instance in interface_instances],
     )
 
