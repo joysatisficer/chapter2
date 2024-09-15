@@ -20,8 +20,6 @@ from message_formats import (
     ColonMessageFormat,
 )
 
-from trace import *
-
 
 class LayerOfEnsembleFormat(BaseModel):
     format: MessageFormat
@@ -292,10 +290,6 @@ class SingleVendorConfig(BaseModel):
 
     def __getitem__(self, item):
         return getattr(self, item)
-
-
-REHEARSAL_CONFIG = {"vendors": {"fake-local": SingleVendorConfig(provides=[".*"])}}
-# core end
 
 
 # todo: support defaults versioning

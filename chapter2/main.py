@@ -27,6 +27,7 @@ async def rehearse_em(config: Config):
         ][::-1]
     )
     user_id = UserID("em::" + config.em.name, "rehearsal")
+    config.em.vendors = {"fake-local": ontology.SingleVendorConfig(provides=[".*"])}
     for interface in config.interfaces:
         if getattr(interface, "reply_on_sim", False):
             d = await deserves_reply(
@@ -126,13 +127,7 @@ async def run_em(name, end_to_end_test=False):
     signal.signal(signal.SIGINT, handle_interrupt)
 
     await asyncio.gather(
-        asyncio.create_task(
-            rehearse_em(
-                ontology.load_config_from_kv(
-                    ontology.REHEARSAL_CONFIG, config.model_dump()
-                )
-            )
-        ),
+        asyncio.create_task(rehearse_em(config.model_dump())),
         *[interface_instance.start() for interface_instance in interface_instances],
     )
 
