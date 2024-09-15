@@ -8,6 +8,7 @@ from pathlib import Path
 import yaml
 
 import ontology
+from pydantic import Secret, SecretStr
 from generate_response import generate_response
 from interfaces import INTERFACE_NAME_TO_INTERFACE, INTERFACE_ADDON_NAME_TO_ADDON
 from interfaces.deserves_reply import deserves_reply
@@ -27,8 +28,10 @@ async def rehearse_em(config: Config):
         ][::-1]
     )
     user_id = UserID("em::" + config.em.name, "rehearsal")
-    config.em.vendors = {"fake-local": ontology.SingleVendorConfig(provides=[".*"])}
-    config.em.exa_search_api_key = "sk-rehearsal"
+    config.em.vendors = Secret(
+        {"fake-local": ontology.SingleVendorConfig(provides=[".*"])}
+    )
+    config.em.exa_search_api_key = SecretStr("sk-rehearsal")
     for interface in config.interfaces:
         if getattr(interface, "reply_on_sim", False):
             d = await deserves_reply(
