@@ -28,6 +28,7 @@ async def rehearse_em(config: Config):
     )
     user_id = UserID("em::" + config.em.name, "rehearsal")
     config.em.vendors = {"fake-local": ontology.SingleVendorConfig(provides=[".*"])}
+    config.em.exa_search_api_key = "sk-rehearsal"
     for interface in config.interfaces:
         if getattr(interface, "reply_on_sim", False):
             d = await deserves_reply(

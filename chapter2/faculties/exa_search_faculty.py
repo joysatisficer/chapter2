@@ -32,7 +32,11 @@ async def exa_search_faculty(
         faculty_config.input_format,
         await async_take(faculty_config.recent_message_attention, history),
     ) + faculty_config.input_format.name_prefix(em.name)
-    exa_client = SharedExa(em.exa_search_api_key.get_secret_value())
+    api_key = em.exa_search_api_key.get_secret_value()
+    if api_key == "sk-rehearsal":
+        return
+    else:
+        exa_client = SharedExa(em.exa_search_api_key.get_secret_value())
     kwparams = {
         "use_autoprompt": faculty_config.use_autoprompt,
         "include_domains": faculty_config.include_domains,
