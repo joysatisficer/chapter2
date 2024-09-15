@@ -128,7 +128,7 @@ async def run_em(name, end_to_end_test=False):
     signal.signal(signal.SIGINT, handle_interrupt)
 
     await asyncio.gather(
-        asyncio.create_task(rehearse_em(config)),
+        asyncio.create_task(rehearse_em(config.model_copy(deep=True))),
         *[interface_instance.start() for interface_instance in interface_instances],
     )
 
