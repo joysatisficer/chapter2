@@ -125,8 +125,10 @@ class TraceSingleton:
 
 
 def log_trace_id_to_console():
-    trace_id = ot_trace.get_current_span().get_span_context().trace_id
     if "CH2_ENABLE_TELEMETRY" in os.environ:
+        trace_id = hex(
+            ot_trace.get_current_span().get_span_context().trace_id
+        ).removeprefix("0x")
         print(f"Trace ID:", trace_id)
 
 
