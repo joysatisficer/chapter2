@@ -46,7 +46,7 @@ dev-dependencies = [
 universal = true
 
 [tool.rye.scripts]
-em = "./chapter2/main.py"
+em = "python3 -u ./chapter2/main.py"
 dce_import = "./tools/dce_import.py"
 dce_starboard_import = "./tools/dce_starboard_import.py"
 
