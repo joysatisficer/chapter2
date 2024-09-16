@@ -137,7 +137,7 @@ class DiscordInterface(discord.Client):
                             elif message.channel.name.startswith("past:"):
                                 starter_message_id = message.channel.name.split(
                                     "past:"
-                                )[1]
+                                )[1]                                
                             elif thread.id is not None:
                                 starter_message_id = thread.id
                             else:
@@ -149,6 +149,10 @@ class DiscordInterface(discord.Client):
                                 )
                             )
                             if starter_message is not None:
+                                if message.channel.name.startswith("past:"):
+                                    yield await self.discord_message_to_message(
+                                        config, iface_config, starter_message
+                                    )
                                 async for (
                                     this_message
                                 ) in starter_message.channel.history(
