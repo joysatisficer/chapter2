@@ -176,7 +176,7 @@ class EmConfig(BaseModel):
     total_max_tokens: int | float = 31_000
     name_prefix: bool = True
     name_prefix_optional: bool = True
-    mufflers: list[str] = ["context_sentence_repetition", "has_url"]
+    mufflers: list[str] = ["has_url"]  # "context_sentence_repetition"
 
     temperature: Annotated[float, Ge(0)] = 0.95  # todo: vary on model
     top_p: Annotated[float, Interval(gt=0, le=1)] = 0.99
