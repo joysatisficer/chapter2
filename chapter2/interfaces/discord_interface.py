@@ -132,7 +132,9 @@ class DiscordInterface(discord.Client):
                             thread = message.channel
                             # starter message id is the same as the thread id if the
                             # thread is attached to a message
-                            if thread.id is not None:
+                            if message.channel.name.startswith("new:"):
+                                return
+                            elif thread.id is not None:
                                 starter_message_id = thread.id
                             elif message.channel.name.startswith("past:"):
                                 starter_message_id = message.channel.name.split(
