@@ -134,12 +134,12 @@ class DiscordInterface(discord.Client):
                             # thread is attached to a message
                             if message.channel.name.startswith("new:"):
                                 return
-                            elif thread.id is not None:
-                                starter_message_id = thread.id
                             elif message.channel.name.startswith("past:"):
                                 starter_message_id = message.channel.name.split(
                                     "past:"
                                 )[1]
+                            elif thread.id is not None:
+                                starter_message_id = thread.id
                             else:
                                 return
                             # TODO(perf): try to get from cache first
