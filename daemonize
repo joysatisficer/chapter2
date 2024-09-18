@@ -17,6 +17,8 @@ ExecStart=/usr/bin/rye run em $EM_NAME
 Slice=ems-$ENV_PREFIX.slice
 Environment=\"PYTHONUNBUFFERED=1\"
 Environment=\"OTEL_SERVICE_NAME=$ENV_PREFIX-$EM_NAME\"
+Environment=\"OTEL_BSP_SCHEDULE_DELAY=11\"
+Environment=\"OTEL_EXPORTER_OTLP_TRACES_COMPRESSION=gzip\"
 
 [Install]
 WantedBy=default.target" > ~/.config/systemd/user/"$SERVICE_NAME".service

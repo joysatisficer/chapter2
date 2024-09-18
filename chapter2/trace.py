@@ -7,7 +7,7 @@ from pydantic import BaseModel, Secret
 from opentelemetry import trace as ot_trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 
 __all__ = ["trace", "TraceSingleton", "ot_tracer", "log_trace_id_to_console"]
@@ -16,7 +16,7 @@ ot_tracer = ot_trace.get_tracer("chapter2")
 provider = TracerProvider()
 if "CH2_ENABLE_TELEMETRY" in os.environ:
     provider.add_span_processor(
-        SimpleSpanProcessor(OTLPSpanExporter(endpoint="localhost:4317", insecure=True))
+        BatchSpanProcessor(OTLPSpanExporter(endpoint="localhost:4317", insecure=True))
     )
 ot_trace.set_tracer_provider(provider)
 
