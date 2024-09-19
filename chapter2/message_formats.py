@@ -53,15 +53,19 @@ class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     def name_prefix(name):
         return f"<{name}>"
 
-    @staticmethod
-    def parse(continuation):
-        # todo: map `* user is walking` to `Message(user`
-        return [
-            Message(Author(name) if name != "" else None, content)
-            for name, content in re.findall(
-                r"^(?:<([^\n]+)> ?)?([^<].*)$", continuation, re.MULTILINE
-            )
-        ]
+    def parse(self, continuation):
+        result = []
+        pattern = r"^(?:<([^\n]+)> ?)?([^<].*?)\s?(?:\[id:[0-9a-f]+])?$"
+        for match in re.finditer(pattern, continuation, re.MULTILINE):
+            name, content = match.groups()
+            if name != "":
+                author = Author(name)
+            else:
+                author = None
+            message = Message(author, content)
+            result.append(message)
+        # TODO: map `* user is walking` to `Message(user`
+        return result
 
 
 class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
