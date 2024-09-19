@@ -43,7 +43,7 @@ class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                     result += "\n"
                 result += f"<{message.author.name}>"
                 if self.include_id and message.reply_to is not None:
-                    result += f" [reply={hashint(message.reply_to)}] "
+                    result += f" [reply:{hashint(message.reply_to)}] "
                 result += f" {line}"
                 if self.include_id and message.id is not None:
                     result += " [id:" + hashint(message.id) + "]"
