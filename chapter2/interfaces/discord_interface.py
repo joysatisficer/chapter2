@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import hashlib
 import re
 import time
 import urllib.parse
@@ -14,6 +15,7 @@ import yaml
 from pydantic import ValidationError
 
 import ontology
+from message_formats import hashint
 from trace import trace, ot_tracer, log_trace_id_to_console
 from interfaces.deserves_reply import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
@@ -111,6 +113,8 @@ class DiscordInterface(discord.Client):
             async with self.per_interlocutor_semaphore[message.author.id]:
                 try:
                     my_user_id = UserID(str(self.user.id), "discord")
+                    message_ids = set()
+                    hash_to_id = None
 
                     @trace
                     async def message_history():
@@ -123,6 +127,7 @@ class DiscordInterface(discord.Client):
                             ):
                                 pass
                             else:
+                                message_ids.add(this_message.id)
                                 yield await self.discord_message_to_message(
                                     config, iface_config, this_message
                                 )
@@ -137,7 +142,7 @@ class DiscordInterface(discord.Client):
                             elif message.channel.name.startswith("past:"):
                                 starter_message_id = message.channel.name.split(
                                     "past:"
-                                )[1]                                
+                                )[1]
                             elif thread.id is not None:
                                 starter_message_id = thread.id
                             else:
@@ -150,6 +155,7 @@ class DiscordInterface(discord.Client):
                             )
                             if starter_message is not None:
                                 if message.channel.name.startswith("past:"):
+                                    message_ids.add(starter_message.id)
                                     yield await self.discord_message_to_message(
                                         config, iface_config, starter_message
                                     )
@@ -170,6 +176,7 @@ class DiscordInterface(discord.Client):
                                     ):
                                         pass
                                     else:
+                                        message_ids.add(this_message.id)
                                         yield await self.discord_message_to_message(
                                             config, iface_config, this_message
                                         )
@@ -208,19 +215,38 @@ class DiscordInterface(discord.Client):
                                 )
                                 if reply_message.content.isspace():
                                     continue
-                                trace.send_message(reply_message.content)
+                                content = reply_message.content
+                                reference = None
+                                # todo: move parsing inside message format
+                                if match := re.match(
+                                    r"^(.*)\s?\[reply:([0-9a-f]+)]\s?(.*)",
+                                    reply_message.content,
+                                ):
+                                    idhash = match.group(2)
+                                    content = match.group(1) + match.group(3)
+                                    if hash_to_id is None:
+                                        hash_to_id = {
+                                            hashint(message_id): message_id
+                                            for message_id in message_ids
+                                        }
+                                    if ref_id := hash_to_id.get(idhash):
+                                        reference = discord.MessageReference(
+                                            message_id=ref_id,
+                                            channel_id=message.channel.id,
+                                            guild_id=message.guild.id,
+                                        )
                                 await message.channel.send(
-                                    await realize_pings(
-                                        self, message.channel, reply_message.content
-                                    )
+                                    await realize_pings(self, message.channel, content),
+                                    reference=reference,
                                 )
+                                trace.send_message(reply_message.content)
                                 first_message = False
                 finally:
                     if command_message is not None:
                         await command_message.delete()
 
     async def discord_message_to_message(
-        self, config, iface_config, message: discord.Message
+        self, config, iface_config: DiscordInterfaceConfig, message: discord.Message
     ) -> Message:
         if message.author.id == self.user.id:
             author_name = config.em.name
@@ -252,7 +278,9 @@ class DiscordInterface(discord.Client):
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
             content,
-            message.created_at.timestamp(),
+            timestamp=message.created_at.timestamp(),
+            id=message.id,
+            reply_to=message.reference.message_id,
         )
 
     @trace

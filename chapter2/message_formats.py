@@ -1,3 +1,4 @@
+import hashlib
 import re
 from abc import abstractmethod
 from functools import reduce
@@ -30,22 +31,23 @@ class AbstractMessageFormat:
 
 class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["irc"] = "irc"
+    include_id: bool = True
 
-    @staticmethod
-    def render(message):
-        return (
-            reduce(
-                lambda acc, line: acc + "\n" + line if acc != "" else line,
-                [
-                    f"<{message.author.name}> {line}"
-                    for line in message.content.splitlines()
-                    if not line.isspace()
-                ],
-                "",  # initial value
-            )
-            if message.author is not None
-            else message.content
-        ) + "\n"
+    def render(self, message):
+        if message.author is None:
+            return message.content + "\n"
+        result = ""
+        for line in message.content.splitlines():
+            if not line.isspace():
+                if result:
+                    result += "\n"
+                result += f"<{message.author.name}>"
+                if self.include_id and message.reply_to is not None:
+                    result += f" [reply={hashint(message.reply_to)}] "
+                result += " {line}"
+                if self.include_id and message.id is not None:
+                    result += " [id:" + hashint(message.id) + "]"
+        return result + "\n"
 
     @staticmethod
     def name_prefix(name):
@@ -167,6 +169,12 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
             Message(author=Author(self.assistant_name), content=line)
             for line in a.splitlines()
         ]
+
+
+def hashint(integer: int) -> str:
+    m = hashlib.sha256(usedforsecurity=False)
+    m.update(integer.to_bytes(length=64))
+    return m.hexdigest()[:5]
 
 
 # contrib

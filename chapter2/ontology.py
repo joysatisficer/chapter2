@@ -27,7 +27,7 @@ class LayerOfEnsembleFormat(BaseModel):
     max_tokens: int | float = infinity  # todo: parsing inf from yaml
     max_items: int | float = infinity
     header: str = ""
-    footer: str = "###"
+    footer: str = "###\n"
     operator: Literal["prepend"] | Literal["append"] = "append"
 
     @field_validator("max_tokens")
@@ -206,7 +206,7 @@ class ReplyOnSimConfig(BaseModel):
         "name_prefix": False,
         "name_prefix_optional": False,
         "ensembles": [],
-        "continuation_max_tokens": 7,
+        "continuation_max_tokens": 15,
         "prompt_max_tokens": 8000,
     }
     match: Literal["predict_username"] = "predict_username"
