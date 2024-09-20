@@ -147,7 +147,7 @@ async def get_replies(
             frequency_penalty=em.frequency_penalty,
             presence_penalty=em.presence_penalty,
             model=em.continuation_model,
-            # stop=stop_sequences[:3] if stop_sequences is not None else None,
+            stop=stop_sequences[:3] if stop_sequences is not None else None,
             vendor_config=em.vendors.get_secret_value(),
             logit_bias=logit_bias,
             best_of=em.best_of,
