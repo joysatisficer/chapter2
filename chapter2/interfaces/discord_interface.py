@@ -280,7 +280,9 @@ class DiscordInterface(discord.Client):
             content,
             timestamp=message.created_at.timestamp(),
             id=hashint(message.id),
-            reply_to=message.reference and hashint(message.reference.message_id),
+            reply_to=message.reference
+            and message.reference.message_id
+            and hashint(message.reference.message_id),
         )
 
     @trace
