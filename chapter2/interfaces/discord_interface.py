@@ -436,6 +436,7 @@ class DiscordInterface(discord.Client):
             {"scope": "bot", "permissions": 536879168, "client_id": self.user.id}
         )
 
+    @trace
     async def start(self, token: str = None, *args, **kwargs) -> None:
         if token is None:
             token = self.iface_config.discord_token.get_secret_value()
