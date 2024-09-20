@@ -25,8 +25,8 @@ class Message:
     content: str
     timestamp: float = 0  # sent messages use timestamp to represent time delay
     type: str | None = None
-    id: int | None = None
-    reply_to: int | None = None
+    id: str | None = None
+    reply_to: str | None = None
 
 
 Action = Union[Message]

@@ -43,10 +43,10 @@ class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                     result += "\n"
                 result += f"<{message.author.name}>"
                 if self.include_id and message.reply_to is not None:
-                    result += f" [reply:{hashint(message.reply_to)}] "
+                    result += f" [reply:{message.reply_to[:5]}] "
                 result += f" {line}"
                 if self.include_id and message.id is not None:
-                    result += " [id:" + hashint(message.id) + "]"
+                    result += " [id:" + message.id[:5] + "]"
         return result + "\n"
 
     @staticmethod
@@ -178,7 +178,7 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 def hashint(integer: int) -> str:
     m = hashlib.sha256(usedforsecurity=False)
     m.update(integer.to_bytes(length=64))
-    return m.hexdigest()[:5]
+    return m.hexdigest()
 
 
 # contrib

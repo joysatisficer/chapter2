@@ -279,8 +279,8 @@ class DiscordInterface(discord.Client):
             Author(author_name, UserID(str(message.author.id), "discord")),
             content,
             timestamp=message.created_at.timestamp(),
-            id=message.id,
-            reply_to=message.reference and message.reference.message_id,
+            id=hashint(message.id),
+            reply_to=message.reference and hashint(message.reference.message_id),
         )
 
     @trace
