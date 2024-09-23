@@ -117,14 +117,21 @@ class DiscordInterface(discord.Client):
                     hash_to_id = None
 
                     @trace
-                    async def message_history():
-                        nonlocal message
-                        async for this_message in message.channel.history(limit=None):
+                    async def message_history(message):
+                        message_ids.add(message.id)
+                        yield await self.discord_message_to_message(
+                            config, iface_config, message
+                        )
+                        async for this_message in message.channel.history(limit=None, before=message):
                             if is_continue_command(this_message.content):
+                                pass
+                            elif is_mu_command(this_message.content):
                                 pass
                             elif iface_config.ignore_dotted_messages and re.match(
                                 self.DOTTED_MESSAGE_RE, this_message.content
                             ):
+                                pass
+                            elif this_message.type == discord.MessageType.thread_starter_message:
                                 pass
                             else:
                                 message_ids.add(this_message.id)
@@ -154,44 +161,41 @@ class DiscordInterface(discord.Client):
                                 )
                             )
                             if starter_message is not None:
-                                if message.channel.name.startswith("past:"):
-                                    message_ids.add(starter_message.id)
-                                    yield await self.discord_message_to_message(
-                                        config, iface_config, starter_message
-                                    )
-                                async for (
-                                    this_message
-                                ) in starter_message.channel.history(
-                                    limit=None, before=starter_message
-                                ):
-                                    if is_continue_command(this_message.content):
-                                        pass
-                                    elif is_mu_command(this_message.content):
-                                        pass
-                                    elif (
-                                        iface_config.ignore_dotted_messages
-                                        and re.match(
-                                            self.DOTTED_MESSAGE_RE, this_message.content
-                                        )
-                                    ):
-                                        pass
-                                    else:
-                                        message_ids.add(this_message.id)
-                                        yield await self.discord_message_to_message(
-                                            config, iface_config, this_message
-                                        )
+                                async for message in message_history(starter_message):
+                                    yield message
+                                # async for (
+                                #     this_message
+                                # ) in starter_message.channel.history(
+                                #     limit=None, before=starter_message
+                                # ):
+                                #     if is_continue_command(this_message.content):
+                                #         pass
+                                #     elif is_mu_command(this_message.content):
+                                #         pass
+                                #     elif (
+                                #         iface_config.ignore_dotted_messages
+                                #         and re.match(
+                                #             self.DOTTED_MESSAGE_RE, this_message.content
+                                #         )
+                                #     ):
+                                #         pass
+                                #     else:
+                                #         message_ids.add(this_message.id)
+                                #         yield await self.discord_message_to_message(
+                                #             config, iface_config, this_message
+                                #         )
 
                     if not await self.should_reply(
                         message,
                         config,
                         iface_config,
                         my_user_id,
-                        async_generator_to_reusable_async_iterable(message_history),
+                        async_generator_to_reusable_async_iterable(message_history, message),
                     ):
                         return
                     response_messages = self.generate_response(
                         my_user_id,
-                        async_generator_to_reusable_async_iterable(message_history),
+                        async_generator_to_reusable_async_iterable(message_history, message),
                         config.em,
                     )
                     async with ScheduleTyping(

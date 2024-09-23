@@ -45,7 +45,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
             ],
             em.continuation_model,
         )
-        + completion_prefix
+        + completion_prefix + em.completion_prefix
     )
     ensembles = []
     # TODO: Filter for empty ensembles

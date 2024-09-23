@@ -15,11 +15,11 @@ def eager_iterable_to_async_iterable(iterable: Iterable) -> AsyncIterable:
 
 
 def async_generator_to_reusable_async_iterable(
-    iterable: Callable[[], AsyncGenerator],
+    iterable: Callable[[], AsyncGenerator], *args, **kwargs
 ) -> AsyncIterable:
     class AsyncIterableWrapper:
         def __aiter__(self):
-            return iterable()
+            return iterable(*args, **kwargs)
 
     return AsyncIterableWrapper()
 

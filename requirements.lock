@@ -10,13 +10,13 @@
 #   universal: true
 
 -e file:.
-aiodns==3.2.0 ; (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')) and (sys_platform == 'darwin' or sys_platform == 'linux')
+aiodns==3.2.0 ; sys_platform == 'darwin' or sys_platform == 'linux'
     # via aiohttp
-aiofiles==24.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+aiofiles==24.1.0
     # via matrix-nio
-aiohappyeyeballs==2.3.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+aiohappyeyeballs==2.3.5
     # via aiohttp
-aiohttp==3.10.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+aiohttp==3.10.3
     # via aiohttp-socks
     # via anthropic
     # via chapter2
@@ -25,240 +25,240 @@ aiohttp==3.10.3 ; python_version < '3.12' or python_version >= '3.13' or (python
     # via mikoto-py
     # via novelai-api
     # via openai
-aiohttp-socks==0.8.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+aiohttp-socks==0.8.4
     # via chapter2
     # via matrix-nio
-aioitertools==0.11.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+aioitertools==0.11.0
     # via chapter2
-aiosignal==1.3.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+aiosignal==1.3.1
     # via aiohttp
-altair==5.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+altair==5.4.0
     # via streamlit
-annotated-types==0.7.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+annotated-types==0.7.0
     # via pydantic
-anthropic==0.2.10 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+anthropic==0.2.10
     # via chapter2
     # via intermodel
-anyio==3.7.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+anyio==3.7.1
     # via fastapi
     # via httpx
     # via starlette
     # via watchfiles
-argon2-cffi==23.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+argon2-cffi==23.1.0
     # via novelai-api
-argon2-cffi-bindings==21.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+argon2-cffi-bindings==21.2.0
     # via argon2-cffi
-arrow==1.3.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+arrow==1.3.0
     # via chapter2
-asgiref==3.7.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+asgiref==3.7.2
     # via chapter2
     # via intermodel
-async-timeout==4.0.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+async-timeout==4.0.3
     # via python-socks
-asyncstdlib==3.10.9 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+asyncstdlib==3.10.9
     # via chapter2
-attrs==24.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+attrs==24.2.0
     # via aiohttp
     # via jsonschema
     # via referencing
-axiom-py==0.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+axiom-py==0.4.0
     # via chapter2
-bidict==0.23.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+bidict==0.23.1
     # via python-socketio
-blinker==1.8.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+blinker==1.8.2
     # via streamlit
-brotli==1.1.0 ; platform_python_implementation == 'CPython' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
+brotli==1.1.0 ; platform_python_implementation == 'CPython'
     # via aiohttp
-brotlicffi==1.1.0.0 ; platform_python_implementation != 'CPython' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
+brotlicffi==1.1.0.0 ; platform_python_implementation != 'CPython'
     # via aiohttp
-build==1.2.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+build==1.2.1
     # via poetry
-cachecontrol==0.14.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+cachecontrol==0.14.0
     # via poetry
-cachetools==5.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+cachetools==5.4.0
     # via streamlit
-certifi==2024.7.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+certifi==2024.7.4
     # via httpcore
     # via httpx
     # via requests
-cffi==1.17.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12') or (python_version < '3.13' and python_version >= '3.12' and platform_python_implementation != 'CPython') or (python_version < '3.13' and python_version >= '3.12' and platform_python_implementation != 'PyPy' and sys_platform == 'linux') or (python_version < '3.13' and python_version >= '3.12' and sys_platform == 'darwin') or (python_version < '3.13' and python_version >= '3.12' and (sys_platform == 'darwin' or sys_platform == 'linux'))
+cffi==1.17.0
     # via argon2-cffi-bindings
     # via brotlicffi
     # via cryptography
     # via pycares
     # via pynacl
     # via xattr
-charset-normalizer==3.3.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+charset-normalizer==3.3.2
     # via requests
-cleo==2.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+cleo==2.1.0
     # via poetry
-click==8.1.7 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+click==8.1.7
     # via nltk
     # via streamlit
     # via uvicorn
-colorama==0.4.6 ; sys_platform == 'win32' or (os_name == 'nt' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))) or (platform_system == 'Windows' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')))
+colorama==0.4.6 ; (platform_system != 'Windows' and sys_platform == 'win32') or platform_system == 'Windows' or os_name == 'nt'
     # via build
     # via click
     # via pytest
     # via tqdm
     # via uvicorn
-crashtest==0.4.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+crashtest==0.4.1
     # via cleo
     # via poetry
-cryptography==43.0.0 ; sys_platform == 'linux' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
+cryptography==43.0.0 ; sys_platform == 'linux'
     # via secretstorage
-dacite==1.8.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+dacite==1.8.1
     # via axiom-py
-deprecated==1.2.14 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+deprecated==1.2.14
     # via opentelemetry-api
     # via opentelemetry-exporter-otlp-proto-grpc
     # via opentelemetry-exporter-otlp-proto-http
     # via opentelemetry-semantic-conventions
-discord-py==2.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+discord-py==2.4.0
     # via chapter2
     # via opentelemetry-instrumentation-discordpy
-distlib==0.3.8 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+distlib==0.3.8
     # via virtualenv
-dnspython==2.6.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+dnspython==2.6.1
     # via email-validator
-dulwich==0.21.7 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+dulwich==0.21.7
     # via poetry
-email-validator==2.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+email-validator==2.2.0
     # via fastapi
-embedapi @ git+https://github.com/ampdot-io/embedapi@f72adba8f6cfe9884eca4db053348e5cf9ed6f17 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+embedapi @ git+https://github.com/ampdot-io/embedapi@f72adba8f6cfe9884eca4db053348e5cf9ed6f17
     # via chapter2
-exa-py==1.0.7 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+exa-py==1.0.7
     # via chapter2
-faiss-cpu==1.7.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+faiss-cpu==1.7.4
     # via chapter2
-fastapi==0.104.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+fastapi==0.104.1
     # via chapter2
-fastjsonschema==2.20.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+fastjsonschema==2.20.0
     # via poetry
-filelock==3.15.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+filelock==3.15.4
     # via cachecontrol
     # via huggingface-hub
     # via virtualenv
-fire==0.5.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+fire==0.5.0
     # via chapter2
-frozenlist==1.4.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+frozenlist==1.4.1
     # via aiohttp
     # via aiosignal
-fsspec==2024.6.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+fsspec==2024.6.1
     # via huggingface-hub
-ftfy==6.2.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+ftfy==6.2.3
     # via novelai-api
-gitdb==4.0.11 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+gitdb==4.0.11
     # via gitpython
-gitpython==3.1.43 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+gitpython==3.1.43
     # via streamlit
-googleapis-common-protos==1.63.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+googleapis-common-protos==1.63.2
     # via opentelemetry-exporter-otlp-proto-grpc
     # via opentelemetry-exporter-otlp-proto-http
-grpcio==1.66.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+grpcio==1.66.0
     # via opentelemetry-exporter-otlp-proto-grpc
-h11==0.14.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+h11==0.14.0
     # via httpcore
     # via matrix-nio
     # via uvicorn
     # via wsproto
-h2==4.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+h2==4.1.0
     # via matrix-nio
-hpack==4.0.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+hpack==4.0.0
     # via h2
-httpcore==1.0.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+httpcore==1.0.5
     # via httpx
-httptools==0.6.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+httptools==0.6.1
     # via uvicorn
-httpx==0.25.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+httpx==0.25.2
     # via anthropic
     # via chapter2
     # via fastapi
     # via intermodel
     # via mikoto-py
     # via replicate
-huggingface-hub==0.24.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+huggingface-hub==0.24.5
     # via tokenizers
-hyperframe==6.0.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+hyperframe==6.0.1
     # via h2
-idna==3.7 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+idna==3.7
     # via anyio
     # via email-validator
     # via httpx
     # via requests
     # via yarl
-importlib-metadata==6.11.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+importlib-metadata==6.11.0
     # via keyring
     # via opentelemetry-api
-iniconfig==2.0.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+iniconfig==2.0.0
     # via pytest
-installer==0.7.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+installer==0.7.0
     # via poetry
-intermodel @ git+https://github.com/ampdot-io/intermodel@8a5af7399bc99b4a2cd1d1254740db00447067eb ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+intermodel @ git+https://github.com/ampdot-io/intermodel@8a5af7399bc99b4a2cd1d1254740db00447067eb
     # via chapter2
-iso8601==2.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+iso8601==2.1.0
     # via axiom-py
-itsdangerous==2.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+itsdangerous==2.2.0
     # via fastapi
-jaraco-classes==3.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+jaraco-classes==3.4.0
     # via keyring
-jeepney==0.8.0 ; sys_platform == 'linux' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
+jeepney==0.8.0 ; sys_platform == 'linux'
     # via keyring
     # via secretstorage
-jinja2==3.1.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+jinja2==3.1.4
     # via altair
     # via fastapi
     # via pydeck
-joblib==1.4.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+joblib==1.4.2
     # via nltk
     # via scikit-learn
-jsonschema==4.23.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+jsonschema==4.23.0
     # via altair
     # via matrix-nio
     # via novelai-api
-jsonschema-specifications==2023.12.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+jsonschema-specifications==2023.12.1
     # via jsonschema
-keyring==24.3.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+keyring==24.3.1
     # via poetry
-markdown-it-py==3.0.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+markdown-it-py==3.0.0
     # via rich
-markupsafe==2.1.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+markupsafe==2.1.5
     # via jinja2
-matrix-nio==0.25.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+matrix-nio==0.25.0
     # via chapter2
-mdurl==0.1.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+mdurl==0.1.2
     # via markdown-it-py
-mikoto-py==0.0.6 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+mikoto-py==0.0.6
     # via chapter2
-more-itertools==10.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+more-itertools==10.4.0
     # via chapter2
     # via jaraco-classes
-msgpack==1.0.8 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+msgpack==1.0.8
     # via cachecontrol
-msgpackr-python==0.1.6 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+msgpackr-python==0.1.6
     # via novelai-api
-multidict==6.0.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+multidict==6.0.5
     # via aiohttp
     # via yarl
-narwhals==1.3.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+narwhals==1.3.0
     # via altair
-ndjson==0.3.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+ndjson==0.3.1
     # via axiom-py
-nltk==3.8.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+nltk==3.8.1
     # via chapter2
-novelai-api==0.30.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+novelai-api==0.30.0
     # via chapter2
-numpy==1.26.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12') or (python_version < '3.13' and python_version >= '3.12')
+numpy==1.26.4
     # via pandas
     # via pyarrow
     # via pydeck
     # via scikit-learn
     # via scipy
     # via streamlit
-openai==0.28.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+openai==0.28.0
     # via chapter2
     # via intermodel
-opentelemetry-api==1.26.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+opentelemetry-api==1.26.0
     # via chapter2
     # via opentelemetry-exporter-otlp-proto-grpc
     # via opentelemetry-exporter-otlp-proto-http
@@ -266,33 +266,33 @@ opentelemetry-api==1.26.0 ; python_version < '3.12' or python_version >= '3.13' 
     # via opentelemetry-instrumentation-discordpy
     # via opentelemetry-sdk
     # via opentelemetry-semantic-conventions
-opentelemetry-exporter-otlp==1.26.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+opentelemetry-exporter-otlp==1.26.0
     # via chapter2
-opentelemetry-exporter-otlp-proto-common==1.26.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+opentelemetry-exporter-otlp-proto-common==1.26.0
     # via opentelemetry-exporter-otlp-proto-grpc
     # via opentelemetry-exporter-otlp-proto-http
-opentelemetry-exporter-otlp-proto-grpc==1.26.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+opentelemetry-exporter-otlp-proto-grpc==1.26.0
     # via opentelemetry-exporter-otlp
-opentelemetry-exporter-otlp-proto-http==1.26.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+opentelemetry-exporter-otlp-proto-http==1.26.0
     # via opentelemetry-exporter-otlp
-opentelemetry-instrumentation==0.48b0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+opentelemetry-instrumentation==0.48b0
     # via opentelemetry-instrumentation-discordpy
-opentelemetry-instrumentation-discordpy==0.1.9 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+opentelemetry-instrumentation-discordpy==0.1.9
     # via chapter2
-opentelemetry-proto==1.26.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+opentelemetry-proto==1.26.0
     # via opentelemetry-exporter-otlp-proto-common
     # via opentelemetry-exporter-otlp-proto-grpc
     # via opentelemetry-exporter-otlp-proto-http
-opentelemetry-sdk==1.26.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+opentelemetry-sdk==1.26.0
     # via chapter2
     # via opentelemetry-exporter-otlp-proto-grpc
     # via opentelemetry-exporter-otlp-proto-http
     # via opentelemetry-instrumentation-discordpy
-opentelemetry-semantic-conventions==0.47b0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+opentelemetry-semantic-conventions==0.47b0
     # via opentelemetry-sdk
-orjson==3.10.7 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+orjson==3.10.7
     # via fastapi
-packaging==23.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+packaging==23.2
     # via altair
     # via build
     # via huggingface-hub
@@ -300,108 +300,108 @@ packaging==23.2 ; python_version < '3.12' or python_version >= '3.13' or (python
     # via pytest
     # via replicate
     # via streamlit
-pandas==2.2.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pandas==2.2.2
     # via streamlit
-pexpect==4.9.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pexpect==4.9.0
     # via poetry
-pillow==10.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pillow==10.4.0
     # via novelai-api
     # via streamlit
-pkginfo==1.11.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pkginfo==1.11.1
     # via poetry
-platformdirs==4.2.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+platformdirs==4.2.2
     # via poetry
     # via virtualenv
-pluggy==1.5.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pluggy==1.5.0
     # via pytest
-poetry==1.8.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+poetry==1.8.3
     # via novelai-api
     # via poetry-plugin-export
-poetry-core==1.9.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+poetry-core==1.9.0
     # via poetry
     # via poetry-plugin-export
-poetry-plugin-export==1.8.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+poetry-plugin-export==1.8.0
     # via poetry
-protobuf==4.25.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+protobuf==4.25.4
     # via googleapis-common-protos
     # via opentelemetry-proto
     # via streamlit
-ptyprocess==0.7.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+ptyprocess==0.7.0
     # via pexpect
-pyarrow==17.0.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pyarrow==17.0.0
     # via streamlit
-pycares==4.4.0 ; (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')) and (sys_platform == 'darwin' or sys_platform == 'linux')
+pycares==4.4.0 ; sys_platform == 'darwin' or sys_platform == 'linux'
     # via aiodns
-pycparser==2.22 ; (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')) and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12') or (python_version < '3.13' and python_version >= '3.12' and platform_python_implementation != 'CPython') or (python_version < '3.13' and python_version >= '3.12' and platform_python_implementation != 'PyPy' and sys_platform == 'linux') or (python_version < '3.13' and python_version >= '3.12' and sys_platform == 'darwin') or (python_version < '3.13' and python_version >= '3.12' and (sys_platform == 'darwin' or sys_platform == 'linux')))
+pycparser==2.22
     # via cffi
-pycryptodome==3.20.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pycryptodome==3.20.0
     # via matrix-nio
-pydantic==2.8.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pydantic==2.8.2
     # via chapter2
     # via fastapi
     # via mikoto-py
     # via pydantic-extra-types
     # via pydantic-settings
     # via replicate
-pydantic-core==2.20.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pydantic-core==2.20.1
     # via pydantic
-pydantic-extra-types==2.9.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pydantic-extra-types==2.9.0
     # via fastapi
-pydantic-settings==2.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pydantic-settings==2.4.0
     # via fastapi
-pydeck==0.9.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pydeck==0.9.1
     # via streamlit
-pygments==2.18.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pygments==2.18.0
     # via rich
-pyhumps==3.8.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pyhumps==3.8.0
     # via axiom-py
-pynacl==1.5.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pynacl==1.5.0
     # via novelai-api
-pyproject-hooks==1.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pyproject-hooks==1.1.0
     # via build
     # via poetry
-pytest==8.3.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pytest==8.3.3
     # via intermodel
     # via pytest-asyncio
-pytest-asyncio==0.21.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pytest-asyncio==0.21.2
     # via chapter2
-python-dateutil==2.8.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+python-dateutil==2.8.2
     # via arrow
     # via chapter2
     # via pandas
-python-dotenv==1.0.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+python-dotenv==1.0.1
     # via intermodel
     # via pydantic-settings
     # via uvicorn
-python-engineio==4.9.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+python-engineio==4.9.1
     # via python-socketio
-python-multipart==0.0.9 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+python-multipart==0.0.9
     # via fastapi
-python-socketio==5.11.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+python-socketio==5.11.3
     # via mikoto-py
-python-socks==2.5.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+python-socks==2.5.0
     # via aiohttp-socks
-pytz==2024.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pytz==2024.1
     # via pandas
-pywin32-ctypes==0.2.3 ; sys_platform == 'win32' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
+pywin32-ctypes==0.2.3 ; sys_platform == 'win32'
     # via keyring
-pyyaml==6.0.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+pyyaml==6.0.2
     # via chapter2
     # via fastapi
     # via huggingface-hub
     # via uvicorn
-rapidfuzz==3.9.6 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+rapidfuzz==3.9.6
     # via cleo
-referencing==0.35.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+referencing==0.35.1
     # via jsonschema
     # via jsonschema-specifications
-regex==2023.12.25 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+regex==2023.12.25
     # via nltk
     # via novelai-api
     # via tiktoken
-replicate==0.32.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+replicate==0.32.0
     # via intermodel
-requests==2.32.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+requests==2.32.3
     # via anthropic
     # via axiom-py
     # via cachecontrol
@@ -413,72 +413,72 @@ requests==2.32.3 ; python_version < '3.12' or python_version >= '3.13' or (pytho
     # via requests-toolbelt
     # via streamlit
     # via tiktoken
-requests-toolbelt==1.0.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+requests-toolbelt==1.0.0
     # via axiom-py
     # via poetry
-rfc3339==6.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+rfc3339==6.2
     # via axiom-py
-rich==13.5.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+rich==13.5.3
     # via chapter2
     # via streamlit
-rpds-py==0.20.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+rpds-py==0.20.0
     # via jsonschema
     # via referencing
-scikit-learn==1.2.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+scikit-learn==1.2.2
     # via chapter2
-scipy==1.14.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+scipy==1.14.0
     # via scikit-learn
-secretstorage==3.3.3 ; sys_platform == 'linux' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
+secretstorage==3.3.3 ; sys_platform == 'linux'
     # via keyring
-sentencepiece==0.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+sentencepiece==0.2.0
     # via novelai-api
-setuptools==73.0.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+setuptools==73.0.1
     # via opentelemetry-instrumentation
-shellingham==1.5.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+shellingham==1.5.4
     # via poetry
-simple-websocket==1.0.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+simple-websocket==1.0.0
     # via python-engineio
-six==1.16.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+six==1.16.0
     # via fire
     # via python-dateutil
-smmap==5.0.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+smmap==5.0.1
     # via gitdb
-sniffio==1.3.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+sniffio==1.3.1
     # via anyio
     # via httpx
-starlette==0.27.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+starlette==0.27.0
     # via fastapi
-streamlit==1.38.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+streamlit==1.38.0
     # via chapter2
-tenacity==8.5.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+tenacity==8.5.0
     # via intermodel
     # via streamlit
-termcolor==2.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+termcolor==2.4.0
     # via fire
-threadpoolctl==3.5.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+threadpoolctl==3.5.0
     # via scikit-learn
-tiktoken==0.7.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+tiktoken==0.7.0
     # via chapter2
     # via intermodel
-tokenizers==0.15.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+tokenizers==0.15.2
     # via anthropic
     # via intermodel
     # via novelai-api
-toml==0.10.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+toml==0.10.2
     # via streamlit
-tomlkit==0.13.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+tomlkit==0.13.0
     # via poetry
-tornado==6.4.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+tornado==6.4.1
     # via streamlit
-tqdm==4.66.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+tqdm==4.66.5
     # via huggingface-hub
     # via nltk
     # via openai
-trove-classifiers==2024.7.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+trove-classifiers==2024.7.2
     # via poetry
-types-python-dateutil==2.9.0.20240316 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+types-python-dateutil==2.9.0.20240316
     # via arrow
-typing-extensions==4.12.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+typing-extensions==4.12.2
     # via altair
     # via fastapi
     # via huggingface-hub
@@ -487,14 +487,14 @@ typing-extensions==4.12.2 ; python_version < '3.12' or python_version >= '3.13' 
     # via pydantic-core
     # via replicate
     # via streamlit
-tzdata==2024.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+tzdata==2024.1
     # via pandas
-ujson==5.10.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+ujson==5.10.0
     # via axiom-py
     # via fastapi
-unpaddedbase64==2.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+unpaddedbase64==2.1.0
     # via matrix-nio
-urllib3==2.2.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+urllib3==2.2.2
     # via axiom-py
     # via dulwich
     # via requests
@@ -502,24 +502,24 @@ uvicorn==0.30.5
     # via fastapi
 uvloop==0.19.0 ; platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32'
     # via uvicorn
-virtualenv==20.26.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+virtualenv==20.26.3
     # via poetry
-watchdog==4.0.2 ; platform_system != 'Darwin' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
+watchdog==4.0.2 ; platform_system != 'Darwin'
     # via streamlit
-watchfiles==0.23.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+watchfiles==0.23.0
     # via uvicorn
-wcwidth==0.2.13 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+wcwidth==0.2.13
     # via ftfy
-websockets==12.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+websockets==12.0
     # via uvicorn
-wrapt==1.16.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+wrapt==1.16.0
     # via deprecated
     # via opentelemetry-instrumentation
-wsproto==1.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+wsproto==1.2.0
     # via simple-websocket
-xattr==1.1.0 ; sys_platform == 'darwin' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
+xattr==1.1.0 ; sys_platform == 'darwin'
     # via poetry
-yarl==1.9.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+yarl==1.9.4
     # via aiohttp
-zipp==3.20.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+zipp==3.20.0
     # via importlib-metadata
