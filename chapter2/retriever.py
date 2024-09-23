@@ -1,3 +1,4 @@
+import threading
 from abc import abstractmethod, ABC
 from typing import List
 
@@ -98,27 +99,29 @@ class KNNIndex(AbstractIndex):
         self.transformer = transformer
         self.strings = []
         self.index = None
+        self.lock = threading.Lock()
+
+    @AbstractIndex.dec_add_data
+    @asyncify(thread_sensitive=False)
+    def add_data(self, indexates: list[str], keys: list):
+        with self.lock:
+            import faiss
+
+            self.strings.extend(keys)
+            embeddings = embedapi.encode_passages(self.transformer, indexates)
+            embeddings = np.copy(embeddings)
+            faiss.normalize_L2(embeddings)
+            if self.index is None:
+                self.index = faiss.index_factory(
+                    embeddings.shape[1], "HNSW32", faiss.METRIC_INNER_PRODUCT
+                )
+                self.shape = embeddings.shape[1]
+            self.index.add(embeddings)
 
     # https://github.com/facebookresearch/faiss/wiki/Threads-and-asynchronous-calls
-    # thread_sensitive=False is valid if locks are implemented properly
-    @AbstractIndex.dec_add_data
-    @asyncify
-    def add_data(self, indexates: list[str], keys: list):
-        import faiss
-
-        self.strings.extend(keys)
-        embeddings = embedapi.encode_passages(self.transformer, indexates)
-        embeddings = np.copy(embeddings)
-        faiss.normalize_L2(embeddings)
-        if self.index is None:
-            self.index = faiss.index_factory(
-                embeddings.shape[1], "HNSW32", faiss.METRIC_INNER_PRODUCT
-            )
-            self.shape = embeddings.shape[1]
-        self.index.add(embeddings)
-
+    # thread_sensitive=False is valid only for CPU indexes
     @AbstractIndex.dec_query
-    @asyncify
+    @asyncify(thread_sensitive=False)
     def query(self, query: str, k: int) -> List[str]:
         import faiss
 
