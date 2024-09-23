@@ -74,7 +74,7 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 
     def render(self, message):
         return (
-            (message.author.name if message.author.name is not None else "")
+            (message.author.name + ": " if message.author.name is not None else "")
             + (
                 reduce(
                     lambda acc, line: acc + self.suffix + line if acc != "" else line,
