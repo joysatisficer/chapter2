@@ -153,6 +153,7 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
             name = ""
         return self.name_prefix(name) + message.content + self.turn_end
 
+
     def name_prefix(self, name: str) -> str:
         cleaned_name = "".join(
             [c if re.match("[a-zA-Z0-9_-]", c) else "-" for c in name]
