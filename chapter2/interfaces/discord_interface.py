@@ -235,7 +235,7 @@ class DiscordInterface(discord.Client):
         else:
             author_name = message.author.name
         content = await parse_discord_content(message, self.user.id, config.em.name)
-        if iface_config.include_images and config.em.include_images:
+        if iface_config.include_images:
             for attachment in message.attachments:
                 if attachment.width is None or attachment.height is None:
                     continue
