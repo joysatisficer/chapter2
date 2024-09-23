@@ -10,7 +10,7 @@ from declarations import GenerateResponse
 class AbstractInterface(ABC):
     def __init__(
         self,
-        base_config: InterfaceConfig,
+        base_config: Config,
         generate_response: GenerateResponse,
         em_name: str,
         interface_config: InterfaceConfig,
