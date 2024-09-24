@@ -243,7 +243,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     end_to_end_test_discord_token: str | None = None
     end_to_end_test_discord_channel_id: int | None = None
     discord_user_whitelist: list[int] = []
-    bot_whitelist: list[str] = []
+    may_speak: list[str] = []
     include_images: bool = True
     image_limits: ImageLimits = ImageLimits()
 

@@ -364,9 +364,9 @@ class DiscordInterface(discord.Client):
                 or message.author.id in iface_config.discord_user_whitelist
             )
             and (
-                len(iface_config.bot_whitelist) == 0
+                len(iface_config.may_speak) == 0
                 or any(
-                    name in iface_config.bot_whitelist
+                    name in iface_config.may_speak
                     for name in (config.em.name, self.sysname, self.user.name)
                 )
             )
