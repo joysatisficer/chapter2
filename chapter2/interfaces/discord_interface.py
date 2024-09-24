@@ -334,7 +334,10 @@ class DiscordInterface(discord.Client):
                 or iface_config.mute == self.em_name
                 or (
                     isinstance(iface_config.mute, list)
-                    and self.em_name in iface_config.mute
+                    and any(
+                        name in iface_config.mute
+                        for name in (config.em.name, self.em_name, self.user.name)
+                    )
                 )
             )
             and not (
@@ -351,7 +354,10 @@ class DiscordInterface(discord.Client):
             )
             and (
                 len(iface_config.bot_whitelist) == 0
-                or self.user.name in iface_config.bot_whitelist
+                or any(
+                    name in iface_config.bot_whitelist
+                    for name in (config.em.name, self.em_name, self.user.name)
+                )
             )
             and (
                 (iface_config.reply_on_ping and self.user.mentioned_in(message))
