@@ -28,14 +28,28 @@ class AbstractMessageFormat:
     def parse(self, continuation: str) -> list[Message]:
         pass
 
-    def merge(self, messages: list[Message]):
+    def merge(
+        self,
+        messages: list[Message],
+        max_length: int | None = 2000,
+        author: Author | None = None,
+    ):
         if len(messages) == 0:
             return
         merged_message = messages[0]
         if len(messages) > 1:
             for message in messages[1:]:
-                if merged_message and (
-                    message.author is None or merged_message.author == message.author
+                if (
+                    merged_message
+                    and (
+                        message.author is None
+                        or merged_message.author == message.author
+                    )
+                    and (
+                        max_length is None
+                        or len(merged_message.content) + len(message.content)
+                        <= max_length
+                    )
                 ):
                     merged_message = Message(
                         merged_message.author,
@@ -43,7 +57,10 @@ class AbstractMessageFormat:
                     )
                 else:
                     yield merged_message
-                    merged_message = Message(message.author, message.content)
+
+                    merged_message = Message(
+                        author if author else message.author, message.content
+                    )
         yield merged_message
 
 
