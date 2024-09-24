@@ -49,7 +49,7 @@ class DiscordInterface(discord.Client):
             )
         self.base_config: Config = base_config
         self.generate_response: GenerateResponse = generate_response
-        self.em_name = em_name
+        self.em_name = base_config.em.name
         self.iface_config = iface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
         self.per_interlocutor_semaphore: dict[int, asyncio.Semaphore] = {}
@@ -117,13 +117,14 @@ class DiscordInterface(discord.Client):
                     hash_to_id = None
 
                     @trace
-                    async def message_history(message):
+                    async def message_history(message, first_message=None):
                         message_ids.add(message.id)
+                        stop = False
                         yield await self.discord_message_to_message(
                             config, iface_config, message
                         )
                         async for this_message in message.channel.history(
-                            limit=None, before=message
+                            limit=None, before=message, after=first_message
                         ):
                             if is_continue_command(this_message.content):
                                 pass
@@ -132,6 +133,20 @@ class DiscordInterface(discord.Client):
                             elif iface_config.ignore_dotted_messages and re.match(
                                 self.DOTTED_MESSAGE_RE, this_message.content
                             ):
+                                if this_message.content.startswith('.history\n'):
+                                    content_after_delimiter = this_message.content.split("---", 1)[-1]
+                                    param_dict = yaml.safe_load(content_after_delimiter) or {}
+                                    if 'last' in param_dict:
+                                        last = await self.get_message_from_link(param_dict['last'])
+                                        first = None
+                                        if 'first' in param_dict:
+                                            first = await self.get_message_from_link(param_dict['first'])
+                                        if last is not None:
+                                            async for msg in message_history(last, first):
+                                                yield msg
+                                    if 'passthrough' not in param_dict or param_dict['passthrough'] is False:
+                                        stop = True
+                                        break
                                 pass
                             elif (
                                 this_message.type
@@ -148,7 +163,12 @@ class DiscordInterface(discord.Client):
                                 yield await self.discord_message_to_message(
                                     config, iface_config, this_message
                                 )
-                        if iface_config.threads_inherit_history and isinstance(
+                        if first_message is not None:
+                            message_ids.add(first_message.id)
+                            yield await self.discord_message_to_message(
+                                config, iface_config, first_message
+                            )
+                        elif not stop and iface_config.threads_inherit_history and isinstance(
                             message.channel, discord.threads.Thread
                         ):
                             thread = message.channel
@@ -171,9 +191,8 @@ class DiscordInterface(discord.Client):
                                 )
                             )
                             if starter_message is not None:
-                                async for message in message_history(starter_message):
-                                    yield message
-
+                                async for msg in message_history(starter_message):
+                                    yield msg
                     if not await self.should_reply(
                         message,
                         config,
@@ -467,6 +486,18 @@ class DiscordInterface(discord.Client):
 
         client = AutotesterClient(intents=discord.Intents.default())
         run_task(client.start(iface_config.end_to_end_test_discord_token))
+
+    async def get_message_from_link(
+        self,
+        message_link: str,
+    ):
+        message_id = message_link.split('/')[-1]
+        channel_id = message_link.split('/')[-2]
+        if channel_id is not None and message_id is not None:
+            thread = await self.fetch_channel(channel_id)
+            return await thread.fetch_message(message_id)
+        else:
+            return None
 
 
 def is_continue_command(message_content: str):
