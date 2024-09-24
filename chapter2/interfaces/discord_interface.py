@@ -421,7 +421,6 @@ class DiscordInterface(discord.Client):
             pinned_message_config = await get_yaml_from_pinned_messages(
                 channel, self.user.name
             )
-            print(pinned_message_config)
             kv = {**kv, **pinned_message_config}
 
         else:
