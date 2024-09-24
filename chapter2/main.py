@@ -119,9 +119,7 @@ async def run_em(name, end_to_end_test=False):
     interface_instances = []
     for interface, interface_config in interfaces:
         interface_instances.append(
-            interface(
-                config, generate_response, interface_config.name, interface_config
-            )
+            interface(config, generate_response, name, interface_config)
         )
 
     def handle_interrupt(sig, frame):

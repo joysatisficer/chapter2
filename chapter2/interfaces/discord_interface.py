@@ -51,7 +51,7 @@ class DiscordInterface(discord.Client):
             )
         self.base_config: Config = base_config
         self.generate_response: GenerateResponse = generate_response
-        self.em_name = base_config.em.name
+        self.em_name = em_name
         self.iface_config = iface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
         self.per_interlocutor_semaphore: dict[int, asyncio.Semaphore] = {}
