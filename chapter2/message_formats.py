@@ -29,18 +29,21 @@ class AbstractMessageFormat:
         pass
 
     def merge(self, messages: list[Message]):
+        if len(messages) == 0:
+            return
         merged_message = messages[0]
-        for message in messages[1:]:
-            if merged_message and (
-                message.author is None or merged_message.author == message.author
-            ):
-                merged_message = Message(
-                    merged_message.author,
-                    merged_message.content + "\n" + message.content,
-                )
-            else:
-                yield merged_message
-                merged_message = Message(message.author, message.content)
+        if len(messages) > 1:
+            for message in messages[1:]:
+                if merged_message and (
+                    message.author is None or merged_message.author == message.author
+                ):
+                    merged_message = Message(
+                        merged_message.author,
+                        merged_message.content + "\n" + message.content,
+                    )
+                else:
+                    yield merged_message
+                    merged_message = Message(message.author, message.content)
         yield merged_message
 
 
