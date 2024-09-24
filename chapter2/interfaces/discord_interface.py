@@ -138,6 +138,11 @@ class DiscordInterface(discord.Client):
                                 == discord.MessageType.thread_starter_message
                             ):
                                 pass
+                            elif (
+                                this_message.type
+                                == discord.MessageType.pins_add
+                            ):
+                                pass
                             else:
                                 message_ids.add(this_message.id)
                                 yield await self.discord_message_to_message(
@@ -360,6 +365,9 @@ class DiscordInterface(discord.Client):
             kv = channel
         elif channel is not None:
             kv = await get_yaml_from_channel(channel)
+            pinned_message_config = await get_yaml_from_pinned_messages(channel, self.user.name)
+            kv = {**kv, **pinned_message_config}
+
         else:
             kv = {}
         config = ontology.load_config_from_kv(kv, self.base_config.model_dump())
@@ -499,7 +507,35 @@ async def get_yaml_from_channel(
         return yaml.safe_load(topic.split("---")[1]) or {}
     else:
         return {}
+    
+async def get_yaml_from_pinned_messages(
+    channel: "discord.abc.MessageableChannel",
+    em_name: str,
+    ):
+    pinned_messages = await get_pinned_messages(channel)
+    config_prefix = f".config\n"
+    em_config_prefix = f".config.{em_name}\n"
 
+    valid_messages = [
+        message for message in pinned_messages
+        if message.content.startswith(config_prefix) or message.content.startswith(em_config_prefix)
+    ]
+
+    if not valid_messages:
+        return {}
+
+    config = {}
+    for message in reversed(valid_messages):
+        content_after_delimiter = message.content.split("---", 1)[-1]
+        d = yaml.safe_load(content_after_delimiter) or {}
+        config.update(d)
+    return config
+
+async def get_pinned_messages(channel: "discord.abc.MessageableChannel"):
+    pinned_messages = await channel.pins()
+    if isinstance(channel, discord.Thread) and channel.parent is not None:
+        pinned_messages.extend(await channel.parent.pins())
+    return pinned_messages
 
 def get_channel_topic(
     channel: "discord.abc.MessageableChannel",
