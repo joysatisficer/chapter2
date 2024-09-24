@@ -619,8 +619,8 @@ async def get_yaml_from_pinned_messages(
 
 async def get_pinned_messages(channel: "discord.abc.MessageableChannel"):
     pinned_messages = await channel.pins()
-    if isinstance(channel, discord.Thread) and channel.parent is not None:
-        pinned_messages.extend(await channel.parent.pins())
+    # if isinstance(channel, discord.Thread) and channel.parent is not None:
+    #     pinned_messages.extend(await channel.parent.pins())
     return pinned_messages
 
 
