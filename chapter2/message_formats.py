@@ -28,25 +28,43 @@ class AbstractMessageFormat:
     def parse(self, continuation: str) -> list[Message]:
         pass
 
+    def merge(self, messages: list[Message]):
+        merged_message = messages[0]
+        for message in messages[1:]:
+            if merged_message and (
+                message.author is None or merged_message.author == message.author
+            ):
+                merged_message = Message(
+                    merged_message.author,
+                    merged_message.content + "\n" + message.content,
+                )
+            else:
+                yield merged_message
+                merged_message = Message(message.author, message.content)
+        yield merged_message
+
 
 class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["irc"] = "irc"
     include_id: bool = True
+    separate_lines: bool = True
 
     def render(self, message):
         if message.author is None:
             return message.content + "\n"
         result = ""
-        for line in message.content.splitlines():
+        result += f"<{message.author.name}> "
+        if self.include_id and message.reply_to is not None:
+            result += f"[reply:{message.reply_to[:5]}] "
+        result += message.content.splitlines()[0]
+        for line in message.content.splitlines()[1:]:
             if not line.isspace():
-                if result:
-                    result += "\n"
-                result += f"<{message.author.name}>"
-                if self.include_id and message.reply_to is not None:
-                    result += f" [reply:{message.reply_to[:5]}] "
-                result += f" {line}"
-                if self.include_id and message.id is not None:
-                    result += " [id:" + message.id[:5] + "]"
+                result += "\n"
+                if self.separate_lines:
+                    result += f"<{message.author.name}> "
+                result += line
+        if self.include_id and message.id is not None:
+            result += " [id:" + message.id[:5] + "]"
         return result + "\n"
 
     @staticmethod
@@ -71,32 +89,38 @@ class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["colon"] = "colon"
     suffix: str = "\n"
+    separate_lines: bool = False
+    strip: bool = False
 
     def render(self, message):
         return (
-            (message.author.name + ": " if message.author.name is not None else "")
-            + (
-                reduce(
-                    lambda acc, line: acc + self.suffix + line if acc != "" else line,
-                    [
-                        line
-                        for line in message.content.splitlines()
-                        if not line.strip() == ""
-                    ],
-                    "",  # initial value
-                )
-                if message.author is not None
-                else message.content
+            (
+                message.author.name + ": "
+                if message.author.name is not None and not self.separate_lines
+                else ""
             )
-            + self.suffix
-        )
+            + reduce(
+                lambda acc, line: acc + self.suffix + line if acc != "" else line,
+                [
+                    (
+                        f"{message.author.name}: {line}"
+                        if message.author.name is not None and self.separate_lines
+                        else line
+                    )
+                    for line in message.content.splitlines()
+                    if not line.strip() == ""
+                ],
+                "",  # initial value
+            )
+            if message.author is not None
+            else message.content
+        ) + self.suffix
 
     @staticmethod
     def name_prefix(name):
         return f"{name}:"
 
-    @staticmethod
-    def parse(continuation):
+    def parse(self, continuation):
         messages = []
         for line in continuation.splitlines():
             match = re.match(r"^(?:(?:([^\n]+?):)? ?)?([^:].*)$", line)
@@ -110,7 +134,7 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                     raw_content = name + ": " + raw_content
                 else:
                     author = Author(name.strip())
-                content = raw_content.strip()
+                content = raw_content.strip() if self.strip else raw_content
                 messages.append(Message(author, content))
 
         return messages

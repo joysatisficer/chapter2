@@ -46,7 +46,6 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
             em.continuation_model,
         )
         + completion_prefix
-        + em.completion_prefix
     )
     ensembles = []
     # TODO: Filter for empty ensembles
@@ -98,6 +97,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
     while retry and tries < 3:
         tries += 1
         retry = False
+
         async for reply in get_replies(
             em, prompt, completion_prefix, em.name, author, stop_sequences
         ):
@@ -179,6 +179,7 @@ async def get_replies(
         )
     log_trace_id_to_console()
     # Todo: Client-side stop sequences
+    messages = []
     for message in em.message_history_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes
         if (
@@ -189,9 +190,15 @@ async def get_replies(
         elif em.name_prefix_optional and (
             message.author is None or message.author.name == my_name
         ):
-            yield dataclasses.replace(message, author=author)
+            if em.split_message:
+                yield dataclasses.replace(message, author=author)
+            else:
+                messages.append(message)
         else:
             break
+    if not em.split_message:
+        for message in em.message_history_format.merge(messages):
+            yield dataclasses.replace(message, author=author)
 
 
 async def format_ensemble(

@@ -22,7 +22,7 @@ async def rehearse_em(config: Config):
     mock_message_hist = eager_iterable_to_async_iterable(
         [
             Message(Author("alice"), "hello"),
-            Message(Author("bob"), "hi alice!"),
+            Message(Author("bob"), "hi alice!\nhow are you?"),
             Message(Author(config.em.name), "hi bob!"),
             Message(Author("alice"), f"hi {config.em.name}!"),
         ][::-1]
