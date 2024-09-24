@@ -12,6 +12,8 @@ import discord.http
 import discord.threads
 import openai.error
 import yaml
+import requests
+import ast
 from pydantic import ValidationError
 
 import ontology
@@ -284,26 +286,35 @@ class DiscordInterface(discord.Client):
         content = await parse_discord_content(message, self.user.id, config.em.name)
         if iface_config.include_images:
             for attachment in message.attachments:
+                if attachment.content_type.startswith(
+                    "text/"
+                ) and not attachment.filename.startswith("config"):
+                    attachment_content = get_attachment_content(attachment)
+                    content += f"<|begin_of_text_attachment|>{attachment_content}<|end_of_text_attachment|>"
+                    continue
                 if attachment.width is None or attachment.height is None:
                     continue
-                elif (
-                    attachment.width > iface_config.image_limits.max_width
-                    or attachment.height > iface_config.image_limits.max_height
-                ):
-                    width_ratio = iface_config.image_limits.max_width / attachment.width
-                    height_ratio = (
-                        iface_config.image_limits.max_height / attachment.height
-                    )
-                    scale_factor = min(width_ratio, height_ratio)
-                    width = int(attachment.width * scale_factor)
-                    height = int(attachment.height * scale_factor)
-                    url = (
-                        attachment.proxy_url.rstrip("&")
-                        + f"&width={width}&height={height}"
-                    )
                 else:
-                    url = attachment.proxy_url
-                content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
+                    if (
+                        attachment.width > iface_config.image_limits.max_width
+                        or attachment.height > iface_config.image_limits.max_height
+                    ):
+                        width_ratio = (
+                            iface_config.image_limits.max_width / attachment.width
+                        )
+                        height_ratio = (
+                            iface_config.image_limits.max_height / attachment.height
+                        )
+                        scale_factor = min(width_ratio, height_ratio)
+                        width = int(attachment.width * scale_factor)
+                        height = int(attachment.height * scale_factor)
+                        url = (
+                            attachment.proxy_url.rstrip("&")
+                            + f"&width={width}&height={height}"
+                        )
+                    else:
+                        url = attachment.proxy_url
+                    content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
             content,
@@ -410,6 +421,7 @@ class DiscordInterface(discord.Client):
             pinned_message_config = await get_yaml_from_pinned_messages(
                 channel, self.user.name
             )
+            print(pinned_message_config)
             kv = {**kv, **pinned_message_config}
 
         else:
@@ -572,21 +584,37 @@ async def get_yaml_from_pinned_messages(
     pinned_messages = await get_pinned_messages(channel)
     config_prefix = f".config\n"
     em_config_prefix = f".config.{em_name}\n"
+    config_filename_prefix = f"config.yaml"
+    em_config_filename_prefix = f"config.{em_name}.yaml"
 
-    valid_messages = [
-        message
-        for message in pinned_messages
-        if message.content.startswith(config_prefix)
-        or message.content.startswith(em_config_prefix)
-    ]
+    valid_configs = []
 
-    if not valid_messages:
+    for message in pinned_messages:
+        if message.content.startswith(
+            (
+                config_prefix,
+                em_config_prefix,
+            )
+        ):
+            content_after_delimiter = message.content.split("---", 1)[-1]
+            valid_configs.append(content_after_delimiter)
+        if message.attachments:
+            for attachment in message.attachments:
+                if attachment.filename.startswith(
+                    (
+                        config_filename_prefix,
+                        em_config_filename_prefix,
+                    )
+                ):
+                    attachment_content = get_attachment_content(attachment)
+                    valid_configs.append(attachment_content)
+
+    if not valid_configs:
         return {}
 
     config = {}
-    for message in reversed(valid_messages):
-        content_after_delimiter = message.content.split("---", 1)[-1]
-        d = yaml.safe_load(content_after_delimiter) or {}
+    for config_content in reversed(valid_configs):
+        d = yaml.safe_load(config_content) or {}
         config.update(d)
     return config
 
@@ -619,6 +647,23 @@ async def wait_until_timestamp(timestamp, coroutine):
 
 def isempty(string):
     return string == "" or string.isspace()
+
+
+def get_attachment_content(attachment: discord.Attachment):
+    r = requests.get(attachment.url, allow_redirects=True)
+    attachment_content = r.content
+    decoded_content = attachment_content.decode("utf-8")  # Assuming UTF-8 encoding
+    unescaped_content = unescape_string(decoded_content)
+    return unescaped_content
+
+
+def unescape_string(escaped_string: str) -> str:
+    try:
+        # Use ast.literal_eval to safely evaluate the string
+        return ast.literal_eval(f"'''{escaped_string}'''")
+    except (SyntaxError, ValueError):
+        # If there's an error, return the original string
+        return escaped_string
 
 
 class ConfigError(ValueError):
