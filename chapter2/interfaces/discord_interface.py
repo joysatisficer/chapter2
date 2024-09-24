@@ -350,6 +350,10 @@ class DiscordInterface(discord.Client):
                 or message.author.id in iface_config.discord_user_whitelist
             )
             and (
+                len(iface_config.bot_whitelist) == 0
+                or self.user.name in iface_config.bot_whitelist
+            )
+            and (
                 (iface_config.reply_on_ping and self.user.mentioned_in(message))
                 or (
                     iface_config.reply_on_random
