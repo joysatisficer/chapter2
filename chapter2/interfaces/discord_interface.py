@@ -51,7 +51,7 @@ class DiscordInterface(discord.Client):
             )
         self.base_config: Config = base_config
         self.generate_response: GenerateResponse = generate_response
-        self.em_name = em_name
+        self.sysname = em_name
         self.iface_config = iface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
         self.per_interlocutor_semaphore: dict[int, asyncio.Semaphore] = {}
@@ -342,12 +342,12 @@ class DiscordInterface(discord.Client):
             )
             and not (
                 iface_config.mute is True
-                or iface_config.mute == self.em_name
+                or iface_config.mute == self.sysname
                 or (
                     isinstance(iface_config.mute, list)
                     and any(
                         name in iface_config.mute
-                        for name in (config.em.name, self.em_name, self.user.name)
+                        for name in (config.em.name, self.sysname, self.user.name)
                     )
                 )
             )
@@ -367,7 +367,7 @@ class DiscordInterface(discord.Client):
                 len(iface_config.bot_whitelist) == 0
                 or any(
                     name in iface_config.bot_whitelist
-                    for name in (config.em.name, self.em_name, self.user.name)
+                    for name in (config.em.name, self.sysname, self.user.name)
                 )
             )
             and (
@@ -392,7 +392,6 @@ class DiscordInterface(discord.Client):
                         )
                         for name in (
                             config.em.name,
-                            self.em_name,
                             self.user.name,
                             *iface_config.nicknames,
                         )
