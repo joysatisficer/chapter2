@@ -133,18 +133,31 @@ class DiscordInterface(discord.Client):
                             elif iface_config.ignore_dotted_messages and re.match(
                                 self.DOTTED_MESSAGE_RE, this_message.content
                             ):
-                                if this_message.content.startswith('.history\n'):
-                                    content_after_delimiter = this_message.content.split("---", 1)[-1]
-                                    param_dict = yaml.safe_load(content_after_delimiter) or {}
-                                    if 'last' in param_dict:
-                                        last = await self.get_message_from_link(param_dict['last'])
+                                if this_message.content.startswith(".history\n"):
+                                    content_after_delimiter = (
+                                        this_message.content.split("---", 1)[-1]
+                                    )
+                                    param_dict = (
+                                        yaml.safe_load(content_after_delimiter) or {}
+                                    )
+                                    if "last" in param_dict:
+                                        last = await self.get_message_from_link(
+                                            param_dict["last"]
+                                        )
                                         first = None
-                                        if 'first' in param_dict:
-                                            first = await self.get_message_from_link(param_dict['first'])
+                                        if "first" in param_dict:
+                                            first = await self.get_message_from_link(
+                                                param_dict["first"]
+                                            )
                                         if last is not None:
-                                            async for msg in message_history(last, first):
+                                            async for msg in message_history(
+                                                last, first
+                                            ):
                                                 yield msg
-                                    if 'passthrough' not in param_dict or param_dict['passthrough'] is False:
+                                    if (
+                                        "passthrough" not in param_dict
+                                        or param_dict["passthrough"] is False
+                                    ):
                                         stop = True
                                         break
                                 pass
@@ -153,10 +166,7 @@ class DiscordInterface(discord.Client):
                                 == discord.MessageType.thread_starter_message
                             ):
                                 pass
-                            elif (
-                                this_message.type
-                                == discord.MessageType.pins_add
-                            ):
+                            elif this_message.type == discord.MessageType.pins_add:
                                 pass
                             else:
                                 message_ids.add(this_message.id)
@@ -168,8 +178,10 @@ class DiscordInterface(discord.Client):
                             yield await self.discord_message_to_message(
                                 config, iface_config, first_message
                             )
-                        elif not stop and iface_config.threads_inherit_history and isinstance(
-                            message.channel, discord.threads.Thread
+                        elif (
+                            not stop
+                            and iface_config.threads_inherit_history
+                            and isinstance(message.channel, discord.threads.Thread)
                         ):
                             thread = message.channel
                             # starter message id is the same as the thread id if the
@@ -193,6 +205,7 @@ class DiscordInterface(discord.Client):
                             if starter_message is not None:
                                 async for msg in message_history(starter_message):
                                     yield msg
+
                     if not await self.should_reply(
                         message,
                         config,
@@ -384,7 +397,9 @@ class DiscordInterface(discord.Client):
             kv = channel
         elif channel is not None:
             kv = await get_yaml_from_channel(channel)
-            pinned_message_config = await get_yaml_from_pinned_messages(channel, self.user.name)
+            pinned_message_config = await get_yaml_from_pinned_messages(
+                channel, self.user.name
+            )
             kv = {**kv, **pinned_message_config}
 
         else:
@@ -491,8 +506,8 @@ class DiscordInterface(discord.Client):
         self,
         message_link: str,
     ):
-        message_id = message_link.split('/')[-1]
-        channel_id = message_link.split('/')[-2]
+        message_id = message_link.split("/")[-1]
+        channel_id = message_link.split("/")[-2]
         if channel_id is not None and message_id is not None:
             thread = await self.fetch_channel(channel_id)
             return await thread.fetch_message(message_id)
@@ -538,18 +553,21 @@ async def get_yaml_from_channel(
         return yaml.safe_load(topic.split("---")[1]) or {}
     else:
         return {}
-    
+
+
 async def get_yaml_from_pinned_messages(
     channel: "discord.abc.MessageableChannel",
     em_name: str,
-    ):
+):
     pinned_messages = await get_pinned_messages(channel)
     config_prefix = f".config\n"
     em_config_prefix = f".config.{em_name}\n"
 
     valid_messages = [
-        message for message in pinned_messages
-        if message.content.startswith(config_prefix) or message.content.startswith(em_config_prefix)
+        message
+        for message in pinned_messages
+        if message.content.startswith(config_prefix)
+        or message.content.startswith(em_config_prefix)
     ]
 
     if not valid_messages:
@@ -562,11 +580,13 @@ async def get_yaml_from_pinned_messages(
         config.update(d)
     return config
 
+
 async def get_pinned_messages(channel: "discord.abc.MessageableChannel"):
     pinned_messages = await channel.pins()
     if isinstance(channel, discord.Thread) and channel.parent is not None:
         pinned_messages.extend(await channel.parent.pins())
     return pinned_messages
+
 
 def get_channel_topic(
     channel: "discord.abc.MessageableChannel",
