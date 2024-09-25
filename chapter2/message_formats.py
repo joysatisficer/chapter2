@@ -48,7 +48,7 @@ class AbstractMessageFormat:
                     and (
                         max_length is None
                         or len(merged_message.content) + len(message.content)
-                        <= max_length
+                        < max_length
                     )
                 ):
                     merged_message = Message(
