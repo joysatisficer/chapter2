@@ -31,7 +31,7 @@ class AbstractMessageFormat:
     def merge(
         self,
         messages: list[Message],
-        max_length: int | None = 2000,
+        max_length: int | None = 1900,
         author: Author | None = None,
     ):
         if len(messages) == 0:
