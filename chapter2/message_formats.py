@@ -76,13 +76,14 @@ class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         result += f"<{message.author.name}> "
         if self.include_id and message.reply_to is not None:
             result += f"[reply:{message.reply_to[:5]}] "
-        result += message.content.splitlines()[0]
-        for line in message.content.splitlines()[1:]:
-            if not line.isspace():
-                result += "\n"
-                if self.separate_lines:
-                    result += f"<{message.author.name}> "
-                result += line
+        if len(message.content.splitlines()) > 0:
+            result += message.content.splitlines()[0]
+            for line in message.content.splitlines()[1:]:
+                if not line.isspace():
+                    result += "\n"
+                    if self.separate_lines:
+                        result += f"<{message.author.name}> "
+                    result += line
         if self.include_id and message.id is not None:
             result += " [id:" + message.id[:5] + "]"
         return result + "\n"
