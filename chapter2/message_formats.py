@@ -66,7 +66,7 @@ class AbstractMessageFormat:
 
 class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["irc"] = "irc"
-    include_id: bool = True
+    include_id: bool = False
     separate_lines: bool = True
 
     def render(self, message):
