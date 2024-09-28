@@ -180,7 +180,7 @@ class EmConfig(BaseModel):
     mufflers: list[str] = ["has_url"]  # "context_sentence_repetition"
 
     temperature: Annotated[float, Ge(0)] = 0.95  # todo: vary on model
-    top_p: Annotated[float, Interval(gt=0, le=1)] = 0.99
+    top_p: Annotated[float, Interval(gt=0, le=1)] = 0.995  # ditto
     # 0 until a way to adjust it automatically for long context windows is impl'd
     frequency_penalty: float = 0
     presence_penalty: float = 0
