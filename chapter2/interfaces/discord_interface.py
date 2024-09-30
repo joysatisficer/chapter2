@@ -3,7 +3,6 @@ import contextlib
 import hashlib
 import re
 import time
-import urllib.parse
 import random
 from typing import Self, Tuple
 
@@ -488,8 +487,14 @@ class DiscordInterface(discord.Client):
     def get_invite_link(self):
         if self.user.id is None:
             raise ValueError("Tried to get invite link before bot user ID is known")
-        return "https://discord.com/api/oauth2/authorize?" + urllib.parse.urlencode(
-            {"scope": "bot", "permissions": 536879168, "client_id": self.user.id}
+        return discord.utils.oauth_url(
+            self.user.id,
+            scopes=["bot"],
+            permissions=discord.Permissions(
+                add_reactions=True,
+                manage_messages=True,
+                manage_webhooks=True,
+            ),
         )
 
     @trace
