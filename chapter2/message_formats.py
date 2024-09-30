@@ -39,7 +39,7 @@ class AbstractMessageFormat:
             return
         merged_message = messages[0]
         if len(messages) > 1:
-            for message in messages:
+            for message in messages[1:]:
                 if (
                     merged_message is None
                     or (
