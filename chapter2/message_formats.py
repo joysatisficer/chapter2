@@ -33,35 +33,44 @@ class AbstractMessageFormat:
         messages: list[Message],
         max_length: int | None = 1900,
         author: Author | None = None,
+        split_on_code_block: bool = True,
     ):
         if len(messages) == 0:
             return
         merged_message = messages[0]
         if len(messages) > 1:
-            for message in messages[1:]:
+            for message in messages:
                 if (
-                    merged_message
-                    and (
-                        message.author is None
-                        or merged_message.author == message.author
+                    merged_message is None
+                    or (
+                        max_length
+                        and len(merged_message.content) + len(message.content)
+                        > max_length
                     )
-                    and (
-                        max_length is None
-                        or len(merged_message.content) + len(message.content)
-                        < max_length
+                    or (message.author and merged_message.author != message.author)
+                    or (
+                        split_on_code_block
+                        and has_open_code_block(message.content)
+                        and not has_open_code_block(merged_message.content)
                     )
                 ):
+                    yield merged_message
+                    merged_message = Message(
+                        author if author else message.author, message.content
+                    )
+                else:
                     merged_message = Message(
                         merged_message.author,
                         merged_message.content + "\n" + message.content,
                     )
-                else:
-                    yield merged_message
-
-                    merged_message = Message(
-                        author if author else message.author, message.content
-                    )
         yield merged_message
+
+
+def has_open_code_block(text: str | None) -> bool:
+    if text is None:
+        return False
+    code_block_count = text.count("```")
+    return code_block_count % 2 == 1
 
 
 class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
