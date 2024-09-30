@@ -417,7 +417,6 @@ class DiscordInterface(discord.Client):
             if channel.id not in self.pinned_yaml:
                 await self.update_pinned_yaml(channel)
             kv = get_yaml_from_channel(channel) | self.pinned_yaml[channel.id]
-
         else:
             kv = {}
         config = ontology.load_config_from_kv(kv, self.base_config.model_dump())
