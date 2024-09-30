@@ -5,6 +5,7 @@ import re
 import time
 import random
 from typing import Self, Tuple
+from collections import defaultdict
 
 import discord
 import discord.http
@@ -53,7 +54,10 @@ class DiscordInterface(discord.Client):
         self.sysname = em_name
         self.iface_config = iface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
-        self.per_interlocutor_semaphore: dict[int, asyncio.Semaphore] = {}
+        self.per_interlocutor_semaphore: dict[int, asyncio.Semaphore] = defaultdict(
+            asyncio.Semaphore
+        )
+        self.pinned_yaml: dict[int, dict] = {}
         self.pending_shutdown = False
         if (
             self.iface_config.discord_proxy_url is not None
@@ -106,10 +110,8 @@ class DiscordInterface(discord.Client):
             except (ValueError, ValidationError) as exc:
                 raise ConfigError() from exc
             # XXX: Relies on Discord for IDs
-            if message.author.id not in self.per_interlocutor_semaphore:
-                # XXX: Might not be thread-safe
-                # XXX: This is not garbage-collected
-                self.per_interlocutor_semaphore[message.author.id] = asyncio.Semaphore()
+            # XXX: Might not be thread-safe
+            # XXX: This is not garbage-collected
             if (
                 len(self.per_interlocutor_semaphore[message.author.id]._waiters or [])
                 > iface_config.max_queued_replies
@@ -412,11 +414,9 @@ class DiscordInterface(discord.Client):
         if isinstance(channel, dict):
             kv = channel
         elif channel is not None:
-            kv = await get_yaml_from_channel(channel)
-            pinned_message_config = await get_yaml_from_pinned_messages(
-                channel, self.user.name
-            )
-            kv = {**kv, **pinned_message_config}
+            if channel.id not in self.pinned_yaml:
+                await self.update_pinned_yaml(channel)
+            kv = get_yaml_from_channel(channel) | self.pinned_yaml[channel.id]
 
         else:
             kv = {}
@@ -542,6 +542,17 @@ class DiscordInterface(discord.Client):
         else:
             return None
 
+    async def update_pinned_yaml(self, channel):
+        self.pinned_yaml[channel.id] = await get_yaml_from_pinned_messages(
+            channel, self.user.name
+        )
+
+    async def on_guild_channel_pins_update(self, channel, _last_pin):
+        await self.update_pinned_yaml(channel)
+
+    async def on_private_channel_pins_update(self, channel, _last_pin):
+        await self.update_pinned_yaml(channel)
+
 
 def is_continue_command(message_content: str):
     return message_content.strip() == "/continue" or message_content.startswith(
@@ -573,7 +584,7 @@ async def realize_pings(self, channel: discord.TextChannel, message_content: str
     return message_content
 
 
-async def get_yaml_from_channel(
+def get_yaml_from_channel(
     channel: "discord.abc.MessageableChannel",
 ) -> JSON:
     topic = get_channel_topic(channel)
@@ -587,7 +598,7 @@ async def get_yaml_from_pinned_messages(
     channel: "discord.abc.MessageableChannel",
     em_name: str,
 ):
-    pinned_messages = await get_pinned_messages(channel)
+    pinned_messages = await channel.pins()
     config_prefix = f".config\n"
     em_config_prefix = f".config.{em_name}\n"
     config_filename_prefix = f"config.yaml"
@@ -623,13 +634,6 @@ async def get_yaml_from_pinned_messages(
         d = yaml.safe_load(config_content) or {}
         config.update(d)
     return config
-
-
-async def get_pinned_messages(channel: "discord.abc.MessageableChannel"):
-    pinned_messages = await channel.pins()
-    # if isinstance(channel, discord.Thread) and channel.parent is not None:
-    #     pinned_messages.extend(await channel.parent.pins())
-    return pinned_messages
 
 
 def get_channel_topic(
