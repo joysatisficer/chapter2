@@ -122,7 +122,7 @@ class DiscordInterface(discord.Client):
                     async def message_history(message, first_message=None):
                         message_ids.add(message.id)
                         stop = False
-                        yield await self.discord_message_to_message(
+                        yield self.discord_message_to_message(
                             config, iface_config, message
                         )
                         async for this_message in message.channel.history(
@@ -172,12 +172,12 @@ class DiscordInterface(discord.Client):
                                 pass
                             else:
                                 message_ids.add(this_message.id)
-                                yield await self.discord_message_to_message(
+                                yield self.discord_message_to_message(
                                     config, iface_config, this_message
                                 )
                         if first_message is not None:
                             message_ids.add(first_message.id)
-                            yield await self.discord_message_to_message(
+                            yield self.discord_message_to_message(
                                 config, iface_config, first_message
                             )
                         elif (
@@ -276,14 +276,14 @@ class DiscordInterface(discord.Client):
                     if command_message is not None:
                         await command_message.delete()
 
-    async def discord_message_to_message(
+    def discord_message_to_message(
         self, config, iface_config: DiscordInterfaceConfig, message: discord.Message
     ) -> Message:
         if message.author.id == self.user.id:
             author_name = config.em.name
         else:
             author_name = message.author.name
-        content = await parse_discord_content(message, self.user.id, config.em.name)
+        content = parse_discord_content(message, self.user.id, config.em.name)
         if iface_config.include_images:
             for attachment in message.attachments:
                 if attachment.content_type.startswith(
