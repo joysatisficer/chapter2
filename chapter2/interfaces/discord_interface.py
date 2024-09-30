@@ -121,7 +121,6 @@ class DiscordInterface(discord.Client):
                     @trace
                     async def message_history(message, first_message=None):
                         message_ids.add(message.id)
-                        stop = False
                         yield await self.discord_message_to_message(
                             config, iface_config, message
                         )
@@ -171,17 +170,14 @@ class DiscordInterface(discord.Client):
                                     "passthrough" not in param_dict
                                     or param_dict["passthrough"] is False
                                 ):
-                                    stop = True
-                                    break
+                                    return
                         if first_message is not None:
                             message_ids.add(first_message.id)
                             yield await self.discord_message_to_message(
                                 config, iface_config, first_message
                             )
-                        elif (
-                            not stop
-                            and iface_config.threads_inherit_history
-                            and isinstance(message.channel, discord.threads.Thread)
+                        elif iface_config.threads_inherit_history and isinstance(
+                            message.channel, discord.threads.Thread
                         ):
                             thread = message.channel
                             # starter message id is the same as the thread id if the
@@ -196,7 +192,6 @@ class DiscordInterface(discord.Client):
                                 starter_message_id = thread.id
                             else:
                                 return
-                            # TODO(perf): try to get from cache first
                             starter_message = (
                                 await message.channel.parent.fetch_message(
                                     starter_message_id
@@ -511,7 +506,10 @@ class DiscordInterface(discord.Client):
 
         class AutotesterClient(discord.Client):
             async def on_ready(self):
-                channel = await self.fetch_channel(
+                # channel = await self.fetch_channel(
+                #     iface_config.end_to_end_test_discord_channel_id
+                # )
+                channel = await self.get_channel_cached(
                     iface_config.end_to_end_test_discord_channel_id
                 )
                 await channel.send("Hello")
@@ -520,6 +518,9 @@ class DiscordInterface(discord.Client):
         client = AutotesterClient(intents=discord.Intents.default())
         run_task(client.start(iface_config.end_to_end_test_discord_token))
 
+    async def get_channel_cached(self, channel_id: str):
+        return self.get_channel(channel_id) or await self.fetch_channel(channel_id)
+
     async def get_message_from_link(
         self,
         message_link: str,
@@ -527,7 +528,7 @@ class DiscordInterface(discord.Client):
         message_id = message_link.split("/")[-1]
         channel_id = message_link.split("/")[-2]
         if channel_id is not None and message_id is not None:
-            thread = await self.fetch_channel(channel_id)
+            thread = await self.get_channel_cached(channel_id)
             return await thread.fetch_message(message_id)
         else:
             return None
