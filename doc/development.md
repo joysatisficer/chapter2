@@ -18,7 +18,8 @@ For example, [agree to the terms of service for LLaMa 3.1](https://huggingface.c
 ```bash
 huggingface-cli login
 ```
-4. Configure API keys
+4. Configure API keys in `~/.config/chapter2/config.yaml` or `chapter2/ems/config.yaml`
+
 *This step is optional if you have OpenAI or Anthropic configured via environment 
 variables. (OPENAI_API_KEY, OPENAI_API_BASE, ANTHROPIC_API_KEY)*
 
