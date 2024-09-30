@@ -78,11 +78,15 @@ class DiscordInterface(discord.Client):
 
     async def on_message(self, message: discord.Message) -> None:
         if is_continue_command(message.content):
+            if not self.user.mentioned_in(message):
+                return
             command_message = message
             message_to_react_to = [
                 message async for message in message.channel.history(limit=2)
             ][1]
         elif is_mu_command(message.content):
+            if not self.user.mentioned_in(message):
+                return
             command_message = message
             async for this_message in message.channel.history(before=message):
                 if this_message.author.id == self.user.id:
