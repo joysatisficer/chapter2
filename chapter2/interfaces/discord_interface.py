@@ -5,6 +5,7 @@ import re
 import time
 import random
 from typing import Self, Tuple
+from collections import defaultdict
 
 import discord
 import discord.http
@@ -53,7 +54,9 @@ class DiscordInterface(discord.Client):
         self.sysname = em_name
         self.iface_config = iface_config
         self.message_semaphore = asyncio.BoundedSemaphore(self.MAX_CONCURRENT_MESSAGES)
-        self.per_interlocutor_semaphore: dict[int, asyncio.Semaphore] = {}
+        self.per_interlocutor_semaphore: dict[int, asyncio.Semaphore] = defaultdict(
+            asyncio.Semaphore
+        )
         self.pending_shutdown = False
         if (
             self.iface_config.discord_proxy_url is not None
@@ -106,10 +109,8 @@ class DiscordInterface(discord.Client):
             except (ValueError, ValidationError) as exc:
                 raise ConfigError() from exc
             # XXX: Relies on Discord for IDs
-            if message.author.id not in self.per_interlocutor_semaphore:
-                # XXX: Might not be thread-safe
-                # XXX: This is not garbage-collected
-                self.per_interlocutor_semaphore[message.author.id] = asyncio.Semaphore()
+            # XXX: Might not be thread-safe
+            # XXX: This is not garbage-collected
             if (
                 len(self.per_interlocutor_semaphore[message.author.id]._waiters or [])
                 > iface_config.max_queued_replies
