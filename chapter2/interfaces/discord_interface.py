@@ -513,10 +513,7 @@ class DiscordInterface(discord.Client):
 
         class AutotesterClient(discord.Client):
             async def on_ready(self):
-                # channel = await self.fetch_channel(
-                #     iface_config.end_to_end_test_discord_channel_id
-                # )
-                channel = await self.get_channel_cached(
+                channel = await self.fetch_channel(
                     iface_config.end_to_end_test_discord_channel_id
                 )
                 await channel.send("Hello")
