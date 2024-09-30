@@ -132,37 +132,6 @@ class DiscordInterface(discord.Client):
                                 pass
                             elif is_mu_command(this_message.content):
                                 pass
-                            elif iface_config.ignore_dotted_messages and re.match(
-                                self.DOTTED_MESSAGE_RE, this_message.content
-                            ):
-                                if this_message.content.startswith(".history\n"):
-                                    content_after_delimiter = (
-                                        this_message.content.split("---", 1)[-1]
-                                    )
-                                    param_dict = (
-                                        yaml.safe_load(content_after_delimiter) or {}
-                                    )
-                                    if "last" in param_dict:
-                                        last = await self.get_message_from_link(
-                                            param_dict["last"]
-                                        )
-                                        first = None
-                                        if "first" in param_dict:
-                                            first = await self.get_message_from_link(
-                                                param_dict["first"]
-                                            )
-                                        if last is not None:
-                                            async for msg in message_history(
-                                                last, first
-                                            ):
-                                                yield msg
-                                    if (
-                                        "passthrough" not in param_dict
-                                        or param_dict["passthrough"] is False
-                                    ):
-                                        stop = True
-                                        break
-                                pass
                             elif (
                                 this_message.type
                                 == discord.MessageType.thread_starter_message
@@ -170,11 +139,40 @@ class DiscordInterface(discord.Client):
                                 pass
                             elif this_message.type == discord.MessageType.pins_add:
                                 pass
+                            elif iface_config.ignore_dotted_messages and re.match(
+                                self.DOTTED_MESSAGE_RE, this_message.content
+                            ):
+                                pass
                             else:
                                 message_ids.add(this_message.id)
                                 yield await self.discord_message_to_message(
                                     config, iface_config, this_message
                                 )
+                            if this_message.content.startswith(".history\n"):
+                                content_after_delimiter = this_message.content.split(
+                                    "---", 1
+                                )[-1]
+                                param_dict = (
+                                    yaml.safe_load(content_after_delimiter) or {}
+                                )
+                                if "last" in param_dict:
+                                    last = await self.get_message_from_link(
+                                        param_dict["last"]
+                                    )
+                                    first = None
+                                    if "first" in param_dict:
+                                        first = await self.get_message_from_link(
+                                            param_dict["first"]
+                                        )
+                                    if last is not None:
+                                        async for msg in message_history(last, first):
+                                            yield msg
+                                if (
+                                    "passthrough" not in param_dict
+                                    or param_dict["passthrough"] is False
+                                ):
+                                    stop = True
+                                    break
                         if first_message is not None:
                             message_ids.add(first_message.id)
                             yield await self.discord_message_to_message(
