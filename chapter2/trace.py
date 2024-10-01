@@ -10,7 +10,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 
-__all__ = ["trace", "TraceSingleton", "ot_tracer", "log_trace_id_to_console"]
+__all__ = ["trace", "ot_tracer", "log_trace_id_to_console"]
 ot_tracer = ot_trace.get_tracer("chapter2")
 
 provider = TracerProvider()
@@ -83,36 +83,43 @@ class TraceGenerator:
             raise e_func
 
 
-class TraceSingleton:
-    def __call__(self, func):
-        @functools.wraps(func)
-        def trace_function(*args, **kwargs):
-            bound_args = inspect.signature(func).bind(*args, **kwargs)
-            bound_args.apply_defaults()
-            attributes = to_json("arg", bound_args.arguments)
-            if inspect.isgeneratorfunction(func) or inspect.isasyncgenfunction(func):
-                with ot_tracer.start_as_current_span(func.__qualname__) as span:
-                    span.set_attributes(attributes)
-                    links = [ot_trace.Link(span.get_span_context())]
-                    return TraceGenerator(func(*args, **kwargs), links)
-            else:
-                with ot_tracer.start_as_current_span(func.__qualname__) as span:
-                    span.set_attributes(attributes)
-                    ret = func(*args, **kwargs)
-                    span.set_attributes(to_json("return", ret))
-                    return ret
+class Tracer:
+    def __init__(self, name=None):
+        self.name = name
 
-        return trace_function
+    def __call__(self, *args, **kwargs):
+        if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
+            func = args[0]
 
-    def __getattr__(self, name):
-        def instrument_log(*args, attr=False, **kwargs):
+            @functools.wraps(func)
+            def trace_function(*args, **kwargs):
+                bound_args = inspect.signature(func).bind(*args, **kwargs)
+                bound_args.apply_defaults()
+                attributes = to_json("arg", bound_args.arguments)
+                if inspect.isgeneratorfunction(func) or inspect.isasyncgenfunction(
+                    func
+                ):
+                    with ot_tracer.start_as_current_span(func.__qualname__) as span:
+                        span.set_attributes(attributes)
+                        links = [ot_trace.Link(span.get_span_context())]
+                        return TraceGenerator(func(*args, **kwargs), links)
+                else:
+                    with ot_tracer.start_as_current_span(func.__qualname__) as span:
+                        span.set_attributes(attributes)
+                        ret = func(*args, **kwargs)
+                        span.set_attributes(to_json("return", ret))
+                        return ret
+
+            return trace_function
+        else:
+            assert self.name is not None
             span = ot_trace.get_current_span()
-            if attr:
+            if "attr" in kwargs and kwargs["attr"]:
                 assert len(args) == 1
-                span.set_attribute(name, args[0])
+                span.set_attribute(self.name, args[0])
             else:
                 span.add_event(
-                    name, {**to_json("value", args), **to_json("value", kwargs)}
+                    self.name, to_json("value", args) | to_json("value", kwargs)
                 )
                 if len(args) == 1 and len(kwargs) == 0:
                     return args[0]
@@ -121,7 +128,11 @@ class TraceSingleton:
                 else:
                     return None
 
-        return instrument_log
+    def __getattr__(self, name):
+        if self.name is None:
+            return Tracer(name)
+        else:
+            return Tracer(self.name + "." + name)
 
 
 def log_trace_id_to_console():
@@ -132,4 +143,4 @@ def log_trace_id_to_console():
         print(f"Trace ID:", trace_id)
 
 
-trace = TraceSingleton()
+trace = Tracer()

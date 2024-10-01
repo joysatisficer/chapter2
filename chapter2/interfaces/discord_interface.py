@@ -430,6 +430,7 @@ class DiscordInterface(discord.Client):
     async def handle_exceptions(self, message: discord.Message):
         config, iface_config = await self.get_config(None)
         with ot_tracer.start_as_current_span(self.handle_exceptions.__qualname__):
+            trace.message.id(message.id, attr=True)
             try:
                 async with self.message_semaphore:
                     yield
@@ -437,7 +438,6 @@ class DiscordInterface(discord.Client):
                 if iface_config.end_to_end_test:
                     self.end_to_end_test_fail = True
                 await message.add_reaction("⚙️")
-                # if the message is deleted, the url will still head to the channel
                 print(
                     "bad config in channel",
                     f"#{message.channel.name}",
