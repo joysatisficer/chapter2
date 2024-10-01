@@ -135,15 +135,11 @@ class DiscordInterface(discord.Client):
                                 pass
                             elif is_mu_command(this_message.content):
                                 pass
-                            elif (
-                                this_message.type
+                            elif iface_config.ignore_dotted_messages and (
+                                re.match(self.DOTTED_MESSAGE_RE, this_message.content)
+                                or this_message.type
                                 == discord.MessageType.thread_starter_message
-                            ):
-                                pass
-                            elif this_message.type == discord.MessageType.pins_add:
-                                pass
-                            elif iface_config.ignore_dotted_messages and re.match(
-                                self.DOTTED_MESSAGE_RE, this_message.content
+                                or this_message.type == discord.MessageType.pins_add
                             ):
                                 pass
                             else:
@@ -151,30 +147,36 @@ class DiscordInterface(discord.Client):
                                 yield self.discord_message_to_message(
                                     config, iface_config, this_message
                                 )
-                            if this_message.content.startswith(".history\n"):
-                                content_after_delimiter = this_message.content.split(
-                                    "---", 1
-                                )[-1]
-                                param_dict = (
-                                    yaml.safe_load(content_after_delimiter) or {}
-                                )
-                                if "last" in param_dict:
-                                    last = await self.get_message_from_link(
-                                        param_dict["last"]
-                                    )
-                                    first = None
-                                    if "first" in param_dict:
-                                        first = await self.get_message_from_link(
-                                            param_dict["first"]
-                                        )
-                                    if last is not None:
-                                        async for msg in message_history(last, first):
-                                            yield msg
+                            config_message = parse_dot_command(this_message)
+                            if (
+                                config_message
+                                and config_message["command"] == "history"
+                            ):
                                 if (
-                                    "passthrough" not in param_dict
-                                    or param_dict["passthrough"] is False
+                                    len(config_message["args"]) == 0
+                                    or self.name_in_list(config_message["args"])
+                                    or self.user.mentioned_in(this_message)
                                 ):
-                                    return
+                                    if "last" in config_message["yaml"]:
+                                        last = await self.get_message_from_link(
+                                            config_message["yaml"]["last"]
+                                        )
+                                        first = None
+                                        if "first" in config_message["yaml"]:
+                                            first = await self.get_message_from_link(
+                                                config_message["yaml"]["first"]
+                                            )
+                                        if last is not None:
+                                            async for msg in message_history(
+                                                last, first
+                                            ):
+                                                yield msg
+                                    if (
+                                        "passthrough" not in config_message["yaml"]
+                                        or config_message["yaml"]["passthrough"]
+                                        is False
+                                    ):
+                                        return
                         if first_message is not None:
                             message_ids.add(first_message.id)
                             yield self.discord_message_to_message(
@@ -281,37 +283,34 @@ class DiscordInterface(discord.Client):
         else:
             author_name = message.author.name
         content = parse_discord_content(message, self.user.id, config.em.name)
-        if iface_config.include_images:
-            for attachment in message.attachments:
-                if attachment.content_type.startswith(
-                    "text/"
-                ) and not attachment.filename.startswith("config"):
-                    attachment_content = get_attachment_content(attachment)
-                    content += f"<|begin_of_text_attachment|>{attachment_content}<|end_of_text_attachment|>"
+        for attachment in message.attachments:
+            att_data = parse_attachment(attachment)
+            if iface_config.ignore_dotted_messages:
+                if att_data["command"] in ["config", "history"]:
+                    break
+                elif re.match(self.DOTTED_MESSAGE_RE, attachment.filename):
                     continue
-                if attachment.width is None or attachment.height is None:
-                    continue
+            elif att_data["type"] == "text":
+                content += f"<|begin_of_attachment|>{get_attachment_content(attachment)}<|end_of_attachment|>"
+            elif iface_config.include_images and att_data["type"] == "image":
+                if (
+                    attachment.width > iface_config.image_limits.max_width
+                    or attachment.height > iface_config.image_limits.max_height
+                ):
+                    width_ratio = iface_config.image_limits.max_width / attachment.width
+                    height_ratio = (
+                        iface_config.image_limits.max_height / attachment.height
+                    )
+                    scale_factor = min(width_ratio, height_ratio)
+                    width = int(attachment.width * scale_factor)
+                    height = int(attachment.height * scale_factor)
+                    url = (
+                        attachment.proxy_url.rstrip("&")
+                        + f"&width={width}&height={height}"
+                    )
                 else:
-                    if (
-                        attachment.width > iface_config.image_limits.max_width
-                        or attachment.height > iface_config.image_limits.max_height
-                    ):
-                        width_ratio = (
-                            iface_config.image_limits.max_width / attachment.width
-                        )
-                        height_ratio = (
-                            iface_config.image_limits.max_height / attachment.height
-                        )
-                        scale_factor = min(width_ratio, height_ratio)
-                        width = int(attachment.width * scale_factor)
-                        height = int(attachment.height * scale_factor)
-                        url = (
-                            attachment.proxy_url.rstrip("&")
-                            + f"&width={width}&height={height}"
-                        )
-                    else:
-                        url = attachment.proxy_url
-                    content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
+                    url = attachment.proxy_url
+                content += f"<|begin_of_attachment_url|>{url}<|end_of_attachment_url|>"
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
             content,
@@ -338,23 +337,13 @@ class DiscordInterface(discord.Client):
                 or message.channel.permissions_for(message.guild.me).send_messages
             )
             and not (
-                iface_config.mute is True
-                or iface_config.mute == self.sysname
-                or (
-                    isinstance(iface_config.mute, list)
-                    and any(
-                        name in iface_config.mute
-                        for name in (config.em.name, self.sysname, self.user.name)
-                    )
-                )
+                iface_config.ignore_dotted_messages
+                and re.match(self.DOTTED_MESSAGE_RE, message.content)
             )
+            and not (iface_config.mute is True or self.name_in_list(iface_config.mute))
             and not (
                 iface_config.thread_mute
                 and message.channel.type == discord.ChannelType.public_thread
-            )
-            and not (
-                iface_config.ignore_dotted_messages
-                and re.match(self.DOTTED_MESSAGE_RE, message.content)
             )
             and (
                 len(iface_config.discord_user_whitelist) == 0
@@ -362,10 +351,7 @@ class DiscordInterface(discord.Client):
             )
             and (
                 len(iface_config.may_speak) == 0
-                or any(
-                    name in iface_config.may_speak
-                    for name in (config.em.name, self.sysname, self.user.name)
-                )
+                or self.name_in_list(iface_config.may_speak)
             )
             and (
                 (iface_config.reply_on_ping and self.user.mentioned_in(message))
@@ -405,6 +391,17 @@ class DiscordInterface(discord.Client):
                     )
                 )
             )
+        )
+
+    def name_in_list(self, name_list, nicknames=None):
+        if isinstance(name_list, str):
+            name_list = [name_list]
+        elif not isinstance(name_list, list):
+            return False
+        if nicknames is None:
+            nicknames = []
+        return any(
+            name in name_list for name in (self.user.name, self.sysname, *nicknames)
         )
 
     async def get_config(
@@ -537,10 +534,40 @@ class DiscordInterface(discord.Client):
         else:
             return None
 
+    def get_config_from_message(self, message: discord.Message):
+        config = {}
+        is_config_message = False
+        dot_command = parse_dot_command(message)
+        if dot_command:
+            if dot_command["command"] == "config" and (
+                len(dot_command["args"]) == 0
+                or self.name_in_list(dot_command["args"])
+                or self.user.mentioned_in(message)
+            ):
+                config = dot_command["yaml"]
+                is_config_message = True
+        for attachment in message.attachments:
+            att_data = parse_attachment(attachment)
+            if att_data["type"] == "text" and (
+                len(att_data["args"]) == 0
+                or self.name_in_list(att_data["args"])
+                or self.user.mentioned_in(message)
+            ):
+                if att_data["command"] == "config":
+                    config.update(att_data["yaml"])
+                    is_config_message = True
+                elif is_config_message:
+                    config[att_data["command"]] = att_data["yaml"]
+        return config
+
+    async def get_config_from_pins(self, channel: "discord.abc.MessageableChannel"):
+        config = {}
+        for message in reversed(await channel.pins()):
+            config.update(self.get_config_from_message(message))
+        return config
+
     async def update_pinned_yaml(self, channel):
-        self.pinned_yaml[channel.id] = await get_yaml_from_pinned_messages(
-            channel, self.user.name
-        )
+        self.pinned_yaml[channel.id] = await self.get_config_from_pins(channel)
 
     async def on_guild_channel_pins_update(self, channel, _last_pin):
         await self.update_pinned_yaml(channel)
@@ -589,46 +616,32 @@ def get_yaml_from_channel(
         return {}
 
 
-async def get_yaml_from_pinned_messages(
-    channel: "discord.abc.MessageableChannel",
-    em_name: str,
-):
-    pinned_messages = await channel.pins()
-    config_prefix = f".config\n"
-    em_config_prefix = f".config.{em_name}\n"
-    config_filename_prefix = f"config.yaml"
-    em_config_filename_prefix = f"config.{em_name}.yaml"
+def parse_dot_command(message: discord.Message):
+    match = re.match(r"^\.(\w+)(?:[\s|\.]+(.+))?$", message.content.split("---", 1)[0])
+    if match:
+        return {
+            "command": match.group(1),
+            "args": re.split("[\s|\.]", match.group(2)) if match.group(2) else [],
+            "yaml": yaml.safe_load(message.content.split("---", 1)[-1]) or {},
+        }
+    else:
+        return None
 
-    valid_configs = []
 
-    for message in pinned_messages:
-        if message.content.startswith(
-            (
-                config_prefix,
-                em_config_prefix,
+def parse_attachment(attachment: discord.Attachment):
+    att_info = {"command": None, "args": [], "type": attachment.content_type}
+    if attachment.height is not None and attachment.width is not None:
+        att_info["type"] = "image"
+    elif not attachment.content_type or attachment.content_type.startswith("text/"):
+        att_info["type"] = "text"
+        match = re.match(r"^\.?(.+?)(?:[\s|-](.+?))?(?:\.(.+?))?$", attachment.filename)
+        if match:
+            att_info["command"] = match.group(1)
+            att_info["args"] = (
+                re.split("[\s|-]", match.group(2)) if match.group(2) else []
             )
-        ):
-            content_after_delimiter = message.content.split("---", 1)[-1]
-            valid_configs.append(content_after_delimiter)
-        if message.attachments:
-            for attachment in message.attachments:
-                if attachment.filename.startswith(
-                    (
-                        config_filename_prefix,
-                        em_config_filename_prefix,
-                    )
-                ):
-                    attachment_content = get_attachment_content(attachment)
-                    valid_configs.append(attachment_content)
-
-    if not valid_configs:
-        return {}
-
-    config = {}
-    for config_content in reversed(valid_configs):
-        d = yaml.safe_load(config_content) or {}
-        config.update(d)
-    return config
+            att_info["yaml"] = yaml.safe_load(get_attachment_content(attachment))
+    return att_info
 
 
 def get_channel_topic(
