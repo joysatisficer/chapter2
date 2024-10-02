@@ -129,7 +129,10 @@ class DiscordInterface(discord.Client):
                             config, iface_config, message
                         )
                         async for this_message in message.channel.history(
-                            limit=None, before=message, after=first_message
+                            limit=None,
+                            before=message,
+                            after=first_message,
+                            oldest_first=False,  # defaults to True if first_message is given
                         ):
                             if is_continue_command(this_message.content):
                                 pass
