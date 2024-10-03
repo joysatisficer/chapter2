@@ -648,15 +648,14 @@ def parse_attachment(attachment: discord.Attachment):
         att_info["type"] = "text"
         match = re.match(r"^\.?(.+?)(?:[\s|-](.+?))?(?:\.(.+?))?$", attachment.filename)
         if match:
-            att_info["command"] = match.group(1)
-            att_info["args"] = (
-                re.split("[\s|-]", match.group(2)) if match.group(2) else []
-            )
             try:
                 att_info["yaml"] = yaml.safe_load(get_attachment_content(attachment))
+                att_info["command"] = match.group(1)
+                att_info["args"] = (
+                    re.split("[\s|-]", match.group(2)) if match.group(2) else []
+                )
             except Exception as e:
                 print(f"Error parsing YAML")
-                att_info["yaml"] = {}
     return att_info
 
 
