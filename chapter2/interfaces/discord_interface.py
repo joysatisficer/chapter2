@@ -614,7 +614,11 @@ def get_yaml_from_channel(
 ) -> JSON:
     topic = get_channel_topic(channel)
     if topic is not None and "---" in topic:
-        return yaml.safe_load(topic.split("---")[1]) or {}
+        try:
+            return yaml.safe_load(topic.split("---")[1]) or {}
+        except Exception as e:
+            print(f"Error parsing YAML in channel {channel.name}: {e}")
+            return {}
     else:
         return {}
 
@@ -622,10 +626,15 @@ def get_yaml_from_channel(
 def parse_dot_command(message: discord.Message):
     match = re.match(r"^\.(\w+)(?:[\s|\.]+(.+))?$", message.content.split("---", 1)[0])
     if match:
+        try:
+            yaml_content = yaml.safe_load(message.content.split("---", 1)[-1])
+        except Exception as e:
+            print(f"Error parsing YAML")
+            yaml_content = {}
         return {
             "command": match.group(1),
             "args": re.split("[\s|\.]", match.group(2)) if match.group(2) else [],
-            "yaml": yaml.safe_load(message.content.split("---", 1)[-1]) or {},
+            "yaml": yaml_content or {},
         }
     else:
         return None
@@ -643,7 +652,11 @@ def parse_attachment(attachment: discord.Attachment):
             att_info["args"] = (
                 re.split("[\s|-]", match.group(2)) if match.group(2) else []
             )
-            att_info["yaml"] = yaml.safe_load(get_attachment_content(attachment))
+            try:
+                att_info["yaml"] = yaml.safe_load(get_attachment_content(attachment))
+            except Exception as e:
+                print(f"Error parsing YAML")
+                att_info["yaml"] = {}
     return att_info
 
 
