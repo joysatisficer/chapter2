@@ -36,6 +36,7 @@ dependencies = [
     "exa-py==1.0.7",
     "novelai-api>=0.30.0",
     "matrix-nio>=0.25.0",
+    "sortedcontainers",
 ]
 
 [tool.rye]
