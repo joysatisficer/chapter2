@@ -4,6 +4,7 @@ import re
 import time
 import random
 from typing import Self, Tuple, Optional, AsyncIterator
+from collections.abc import Callable
 from collections import defaultdict
 
 import discord
@@ -36,6 +37,19 @@ class ChannelCache:
         self.sparse: SortedDict[int, bool] = SortedDict()
         self.up_to_date = False
 
+    def set_prev(self, index: int, func: Callable[[bool, bool], bool]) -> bool:
+        if len(self.sparse) == 0 or index >= self.sparse.keys()[-1]:
+            self.up_to_date = func(old := self.up_to_date, True)
+        else:
+            # get previous (against iteration/reverse chronological order) index
+            prev = next(
+                self.sparse.irange(
+                    minimum=index, reverse=False, inclusive=(False, False)
+                )
+            )
+            self.sparse[prev] = func(old := self.sparse[prev], False)
+        return old
+
     def update(self, message, latest: bool):
         "latest: if this message is the last message in the channel"
 
@@ -54,30 +68,26 @@ class ChannelCache:
         if latest:
             # [ b ...] -> [-a b ...]
             # [-b ...] -> [-a-b ...]
-            self.sparse[message.id] = self.up_to_date
-            self.up_to_date = True
+            # or, in case we get messages out of order, whether due to API error or asyncio:
+            # [ a c ...] -> [ a b c ...]
+            # [-a c ...] -> [-a b c ...]
+            # [ a-c ...] -> [ a-b-c ...]
+            # [-a-c ...] -> [-a-b-c ...]
+            # (no idea if this happens, but let's try to be fault tolerant)
+            self.sparse[message.id] = self.set_prev(
+                message.id, lambda prev, last: last or prev
+            )
 
     def delete(self, id: int):
         self.messages[id] = None
         if id in self.sparse:
-            # if id >= self.channel.last_message_id:
-            if id == self.sparse.keys()[-1]:
-                # if we know that the next message is cached, we're still up to date
-                # (same as diagram below, but "a" is the up_to_date flag)
-                self.up_to_date &= self.sparse[id]
-            else:
-                # a b c -> a c
-                # a-b c -> a c
-                # a b-c -> a c
-                # a-b-c -> a-c
-                self.sparse[
-                    # get previous (against iteration/reverse chronological order) message; "a"
-                    next(
-                        self.sparse.irange(
-                            minimum=id, reverse=False, inclusive=(False, False)
-                        )
-                    )
-                ] &= self.sparse[id]
+            # a b c -> a c
+            # a-b c -> a c
+            # a b-c -> a c
+            # a-b-c -> a-c
+            # or, if this is the first message and the next message is known, we're still up to date
+            # (same as diagram above, but "a" is the up_to_date flag)
+            self.set_prev(id, lambda prev, last: prev & self.sparse[id])
             del self.sparse[id]
 
     async def history(
@@ -204,10 +214,13 @@ async def test_cache():
             if choice([True, False]):
                 # there was a bug with the same message ID being sent multiple times
                 # so make sure that message IDs are strictly increasing
-                message = Message(minid := minid + randrange(1, 1000))
-                channel._history[minid] = message
-                cache.update(message, True)
-                log.append(("send", minid))
+                minid += randrange(3, 1000)
+                # ... unless we want to test tolerance to out of order messages
+                send = [minid] + ([] if randrange(4) else [minid - 2, minid - 1])
+                for i in send:
+                    channel._history[i] = Message(i)
+                    cache.update(channel._history[i], True)
+                log.append(("send", send))
             else:
                 del channel._history[id := choice(channel._history.keys())]
                 cache.delete(id)
