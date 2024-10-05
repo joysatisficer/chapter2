@@ -117,6 +117,7 @@ class Tracer:
             if "attr" in kwargs and kwargs["attr"]:
                 assert len(args) == 1
                 span.set_attribute(self.name, args[0])
+                return args[0]
             else:
                 span.add_event(
                     self.name, to_json("value", args) | to_json("value", kwargs)
