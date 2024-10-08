@@ -553,7 +553,7 @@ class DiscordInterface(discord.Client):
                     )
                 else:
                     url = attachment.proxy_url
-                content += f"<|begin_of_attachment_url|>{url}<|end_of_attachment_url|>"
+                content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
             content.strip(),
