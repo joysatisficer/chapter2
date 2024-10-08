@@ -67,7 +67,9 @@ async def exa_search_faculty(
         kwparams["num_results"] = n_results
         results = sorted(
             (
-                await sync_to_async(exa_client.search_and_contents)(
+                await sync_to_async(
+                    exa_client.search_and_contents, thread_sensitive=False
+                )(
                     trim_tokens("gpt2", message_history_string, 1000),
                     **kwparams,
                 )
