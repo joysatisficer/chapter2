@@ -6,6 +6,7 @@ import random
 from typing import Self, Tuple, Optional, AsyncIterator
 from collections.abc import Callable
 from collections import defaultdict
+from functools import lru_cache
 
 import discord
 import discord.http
@@ -364,7 +365,7 @@ class DiscordInterface(discord.Client):
                     @trace
                     async def message_history(message, first_message=None):
                         message_ids.add(message.id)
-                        yield self.discord_message_to_message(
+                        yield await self.discord_message_to_message(
                             config, iface_config, message
                         )
                         async for this_message in self.cache(message.channel).history(
@@ -385,7 +386,7 @@ class DiscordInterface(discord.Client):
                                 pass
                             else:
                                 message_ids.add(this_message.id)
-                                yield self.discord_message_to_message(
+                                yield await self.discord_message_to_message(
                                     config, iface_config, this_message
                                 )
                             config_message = parse_dot_command(this_message)
@@ -420,7 +421,7 @@ class DiscordInterface(discord.Client):
                                         return
                         if first_message is not None:
                             message_ids.add(first_message.id)
-                            yield self.discord_message_to_message(
+                            yield await self.discord_message_to_message(
                                 config, iface_config, first_message
                             )
                         elif iface_config.threads_inherit_history and isinstance(
@@ -516,7 +517,7 @@ class DiscordInterface(discord.Client):
                     if command_message is not None:
                         await command_message.delete()
 
-    def discord_message_to_message(
+    async def discord_message_to_message(
         self, config, iface_config: DiscordInterfaceConfig, message: discord.Message
     ) -> Message:
         if message.author.id == self.user.id:
@@ -525,14 +526,15 @@ class DiscordInterface(discord.Client):
             author_name = message.author.name
         content = parse_discord_content(message, self.user.id, config.em.name)
         for attachment in message.attachments:
-            att_data = parse_attachment(attachment)
-            if iface_config.ignore_dotted_messages:
-                if att_data["command"] in ["config", "history"]:
-                    break
-                elif re.match(self.DOTTED_MESSAGE_RE, attachment.filename):
-                    continue
-            elif att_data["type"] == "text":
-                content += f"<|begin_of_attachment|>{get_attachment_content(attachment)}<|end_of_attachment|>"
+            att_data = await parse_attachment(attachment)
+            if iface_config.ignore_dotted_messages and (
+                att_data["command"] in ["config", "history"]
+                or re.match(self.DOTTED_MESSAGE_RE, attachment.filename)
+            ):
+                continue
+            if att_data["type"] == "text":
+                # don't strip leading whitespace; might be ASCII art
+                content += f"\n<|begin_of_attachment|>\n{(await get_attachment_content(attachment)).rstrip()}\n<|end_of_attachment|>\n"
             elif iface_config.include_images and att_data["type"] == "image":
                 if (
                     attachment.width > iface_config.image_limits.max_width
@@ -554,7 +556,7 @@ class DiscordInterface(discord.Client):
                 content += f"<|begin_of_attachment_url|>{url}<|end_of_attachment_url|>"
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
-            content,
+            content.strip(),
             timestamp=message.created_at.timestamp(),
             id=hashint(message.id),
             reply_to=message.reference
@@ -775,7 +777,7 @@ class DiscordInterface(discord.Client):
         else:
             return None
 
-    def get_config_from_message(self, message: discord.Message):
+    async def get_config_from_message(self, message: discord.Message):
         config = {}
         is_config_message = False
         dot_command = parse_dot_command(message)
@@ -788,7 +790,7 @@ class DiscordInterface(discord.Client):
                 config = dot_command["yaml"]
                 is_config_message = True
         for attachment in message.attachments:
-            att_data = parse_attachment(attachment)
+            att_data = await parse_attachment(attachment)
             if att_data["type"] == "text" and (
                 len(att_data["args"]) == 0
                 or self.name_in_list(att_data["args"])
@@ -804,7 +806,7 @@ class DiscordInterface(discord.Client):
     async def get_config_from_pins(self, channel: "discord.abc.MessageableChannel"):
         config = {}
         for message in reversed(await channel.pins()):
-            config.update(self.get_config_from_message(message))
+            config.update(await self.get_config_from_message(message))
         return config
 
     async def update_pinned_yaml(self, channel):
@@ -891,7 +893,7 @@ def parse_dot_command(message: discord.Message):
         return None
 
 
-def parse_attachment(attachment: discord.Attachment):
+async def parse_attachment(attachment: discord.Attachment):
     att_info = {"command": None, "args": [], "type": attachment.content_type}
     if attachment.height is not None and attachment.width is not None:
         att_info["type"] = "image"
@@ -900,7 +902,9 @@ def parse_attachment(attachment: discord.Attachment):
         match = re.match(r"^\.?(.+?)(?:[\s|-](.+?))?(?:\.(.+?))?$", attachment.filename)
         if match:
             try:
-                att_info["yaml"] = yaml.safe_load(get_attachment_content(attachment))
+                att_info["yaml"] = yaml.safe_load(
+                    await get_attachment_content(attachment)
+                )
                 att_info["command"] = match.group(1)
                 att_info["args"] = (
                     re.split("[\s|-]", match.group(2)) if match.group(2) else []
@@ -933,7 +937,13 @@ def isempty(string):
     return string == "" or string.isspace()
 
 
-def get_attachment_content(attachment: discord.Attachment):
+async def get_attachment_content(attachment: discord.Attachment) -> str:
+    # @lru_cache doesn't work on async functions, so use this as a workaround
+    return await asyncio.to_thread(get_attachment_content_inner, attachment)
+
+
+@lru_cache
+def get_attachment_content_inner(attachment: discord.Attachment):
     r = requests.get(attachment.url, allow_redirects=True)
     attachment_content = r.content
     decoded_content = attachment_content.decode("utf-8")  # Assuming UTF-8 encoding
