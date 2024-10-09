@@ -271,6 +271,7 @@ class DiscordInterface(discord.Client):
         iface_config: DiscordInterfaceConfig,
     ):
         intents = discord.Intents.default()
+        intents.typing = False
         intents.message_content = True
         intents.members = True
         if (
