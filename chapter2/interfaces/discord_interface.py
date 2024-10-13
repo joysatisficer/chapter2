@@ -292,6 +292,7 @@ class DiscordInterface(discord.Client):
             asyncio.Semaphore
         )
         self.pinned_yaml: dict[int, dict] = {}
+        self.pinned_messages: defaultdict[int, set[int]] = defaultdict(set)
         self.cache = Cache()
         self.pending_shutdown = False
         if (
@@ -655,7 +656,7 @@ class DiscordInterface(discord.Client):
             kv = channel
         elif channel is not None:
             if channel.id not in self.pinned_yaml:
-                await self.update_pinned_yaml(channel)
+                await self.update_pins(channel)
             kv = get_yaml_from_channel(channel) | self.pinned_yaml[channel.id]
         else:
             kv = {}
@@ -804,20 +805,20 @@ class DiscordInterface(discord.Client):
                     config[att_data["command"]] = att_data["yaml"]
         return config
 
-    async def get_config_from_pins(self, channel: "discord.abc.MessageableChannel"):
+    async def update_pins(self, channel: discord.abc.Messageable):
+        pins = await channel.pins()
+        self.pinned_messages[channel.id] = {m.id for m in pins}
         config = {}
-        for message in reversed(await channel.pins()):
+        # pins() is newest first; new pins should be last and override older ones
+        for message in reversed(pins):
             config.update(await self.get_config_from_message(message))
-        return config
-
-    async def update_pinned_yaml(self, channel):
-        self.pinned_yaml[channel.id] = await self.get_config_from_pins(channel)
+        self.pinned_yaml[channel.id] = config
 
     async def on_guild_channel_pins_update(self, channel, _last_pin):
-        await self.update_pinned_yaml(channel)
+        await self.update_pins(channel)
 
     async def on_private_channel_pins_update(self, channel, _last_pin):
-        await self.update_pinned_yaml(channel)
+        await self.update_pins(channel)
 
     async def on_raw_message_edit(self, payload):
         try:
@@ -829,8 +830,14 @@ class DiscordInterface(discord.Client):
         except discord.NotFound:
             pass
 
+        if payload.message_id in self.pinned_messages[channel.id]:
+            await self.update_pins(channel)
+
     async def on_raw_message_delete(self, payload):
-        self.cache(self.get_channel(payload.channel_id)).delete(payload.message_id)
+        channel = self.get_channel(payload.channel_id)
+        self.cache(channel).delete(payload.message_id)
+        if payload.message_id in self.pinned_messages[channel.id]:
+            await self.update_pins(channel)
 
 
 def is_continue_command(message_content: str):
