@@ -850,6 +850,7 @@ def is_mu_command(message_content: str):
     return message_content.strip() == "/mu" or message_content.startswith("m mu")
 
 
+@trace
 async def realize_pings(self, channel: discord.TextChannel, message_content: str):
     if isinstance(channel, discord.DMChannel):
         members = [channel.recipient]
