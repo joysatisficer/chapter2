@@ -821,14 +821,24 @@ class DiscordInterface(discord.Client):
         await self.update_pins(channel)
 
     async def on_raw_message_edit(self, payload):
-        try:
-            channel = self.get_channel(payload.channel_id)
-            self.cache(channel).update(
-                await channel.fetch_message(payload.message_id),
-                False,
+        channel = self.get_channel(payload.channel_id)
+        # payload.cached_message might be the old version of the message
+        # get the new one, if already cached
+        if not (
+            (
+                message := discord.utils.find(
+                    lambda m: m.id == payload.message_id, self.cached_messages
+                )
             )
-        except discord.NotFound:
-            pass
+            and (timestamp := payload.data.get("edited_timestamp"))
+            and message.edited_at == datetime.fromisoformat(timestamp)
+        ):
+            try:
+                message = await channel.fetch_message(payload.message_id)
+            except discord.NotFound:
+                pass
+        if message:
+            self.cache(channel).update(message, False)
 
         if payload.message_id in self.pinned_messages[channel.id]:
             await self.update_pins(channel)
