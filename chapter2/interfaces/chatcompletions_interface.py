@@ -9,6 +9,7 @@ from declarations import GenerateResponse, Message, UserID, Author
 from abstractinterface import AbstractInterface
 from ontology import Config, ChatCompletionsInterfaceConfig
 from util import asyncutil
+from util.asyncutil import async_generator_to_reusable_async_iterable
 
 Role = Literal["system", "user", "assistant"]
 
@@ -143,7 +144,9 @@ class ChatCompletionsInterface(AbstractInterface):
 
             valid_messages = []
             async for reply_message in generate_response(
-                my_user_id, messages_iterator(), config.em
+                my_user_id,
+                async_generator_to_reusable_async_iterable(messages_iterator),
+                config.em,
             ):
                 if reply_message.author.user_id == my_user_id and not isempty(
                     reply_message.content
