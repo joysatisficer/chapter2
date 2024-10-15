@@ -28,7 +28,6 @@ Elysium Conduit (hosted API, ask ampdot for a Tailscale invite link):
 vendors:
   openai-conduit:
     config:
-      openai_api_key: asdf
       api_base: https://conduit.elysium.mesh.host/v1
     provides: [".*"]
 ```

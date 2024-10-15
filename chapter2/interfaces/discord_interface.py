@@ -8,10 +8,10 @@ from collections.abc import Callable
 from collections import defaultdict
 from functools import lru_cache
 
+import aiohttp
 import discord
 import discord.http
 import discord.threads
-import openai.error
 import yaml
 import requests
 import ast
@@ -695,7 +695,7 @@ class DiscordInterface(discord.Client):
                 await message.add_reaction("⚠")
                 if isinstance(exc, ConnectionError):
                     await message.add_reaction("📵")
-                if isinstance(exc, openai.error.APIConnectionError):
+                if isinstance(exc, aiohttp.ClientConnectionError):
                     await message.add_reaction("🌩️")
                 print("exception in channel", f"#{message.channel.name}")
                 if "PYCHARM_HOSTED" not in os.environ:

@@ -33,7 +33,7 @@ dependencies = [
     "httpx~=0.25.2",
     "aiohttp>=3.9.1,<4.0",
     "mikoto-py~=0.0.6",
-    "exa-py==1.0.7",
+    "exa-py>=1.4.0",
     "novelai-api>=0.30.0",
     "matrix-nio>=0.25.0",
     "sortedcontainers",

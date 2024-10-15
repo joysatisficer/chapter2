@@ -16,15 +16,15 @@ aiofiles==24.1.0 ; python_version < '3.12' or python_version >= '3.13' or (pytho
     # via matrix-nio
 aiohappyeyeballs==2.3.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via aiohttp
-aiohttp==3.10.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+aiohttp==3.10.10 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via aiohttp-socks
     # via anthropic
     # via chapter2
     # via discord-py
+    # via intermodel
     # via matrix-nio
     # via mikoto-py
     # via novelai-api
-    # via openai
 aiohttp-socks==0.8.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
     # via matrix-nio
@@ -42,6 +42,7 @@ anthropic==0.2.10 ; python_version < '3.12' or python_version >= '3.13' or (pyth
 anyio==3.7.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via fastapi
     # via httpx
+    # via openai
     # via starlette
     # via watchfiles
 argon2-cffi==23.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
@@ -119,6 +120,8 @@ discord-py==2.4.0 ; python_version < '3.12' or python_version >= '3.13' or (pyth
     # via opentelemetry-instrumentation-discordpy
 distlib==0.3.8 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via virtualenv
+distro==1.9.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via openai
 dnspython==2.6.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via email-validator
 dulwich==0.21.7 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
@@ -127,7 +130,7 @@ email-validator==2.2.0 ; python_version < '3.12' or python_version >= '3.13' or 
     # via fastapi
 embedapi @ git+https://github.com/ampdot-io/embedapi@f72adba8f6cfe9884eca4db053348e5cf9ed6f17 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
-exa-py==1.0.7 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+exa-py==1.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
 faiss-cpu==1.7.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
@@ -176,6 +179,7 @@ httpx==0.25.2 ; python_version < '3.12' or python_version >= '3.13' or (python_v
     # via fastapi
     # via intermodel
     # via mikoto-py
+    # via openai
     # via replicate
 huggingface-hub==0.24.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via tokenizers
@@ -194,7 +198,7 @@ iniconfig==2.0.0 ; python_version < '3.12' or python_version >= '3.13' or (pytho
     # via pytest
 installer==0.7.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via poetry
-intermodel @ git+https://github.com/ampdot-io/intermodel@7e9c910bdc9d82c226c6fc68bcd40edc72326413 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+intermodel @ git+https://github.com/ampdot-io/intermodel@0bade4535bb6c4b5c8e28d36916fc66e3d56d5b4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
 iso8601==2.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via axiom-py
@@ -209,6 +213,8 @@ jinja2==3.1.4 ; python_version < '3.12' or python_version >= '3.13' or (python_v
     # via altair
     # via fastapi
     # via pydeck
+jiter==0.6.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via openai
 joblib==1.4.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via nltk
     # via scikit-learn
@@ -255,9 +261,9 @@ numpy==1.26.4 ; python_version < '3.12' or python_version >= '3.13' or (python_v
     # via scikit-learn
     # via scipy
     # via streamlit
-openai==0.28.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+openai==1.51.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
-    # via intermodel
+    # via exa-py
 opentelemetry-api==1.26.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
     # via opentelemetry-exporter-otlp-proto-grpc
@@ -322,6 +328,8 @@ poetry-core==1.9.0 ; python_version < '3.12' or python_version >= '3.13' or (pyt
     # via poetry-plugin-export
 poetry-plugin-export==1.8.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via poetry
+propcache==0.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via yarl
 protobuf==4.25.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via googleapis-common-protos
     # via opentelemetry-proto
@@ -340,6 +348,7 @@ pydantic==2.8.2 ; python_version < '3.12' or python_version >= '3.13' or (python
     # via chapter2
     # via fastapi
     # via mikoto-py
+    # via openai
     # via pydantic-extra-types
     # via pydantic-settings
     # via replicate
@@ -407,7 +416,6 @@ requests==2.32.3 ; python_version < '3.12' or python_version >= '3.13' or (pytho
     # via cachecontrol
     # via exa-py
     # via huggingface-hub
-    # via openai
     # via opentelemetry-exporter-otlp-proto-http
     # via poetry
     # via requests-toolbelt
@@ -446,6 +454,7 @@ smmap==5.0.1 ; python_version < '3.12' or python_version >= '3.13' or (python_ve
 sniffio==1.3.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via anyio
     # via httpx
+    # via openai
 sortedcontainers==2.4.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
 starlette==0.27.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
@@ -482,8 +491,10 @@ types-python-dateutil==2.9.0.20240316 ; python_version < '3.12' or python_versio
     # via arrow
 typing-extensions==4.12.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via altair
+    # via exa-py
     # via fastapi
     # via huggingface-hub
+    # via openai
     # via opentelemetry-sdk
     # via pydantic
     # via pydantic-core
@@ -521,7 +532,7 @@ wsproto==1.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_
     # via simple-websocket
 xattr==1.1.0 ; sys_platform == 'darwin' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
     # via poetry
-yarl==1.9.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+yarl==1.15.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via aiohttp
 zipp==3.20.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via importlib-metadata
