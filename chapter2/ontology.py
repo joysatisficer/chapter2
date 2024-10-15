@@ -173,7 +173,7 @@ class EmConfig(BaseModel):
         False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
     )
     prevent_gpt_topic_change: bool = True
-    total_max_tokens: int | float = 31_000
+    total_max_tokens: int | float = 31_900
     name_prefix: bool = True
     name_prefix_optional: bool = True
     split_message: bool = True
