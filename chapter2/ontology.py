@@ -264,6 +264,7 @@ class CompletionsInterfaceConfig(SharedInterfaceConfig):
 class ChatCompletionsInterfaceConfig(SharedInterfaceConfig):
     name: Literal["chatcompletions"] = "chatcompletions"
     default_name: str = "user"
+    port: int | None = None
 
 
 InterfaceConfig = Annotated[

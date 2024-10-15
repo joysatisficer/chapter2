@@ -19,7 +19,7 @@ class AbstractInterface(ABC):
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
         # in 3.12, we can use type variables to replace this with a super() call
-        self.interface_config = interface_config
+        self.iface_config = interface_config
 
     @abstractmethod
     async def start(self):

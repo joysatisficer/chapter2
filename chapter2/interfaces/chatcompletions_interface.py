@@ -76,7 +76,7 @@ class ChatCompletionsInterface(AbstractInterface):
         self.base_config = base_config
         self.generate_response: GenerateResponse = generate_response
         self.em_name = em_name
-        self.interface_config = interface_config
+        self.iface_config = interface_config
         self.app = FastAPI()
         origins = ["*"]
         self.app.add_middleware(
@@ -90,20 +90,19 @@ class ChatCompletionsInterface(AbstractInterface):
         @self.app.post("/v1/chat/completions")
         async def chat_completions(chat_completions_request: ChatCompletionsRequest):
             config = self.base_config.copy()
-            config.continuation_model = "gpt-4-base"  # TODO: XXX
             if chat_completions_request.max_tokens is not None:
-                config.continuation_max_tokens = chat_completions_request.max_tokens
+                config.em.continuation_max_tokens = chat_completions_request.max_tokens
             if chat_completions_request.temperature is not None:
-                config.temperature = chat_completions_request.temperature
+                config.em.temperature = chat_completions_request.temperature
             if chat_completions_request.top_p is not None:
-                config.top_p = chat_completions_request.top_p
+                config.em.top_p = chat_completions_request.top_p
             if chat_completions_request.stop is not None:
                 if isinstance(chat_completions_request.stop, list):
-                    config.stop_sequences.extend(chat_completions_request.stop)
+                    config.em.stop_sequences.extend(chat_completions_request.stop)
                 else:
-                    config.stop_sequences.append(chat_completions_request.stop)
+                    config.em.stop_sequences.append(chat_completions_request.stop)
             if chat_completions_request.logit_bias is not None:
-                config.logit_bias |= chat_completions_request.logit_bias
+                config.em.logit_bias |= chat_completions_request.logit_bias
 
             my_user_id = UserID("em::" + self.em_name, "chatcompletions")
 
@@ -118,7 +117,7 @@ class ChatCompletionsInterface(AbstractInterface):
                         name = (
                             chat_completion_message.name
                             if chat_completion_message.name is not None
-                            else self.interface_config.default_name
+                            else self.iface_config.default_name
                         )
                         author = Author(
                             name, UserID(str(hash(name)), "chatcompletions")
@@ -185,16 +184,22 @@ class ChatCompletionsInterface(AbstractInterface):
         from util.uvicorn_improved import RapidShutdownUvicornServer
 
         # TODO: Option for listening on an HTTP port (port 0 = random port)
-        socket_loc = str(self.base_config.em.folder / "socket")
-        uv_config = uvicorn.Config(
-            self.app,
-            log_level="info",
-            uds=socket_loc,
-        )
-        print(f"Listening on {socket_loc}")
+        if self.iface_config.port is None:
+            socket_loc = str(self.base_config.em.folder / "socket")
+            uv_config = uvicorn.Config(
+                self.app,
+                log_level="info",
+                uds=socket_loc,
+            )
+            print(f"Listening on {socket_loc}")
+        else:
+            uv_config = uvicorn.Config(
+                self.app, log_level="info", port=self.iface_config.port
+            )
+            print(f"Listening on {self.iface_config.port}")
         self.uv_server = RapidShutdownUvicornServer(uv_config)
         self.uv_server.install_signal_handlers = lambda: None
-        if self.interface_config.end_to_end_test:
+        if self.iface_config.end_to_end_test:
             self.uv_server.on_ready = lambda: asyncutil.run_task(self.end_to_end_test())
         self.task_serve = asyncio.create_task(self.uv_server.serve())
         return await self.task_serve
