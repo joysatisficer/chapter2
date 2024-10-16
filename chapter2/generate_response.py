@@ -44,6 +44,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
                 )
             ],
             em.continuation_model,
+            ctx_vars,
         )
         + completion_prefix
     )
@@ -71,7 +72,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
             )
         ] + faculty_config.ensemble_format[1:]
         ensemble = await format_ensemble(
-            faculty_results, ensemble_format, em.continuation_model
+            faculty_results, ensemble_format, em.continuation_model, ctx_vars
         )
         ensembles.append(ensemble)
     prompt = "".join(ensembles + [message_history_ensemble])
@@ -205,6 +206,7 @@ async def format_ensemble(
     ensemble: Ensemble,
     ensemble_format: EnsembleFormat,
     tokenization_model: str,
+    ctx_vars: dict,
 ) -> str:
     prompt = None
     local_format = ensemble_format[0]
@@ -215,7 +217,7 @@ async def format_ensemble(
             string = local_format.format.render(subensemble)
         else:
             string = await format_ensemble(
-                subensemble, ensemble_format[1:], tokenization_model
+                subensemble, ensemble_format[1:], tokenization_model, ctx_vars
             )
         if prompt is None:
             new_prompt = string
@@ -227,7 +229,9 @@ async def format_ensemble(
         if (
             count_tokens(
                 tokenization_model,
-                local_format.header + new_prompt + local_format.footer,
+                local_format.header.format(**ctx_vars)
+                + new_prompt
+                + local_format.footer.format(**ctx_vars),
             )
             > local_format.max_tokens
         ):
@@ -238,7 +242,11 @@ async def format_ensemble(
         # if ensemble has no members, don't include header or footer
         return ""
     else:
-        return local_format.header + prompt + local_format.footer
+        return (
+            local_format.header.format(**ctx_vars)
+            + prompt
+            + local_format.footer.format(**ctx_vars)
+        )
 
 
 T = TypeVar("T")
