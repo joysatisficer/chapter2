@@ -1,3 +1,4 @@
+import platform
 import dataclasses
 from datetime import datetime
 from functools import partial
@@ -23,7 +24,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
     recent_messages = await async_take(em.recency_window, history)
-    ctx_vars = {"now": datetime.now()}
+    ctx_vars = {"now": datetime.now(), "hostname": platform.node()}
     max_prompt_length = (
         min(max_token_length(em.continuation_model), em.total_max_tokens)
         - em.continuation_max_tokens
