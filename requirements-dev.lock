@@ -200,6 +200,8 @@ idna==3.7 ; python_version < '3.12' or python_version >= '3.13' or (python_versi
 importlib-metadata==6.11.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via keyring
     # via opentelemetry-api
+inflection==0.5.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via pyairtable
 iniconfig==2.0.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via pytest
 installer==0.7.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
@@ -351,6 +353,8 @@ protobuf==4.25.4 ; python_version < '3.12' or python_version >= '3.13' or (pytho
     # via streamlit
 ptyprocess==0.7.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via pexpect
+pyairtable==2.3.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via chapter2
 pyarrow==17.0.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via streamlit
 pycares==4.4.0 ; (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')) and (sys_platform == 'darwin' or sys_platform == 'linux')
@@ -364,6 +368,7 @@ pydantic==2.8.2 ; python_version < '3.12' or python_version >= '3.13' or (python
     # via fastapi
     # via mikoto-py
     # via openai
+    # via pyairtable
     # via pydantic-extra-types
     # via pydantic-settings
     # via replicate
@@ -434,6 +439,7 @@ requests==2.32.3 ; python_version < '3.12' or python_version >= '3.13' or (pytho
     # via huggingface-hub
     # via opentelemetry-exporter-otlp-proto-http
     # via poetry
+    # via pyairtable
     # via requests-toolbelt
     # via streamlit
     # via tiktoken
@@ -512,6 +518,7 @@ typing-extensions==4.12.2 ; python_version < '3.12' or python_version >= '3.13' 
     # via huggingface-hub
     # via openai
     # via opentelemetry-sdk
+    # via pyairtable
     # via pydantic
     # via pydantic-core
     # via replicate
@@ -526,6 +533,7 @@ unpaddedbase64==2.1.0 ; python_version < '3.12' or python_version >= '3.13' or (
 urllib3==2.2.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via axiom-py
     # via dulwich
+    # via pyairtable
     # via requests
 uvicorn==0.30.5
     # via fastapi

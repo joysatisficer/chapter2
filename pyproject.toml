@@ -37,6 +37,7 @@ dependencies = [
     "novelai-api>=0.30.0",
     "matrix-nio>=0.25.0",
     "sortedcontainers",
+    "pyairtable>=2.3.3",
 ]
 
 [tool.rye]

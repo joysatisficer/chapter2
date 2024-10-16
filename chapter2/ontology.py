@@ -130,8 +130,19 @@ class ExaSearchFacultyConfig(FacultyConfig):
     ]
 
 
+class AirtableNotesFacultyConfig(FacultyConfig):
+    faculty: Literal["airtable_notes"] = "airtable_notes"
+    recent_message_attention: int = 0
+    base_id: str
+    table_id: str
+    api_token: SecretStr
+
+
 EnsembleConfig = Annotated[
-    CharacterFacultyConfig | ExaSearchFacultyConfig | SimFacultyConfig,
+    CharacterFacultyConfig
+    | ExaSearchFacultyConfig
+    | SimFacultyConfig
+    | AirtableNotesFacultyConfig,
     Field(..., discriminator="faculty"),
 ]
 
