@@ -130,12 +130,16 @@ class ExaSearchFacultyConfig(FacultyConfig):
     ]
 
 
-class AirtableNotesFacultyConfig(FacultyConfig):
-    faculty: Literal["airtable_notes"] = "airtable_notes"
-    recent_message_attention: int = 0
+class AirtableConfig(pydantic.BaseModel):
     base_id: str
     table_id: str
     api_token: SecretStr
+
+
+class AirtableNotesFacultyConfig(FacultyConfig):
+    faculty: Literal["airtable_notes"] = "airtable_notes"
+    recent_message_attention: int = 0
+    airtable: AirtableConfig
 
 
 EnsembleConfig = Annotated[
@@ -257,6 +261,8 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     may_speak: list[str] = []
     include_images: bool = True
     image_limits: ImageLimits = ImageLimits()
+    exo_enabled: bool = False
+    airtable: AirtableConfig | None = None
 
 
 class MikotoInterfaceConfig(SharedInterfaceConfig):

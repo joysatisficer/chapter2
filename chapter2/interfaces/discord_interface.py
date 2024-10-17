@@ -1,8 +1,11 @@
 import asyncio
 import contextlib
 import re
+import string
+import textwrap
 import time
 import random
+from datetime import datetime
 from typing import Self, Tuple, Optional, AsyncIterator
 from collections.abc import Callable
 from collections import defaultdict
@@ -17,8 +20,10 @@ import requests
 import ast
 from pydantic import ValidationError
 from sortedcontainers import SortedDict
+from asgiref.sync import sync_to_async
 
 import ontology
+from faculties.contrib.airtable_notes_faculty import get_airtable
 from message_formats import hashint
 from trace import trace, ot_tracer, log_trace_id_to_console
 from interfaces.deserves_reply import deserves_reply
@@ -490,34 +495,93 @@ class DiscordInterface(discord.Client):
                                 if reply_message.content.isspace():
                                     continue
                                 content = reply_message.content
-                                reference = None
-                                # todo: move parsing inside message format
-                                if match := re.match(
-                                    r"^(.*)\s?\[reply:([0-9a-f]+)]\s?(.*)",
-                                    reply_message.content,
-                                ):
-                                    idhash = match.group(2)
-                                    content = match.group(1) + match.group(3)
-                                    if hash_to_id is None:
-                                        hash_to_id = {
-                                            hashint(message_id): message_id
-                                            for message_id in message_ids
-                                        }
-                                    if ref_id := hash_to_id.get(idhash):
-                                        reference = discord.MessageReference(
-                                            message_id=ref_id,
-                                            channel_id=message.channel.id,
-                                            guild_id=message.guild.id,
-                                        )
                                 await message.channel.send(
                                     await realize_pings(self, message.channel, content),
-                                    reference=reference,
                                 )
+                                if self.iface_config.exo_enabled:
+                                    await self.respond_to_tools(
+                                        message.channel, reply_message
+                                    )
                                 trace.send_message(reply_message.content)
                                 first_message = False
                 finally:
                     if command_message is not None:
                         await command_message.delete()
+
+    async def respond_to_tools(self, channel, reply_message: Message):
+        if reply_message.content.startswith("exo create_note "):
+            note_content = (
+                reply_message.content.removeprefix("exo create_note ")
+                .removeprefix('"')
+                .removesuffix('"')
+            )
+            record = await sync_to_async(
+                get_airtable(self.iface_config.airtable).create,
+                thread_sensitive=False,
+            )({"Note": note_content})
+            webhook = await self.get_my_webhook_for_channel(channel)
+            await webhook.send(
+                textwrap.dedent(
+                    f"""\
+            exOS Chapter II
+            ---
+            Command: exo create_note "{note_content}"
+            Time: {datetime.now():%m/%d/%Y, %I:%M:%S %p}
+            ---
+
+            Note created. The 'exo notes' faculty shows all your personal notes
+
+            Your note has been created with ID: {record["id"]}
+
+            ---
+            Type 'help' for available commands."""
+                ),
+                username="exOS",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        elif reply_message.content == "help":
+            webhook = await self.get_my_webhook_for_channel(channel)
+            await webhook.send(
+                textwrap.dedent(
+                    f"""\
+            exOS Chapter II
+            ---
+            Command: help
+            Time: {datetime.now():%m/%d/%Y, %I:%M:%S %p}
+            ---
+            
+            Global Help
+            
+            Available environments: exo
+            Use "<environment> help" for environment-specific commands.
+            """
+                ),
+                username="exOS",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        elif reply_message.content == "exo help":
+            webhook = await self.get_my_webhook_for_channel(channel)
+            await webhook.send(
+                textwrap.dedent(
+                    f"""\
+            exOS Chapter II
+            ---
+            Command: help
+            Time: {datetime.now():%m/%d/%Y, %I:%M:%S %p}
+            ---
+
+            Exo Help
+            
+            Available commands:
+            create_note <note_string> - Create a new note
+
+            ---
+            Type 'help' for available commands.
+            """
+                ),
+                username="exOS",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
 
     async def discord_message_to_message(
         self, config, iface_config: DiscordInterfaceConfig, message: discord.Message
@@ -714,6 +778,17 @@ class DiscordInterface(discord.Client):
                     and self.message_semaphore._value == self.MAX_CONCURRENT_MESSAGES
                 ):
                     await self.close()
+
+    async def get_my_webhook_for_channel(
+        self, channel: discord.TextChannel
+    ) -> discord.Webhook:
+        for webhook in await channel.webhooks():  # perf: uncached
+            if webhook.user is not None and webhook.id == self.user.id:
+                return webhook
+        else:
+            return await channel.create_webhook(
+                name=self.user.name, avatar=await self.user.avatar.read()
+            )
 
     async def on_ready(self):
         print(f"Invite the bot: {self.get_invite_link()}")
