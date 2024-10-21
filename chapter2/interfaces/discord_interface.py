@@ -322,18 +322,12 @@ class DiscordInterface(discord.Client):
 
     async def on_message(self, message: discord.Message) -> None:
         self.cache(message.channel).update(message, True)
-        if is_continue_command(message.content):
+        if is_command := is_continue_command(message.content):
             if not self.user.mentioned_in(message):
                 return
-            command_message = message
-            message_to_react_to = [
-                message
-                async for message in self.cache(message.channel).history(limit=2)
-            ][1]
-        elif is_mu_command(message.content):
+        elif is_command := is_mu_command(message.content):
             if not self.user.mentioned_in(message):
                 return
-            command_message = message
             async for this_message in self.cache(message.channel).history(
                 before=message
             ):
@@ -343,17 +337,12 @@ class DiscordInterface(discord.Client):
                     pass
                 else:
                     break
-            message_to_react_to = [
-                message
-                async for message in self.cache(message.channel).history(limit=2)
-            ][1]
-        else:
-            command_message = None
-            message_to_react_to = message
-        async with self.handle_exceptions(message_to_react_to):
+        async with self.handle_exceptions(message, is_command):
             try:
                 config, iface_config = await self.get_config(message.channel)
             except (ValueError, ValidationError) as exc:
+                if is_command:
+                    await message.delete()
                 raise ConfigError() from exc
             # XXX: Relies on Discord for IDs
             # XXX: Might not be thread-safe
@@ -361,7 +350,7 @@ class DiscordInterface(discord.Client):
             if (
                 len(self.per_interlocutor_semaphore[message.author.id]._waiters or [])
                 > iface_config.max_queued_replies
-            ) and command_message is None:
+            ) and not is_command:
                 return
             async with self.per_interlocutor_semaphore[message.author.id]:
                 try:
@@ -505,8 +494,8 @@ class DiscordInterface(discord.Client):
                                 trace.send_message(reply_message.content)
                                 first_message = False
                 finally:
-                    if command_message is not None:
-                        await command_message.delete()
+                    if is_command:
+                        await message.delete()
 
     async def respond_to_tools(self, channel, reply_message: Message):
         if reply_message.content.startswith("exo create_note "):
@@ -733,29 +722,34 @@ class DiscordInterface(discord.Client):
         return config, iface_config
 
     @contextlib.asynccontextmanager
-    async def handle_exceptions(self, message: discord.Message):
+    async def handle_exceptions(self, message: discord.Message, react_previous: bool):
         config, iface_config = await self.get_config(None)
         with ot_tracer.start_as_current_span(self.handle_exceptions.__qualname__):
             trace.message.id(message.id, attr=True)
             try:
                 async with self.message_semaphore:
                     yield
-            except ConfigError as exc:
-                if iface_config.end_to_end_test:
-                    self.end_to_end_test_fail = True
-                await message.add_reaction("⚙️")
-                print(
-                    "bad config in channel",
-                    f"#{message.channel.name}",
-                    get_channel_topic(message.channel),
-                )
-                raise exc.__cause__
             except Exception as exc:
-                import os, asyncio, fire, selectors
+                import os, fire, selectors
                 from rich.console import Console
 
                 if iface_config.end_to_end_test:
                     self.end_to_end_test_fail = True
+
+                if react_previous:
+                    message = await anext(
+                        self.cache(message.channel).history(limit=1, before=message)
+                    )
+
+                if isinstance(exc, ConfigError):
+                    await message.add_reaction("⚙️")
+                    print(
+                        "bad config in channel",
+                        f"#{message.channel.name}",
+                        get_channel_topic(message.channel),
+                    )
+                    raise exc.__cause__
+
                 await message.add_reaction("⚠")
                 if isinstance(exc, ConnectionError):
                     await message.add_reaction("📵")
