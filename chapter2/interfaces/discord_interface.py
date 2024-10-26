@@ -337,7 +337,16 @@ class DiscordInterface(discord.Client):
                     pass
                 else:
                     break
-        async with self.handle_exceptions(message, is_command):
+        async with self.handle_exceptions(
+            (
+                # cache misses are unlikely here
+                await anext(
+                    self.cache(message.channel).history(limit=1, before=message)
+                )
+                if is_command
+                else message
+            )
+        ):
             try:
                 config, iface_config = await self.get_config(message.channel)
             except (ValueError, ValidationError) as exc:
@@ -722,7 +731,7 @@ class DiscordInterface(discord.Client):
         return config, iface_config
 
     @contextlib.asynccontextmanager
-    async def handle_exceptions(self, message: discord.Message, react_previous: bool):
+    async def handle_exceptions(self, message: discord.Message):
         config, iface_config = await self.get_config(None)
         with ot_tracer.start_as_current_span(self.handle_exceptions.__qualname__):
             trace.message.id(message.id, attr=True)
@@ -735,11 +744,6 @@ class DiscordInterface(discord.Client):
 
                 if iface_config.end_to_end_test:
                     self.end_to_end_test_fail = True
-
-                if react_previous:
-                    message = await anext(
-                        self.cache(message.channel).history(limit=1, before=message)
-                    )
 
                 if isinstance(exc, ConfigError):
                     await message.add_reaction("⚙️")
