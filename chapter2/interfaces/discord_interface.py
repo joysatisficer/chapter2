@@ -6,7 +6,7 @@ import textwrap
 import time
 import random
 from datetime import datetime
-from typing import Self, Tuple, Optional, AsyncIterator
+from typing import Self, Tuple, Optional, Union, AsyncIterator
 from collections.abc import Callable
 from collections import defaultdict
 from functools import lru_cache
@@ -21,6 +21,7 @@ import ast
 from pydantic import ValidationError
 from sortedcontainers import SortedDict
 from asgiref.sync import sync_to_async
+from aioitertools.more_itertools import take as async_take
 
 import ontology
 from faculties.contrib.airtable_notes_faculty import get_airtable
@@ -454,21 +455,31 @@ class DiscordInterface(discord.Client):
                                 async for msg in message_history(starter_message):
                                     yield msg
 
+                    history, raw_mentions = zip(
+                        *(
+                            await async_take(
+                                config.em.recency_window,
+                                async_generator_to_reusable_async_iterable(
+                                    message_history, message
+                                ),
+                            )
+                        )
+                    )
+                    mentions = set()
+                    for these_mentions in raw_mentions:
+                        mentions.update(these_mentions)
+
                     if not await self.should_reply(
                         message,
                         config,
                         iface_config,
                         my_user_id,
-                        async_generator_to_reusable_async_iterable(
-                            message_history, message
-                        ),
+                        history,
                     ):
                         return
                     response_messages = self.generate_response(
                         my_user_id,
-                        async_generator_to_reusable_async_iterable(
-                            message_history, message
-                        ),
+                        history,
                         config.em,
                     )
                     async with ScheduleTyping(
@@ -494,7 +505,9 @@ class DiscordInterface(discord.Client):
                                     continue
                                 content = reply_message.content
                                 await message.channel.send(
-                                    await realize_pings(self, message.channel, content),
+                                    realize_pings(
+                                        self, message.channel, content, mentions
+                                    ),
                                 )
                                 if self.iface_config.exo_enabled:
                                     await self.respond_to_tools(
@@ -583,7 +596,7 @@ class DiscordInterface(discord.Client):
 
     async def discord_message_to_message(
         self, config, iface_config: DiscordInterfaceConfig, message: discord.Message
-    ) -> Message:
+    ) -> Tuple[Message, frozenset[Union[discord.User, discord.Member]]]:
         if message.author.id == self.user.id:
             author_name = config.em.name
         else:
@@ -618,6 +631,7 @@ class DiscordInterface(discord.Client):
                 else:
                     url = attachment.proxy_url
                 content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
+        channel = message.channel
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
             content.strip(),
@@ -626,6 +640,10 @@ class DiscordInterface(discord.Client):
             reply_to=message.reference
             and message.reference.message_id
             and hashint(message.reference.message_id),
+        ), frozenset(
+            (channel.me, channel.recipient)
+            if isinstance(channel, discord.DMChannel)
+            else (message.mentions + [message.author])
         )
 
     @trace
@@ -933,20 +951,13 @@ def is_mu_command(message_content: str):
     return message_content.strip() == "/mu" or message_content.startswith("m mu")
 
 
-@trace
-async def realize_pings(self, channel: discord.TextChannel, message_content: str):
-    if isinstance(channel, discord.DMChannel):
-        members = [channel.recipient]
-    elif isinstance(channel, discord.Thread):
-        members = []
-        if channel.parent is not None:
-            members = channel.parent.members
-        else:
-            for member in await channel.fetch_members():
-                members.append(await self.fetch_user(member.id))
-    else:
-        members = channel.members
-    for member in members:
+def realize_pings(
+    self,
+    channel: discord.TextChannel,
+    message_content: str,
+    mentions: set[Union[discord.User, discord.Member]],
+):
+    for member in mentions:
         if "@" + member.name in message_content:
             message_content = message_content.replace(
                 "@" + member.name, f"<@!{member.id}>"
