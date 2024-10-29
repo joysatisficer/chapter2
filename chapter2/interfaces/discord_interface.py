@@ -455,6 +455,19 @@ class DiscordInterface(discord.Client):
                                 async for msg in message_history(starter_message):
                                     yield msg
 
+                    if not await self.should_reply(
+                        message,
+                        config,
+                        iface_config,
+                        my_user_id,
+                        async_generator_to_reusable_async_iterable(
+                            lambda: (
+                                message async for message, _ in message_history(message)
+                            )
+                        ),
+                    ):
+                        return
+
                     history, raw_mentions = zip(
                         *(
                             await async_take(
@@ -469,14 +482,6 @@ class DiscordInterface(discord.Client):
                     for these_mentions in raw_mentions:
                         mentions.update(these_mentions)
 
-                    if not await self.should_reply(
-                        message,
-                        config,
-                        iface_config,
-                        my_user_id,
-                        history,
-                    ):
-                        return
                     response_messages = self.generate_response(
                         my_user_id,
                         history,
