@@ -797,15 +797,29 @@ class DiscordInterface(discord.Client):
                     await self.close()
 
     async def get_my_webhook_for_channel(
-        self, channel: discord.TextChannel
-    ) -> discord.Webhook:
-        for webhook in await channel.webhooks():  # perf: uncached
-            if webhook.user is not None and webhook.id == self.user.id:
-                return webhook
-        else:
-            return await channel.create_webhook(
-                name=self.user.name, avatar=await self.user.avatar.read()
-            )
+            self, channel: discord.TextChannel | discord.Thread
+        ) -> discord.Webhook:
+            if isinstance(channel, discord.Thread):
+                channel = channel.parent
+                
+            for webhook in await channel.webhooks():  # perf: uncached
+                if webhook.user is not None and webhook.id == self.user.id:
+                    return webhook
+            else:
+                return await channel.create_webhook(
+                    name=self.user.name, avatar=await self.user.avatar.read()
+                )
+
+    # async def get_my_webhook_for_channel(
+    #     self, channel: discord.TextChannel
+    # ) -> discord.Webhook:
+    #     for webhook in await channel.webhooks():  # perf: uncached
+    #         if webhook.user is not None and webhook.id == self.user.id:
+    #             return webhook
+    #     else:
+    #         return await channel.create_webhook(
+    #             name=self.user.name, avatar=await self.user.avatar.read()
+    #         )
 
     async def on_ready(self):
         print(f"Invite the bot: {self.get_invite_link()}")
