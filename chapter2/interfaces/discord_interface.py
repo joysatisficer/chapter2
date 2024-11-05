@@ -365,12 +365,9 @@ class DiscordInterface(discord.Client):
             async with self.per_interlocutor_semaphore[message.author.id]:
                 try:
                     my_user_id = UserID(str(self.user.id), "discord")
-                    message_ids = set()
-                    hash_to_id = None
 
                     @trace
                     async def message_history(message, first_message=None):
-                        message_ids.add(message.id)
                         yield await self.discord_message_to_message(
                             config, iface_config, message
                         )
@@ -391,7 +388,6 @@ class DiscordInterface(discord.Client):
                             ):
                                 pass
                             else:
-                                message_ids.add(this_message.id)
                                 yield await self.discord_message_to_message(
                                     config, iface_config, this_message
                                 )
@@ -426,7 +422,6 @@ class DiscordInterface(discord.Client):
                                     ):
                                         return
                         if first_message is not None:
-                            message_ids.add(first_message.id)
                             yield await self.discord_message_to_message(
                                 config, iface_config, first_message
                             )
@@ -734,6 +729,7 @@ class DiscordInterface(discord.Client):
             name in name_list for name in (self.user.name, self.sysname, *nicknames)
         )
 
+    @trace
     async def get_config(
         self, channel: "discord.abc.MessageableChannel"
     ) -> Tuple[Config, DiscordInterfaceConfig]:
