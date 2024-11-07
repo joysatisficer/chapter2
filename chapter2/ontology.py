@@ -192,7 +192,10 @@ class EmConfig(BaseModel):
     name_prefix: bool = True
     name_prefix_optional: bool = True
     split_message: bool = True
-    mufflers: list[str] = ["has_url"]  # "context_sentence_repetition"
+    mufflers: list[str] = [
+        "has_url",
+        "has_pump_fun_ca",
+    ]  # "context_sentence_repetition"
 
     temperature: Annotated[float, Ge(0)] = 0.95  # todo: vary on model
     top_p: Annotated[float, Interval(gt=0, le=1)] = 0.995  # ditto
