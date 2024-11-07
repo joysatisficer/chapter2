@@ -2,8 +2,8 @@
 name = "chapter2"
 version = "0.1.0"
 dependencies = [
-    "embedapi @ git+https://github.com/ampdot-io/embedapi",
-    "intermodel @ git+https://github.com/ampdot-io/intermodel",
+    "embedapi @ git+https://github.com/ampdot-io/embedapi@f72adba8f6cfe9884eca4db053348e5cf9ed6f17",
+    "intermodel @ git+https://github.com/ampdot-io/intermodel@d4db15f7c50cddf2fe737d699d4643eed48f05a7",
     "axiom-py>=0.4.0",
     "aiohttp-socks>=0.8.0",
     "opentelemetry-api>=1.26.0",
@@ -19,10 +19,9 @@ dependencies = [
     "pyyaml",
     "pydantic>=2.0a1",
     "streamlit>=1.24.0,<2.0",
-    "scikit-learn>=1.2.2,<2.0",
     "fire~=0.5.0",
     "rich~=13.5.1",
-    "faiss-cpu>=1.7.4,<2.0",
+    "faiss-cpu>=1.9.0",
     "anthropic==0.2.10",
     "asgiref>=3.7.2,<4.0",
     "python-dateutil>=2.8.2,<3.0",
@@ -34,10 +33,22 @@ dependencies = [
     "aiohttp>=3.9.1,<4.0",
     "mikoto-py~=0.0.6",
     "exa-py>=1.4.0",
-    "novelai-api>=0.30.0",
     "matrix-nio>=0.25.0",
     "sortedcontainers",
     "pyairtable>=2.3.3",
+    "numpy==1.26.4; implementation_name != 'graalpy'",
+    "numpy @ https://gds.oracle.com/download/graalpy-wheels/numpy-1.26.4-graalpy311-graalpy241_311_native-manylinux_2_28_x86_64.whl ; implementation_name == 'graalpy'",
+    "orjson==3.10.5",
+    "pydantic-core==2.10.1",
+    "tokenizers==0.15.0",
+]
+
+[project.optional-dependencies]
+svm = [
+    "scikit-learn>=1.2.2,<2.0",
+]
+novelai = [
+    "novelai-api>=0.30.0",
 ]
 
 [tool.rye]
