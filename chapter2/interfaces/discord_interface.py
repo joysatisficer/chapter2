@@ -1013,7 +1013,7 @@ def parse_dot_command(message: discord.Message):
 
 async def parse_attachment(attachment: discord.Attachment):
     att_info = {"command": None, "args": [], "type": attachment.content_type}
-    if attachment.height is not None and attachment.width is not None:
+    if attachment.height is not None and attachment.width is not None and attachment.content_type.startswith("image/"):
         att_info["type"] = "image"
     elif not attachment.content_type or attachment.content_type.startswith("text/"):
         att_info["type"] = "text"
