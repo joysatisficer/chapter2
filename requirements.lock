@@ -200,7 +200,7 @@ iniconfig==2.0.0 ; python_version < '3.12' or python_version >= '3.13' or (pytho
     # via pytest
 installer==0.7.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via poetry
-intermodel @ git+https://github.com/ampdot-io/intermodel@1e4852a0fccca94ec9be7fd291a07dceed1776a3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+intermodel @ git+https://github.com/ampdot-io/intermodel@e7aa46dcd18f6ac9bc1b086be0b876c736abb9c5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
 iso8601==2.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via axiom-py
