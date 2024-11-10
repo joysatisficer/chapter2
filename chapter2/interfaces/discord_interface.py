@@ -754,6 +754,12 @@ class DiscordInterface(discord.Client):
         config, iface_config = await self.get_config(None)
         with ot_tracer.start_as_current_span(self.handle_exceptions.__qualname__):
             trace.message.id(message.id, attr=True)
+            if isinstance(message.channel, discord.Thread):
+                trace.channel.id(message.channel.parent_id, attr=True)
+            else:
+                trace.channel.id(message.channel.id, attr=True)
+            if hasattr(message, "guild") and message.guild is not None:
+                trace.guild.id(message.guild.id, attr=True)
             try:
                 async with self.message_semaphore:
                     yield
@@ -797,18 +803,18 @@ class DiscordInterface(discord.Client):
                     await self.close()
 
     async def get_my_webhook_for_channel(
-            self, channel: discord.TextChannel | discord.Thread
-        ) -> discord.Webhook:
-            if isinstance(channel, discord.Thread):
-                channel = channel.parent
-                
-            for webhook in await channel.webhooks():  # perf: uncached
-                if webhook.user is not None and webhook.id == self.user.id:
-                    return webhook
-            else:
-                return await channel.create_webhook(
-                    name=self.user.name, avatar=await self.user.avatar.read()
-                )
+        self, channel: discord.TextChannel | discord.Thread
+    ) -> discord.Webhook:
+        if isinstance(channel, discord.Thread):
+            channel = channel.parent
+
+        for webhook in await channel.webhooks():  # perf: uncached
+            if webhook.user is not None and webhook.id == self.user.id:
+                return webhook
+        else:
+            return await channel.create_webhook(
+                name=self.user.name, avatar=await self.user.avatar.read()
+            )
 
     # async def get_my_webhook_for_channel(
     #     self, channel: discord.TextChannel
