@@ -755,6 +755,7 @@ class DiscordInterface(discord.Client):
         with ot_tracer.start_as_current_span(self.handle_exceptions.__qualname__):
             trace.message.id(message.id, attr=True)
             if isinstance(message.channel, discord.Thread):
+                trace.thread.id(message.channel.id, attr=True)
                 trace.channel.id(message.channel.parent_id, attr=True)
             else:
                 trace.channel.id(message.channel.id, attr=True)
@@ -1019,7 +1020,11 @@ def parse_dot_command(message: discord.Message):
 
 async def parse_attachment(attachment: discord.Attachment):
     att_info = {"command": None, "args": [], "type": attachment.content_type}
-    if attachment.height is not None and attachment.width is not None and attachment.content_type.startswith("image/"):
+    if (
+        attachment.height is not None
+        and attachment.width is not None
+        and attachment.content_type.startswith("image/")
+    ):
         att_info["type"] = "image"
     elif not attachment.content_type or attachment.content_type.startswith("text/"):
         att_info["type"] = "text"
