@@ -67,11 +67,23 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
             ),
             faculty_config.ensemble_format[0].max_tokens,
         )
-        ensemble_format = [
-            faculty_config.ensemble_format[0].model_copy(
-                update=dict(max_tokens=local_max_tokens)
-            )
-        ] + faculty_config.ensemble_format[1:]
+        if faculty_config.faculty == "history":
+            ensemble_format = [ 
+                faculty_config.ensemble_format[0].model_copy(
+                    update=dict(
+                        max_tokens=local_max_tokens, 
+                        format=em.message_history_format,
+                        separator=em.message_history_separator,
+                        operator=em.message_history_operator
+                    )
+                )
+            ]
+        else:
+            ensemble_format = [
+                faculty_config.ensemble_format[0].model_copy(
+                    update=dict(max_tokens=local_max_tokens)
+                )
+            ] + faculty_config.ensemble_format[1:]
         ensemble = await format_ensemble(
             faculty_results, ensemble_format, em.continuation_model, ctx_vars
         )

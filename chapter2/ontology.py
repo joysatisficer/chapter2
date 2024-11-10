@@ -91,6 +91,18 @@ class SimFacultyConfig(FacultyConfig):
         ),
     ]
 
+class HistoryFacultyConfig(FacultyConfig):
+    faculty: Literal["history"] = "history"
+    filename: str = "history.txt"
+    nickname: str | None = None
+    nicknames: dict[str, str] = {}
+    recent_message_attention: int | float = 0
+    ensemble_format: EnsembleFormat = [
+        LayerOfEnsembleFormat(
+            format=IRCMessageFormat(), operator="prepend", max_items=infinity, separator="", footer=""
+        ),
+    ]
+
 
 class ExaSearchFullTextConfig(BaseModel):
     max_characters: int = 2500
@@ -144,6 +156,7 @@ class AirtableNotesFacultyConfig(FacultyConfig):
 
 EnsembleConfig = Annotated[
     CharacterFacultyConfig
+    | HistoryFacultyConfig
     | ExaSearchFacultyConfig
     | SimFacultyConfig
     | AirtableNotesFacultyConfig,
