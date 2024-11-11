@@ -10,11 +10,14 @@ from typing import Self, Tuple, Optional, Union, AsyncIterator
 from collections.abc import Callable
 from collections import defaultdict
 from functools import lru_cache
+from io import StringIO
 
 import aiohttp
 import discord
 import discord.http
 import discord.threads
+from discord import app_commands
+from discord.ext import commands
 import yaml
 import requests
 import ast
@@ -32,6 +35,7 @@ from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON, ActionHistory
 from ontology import Config, DiscordInterfaceConfig
+from generate_response import get_prompt
 
 
 class ChannelCache:
@@ -321,8 +325,225 @@ class DiscordInterface(discord.Client):
             self._connection._get_websocket = self._get_websocket
             self._connection._get_client = lambda: self
 
+        self.tree = app_commands.CommandTree(self)
+
+    async def setup_hook(self):
+        # Register the context menu command
+        if self.iface_config.infra:
+            try:
+                ctx_menu1 = app_commands.ContextMenu(
+                    name="Get History",
+                    callback=self.get_history_command,
+                    type=discord.AppCommandType.message,
+                )
+
+                # Second context menu command
+                ctx_menu2 = app_commands.ContextMenu(
+                    name="Branch",
+                    callback=self.create_branch,
+                    type=discord.AppCommandType.message,
+                )
+
+                # ctx_menu3 = app_commands.ContextMenu(
+                #     name='Get Config',  # This one will appear when right-clicking users
+                #     callback=self.get_config_command,
+                #     type=discord.AppCommandType.user,  # Note the different type
+                # )
+
+                self.tree.add_command(ctx_menu1)
+                self.tree.add_command(ctx_menu2)
+                # self.tree.add_command(ctx_menu3)
+
+                sync_result = await self.tree.sync()
+                # print(
+                #     f"Sync completed. Registered {len(sync_result)} commands: {[cmd.name for cmd in sync_result]}"
+                # )
+
+            except Exception as e:
+                print(f"Error registering context menu command: {e}")
+
+    async def get_history_command(
+        self, interaction: discord.Interaction, message: discord.Message
+    ):
+        await interaction.response.defer(
+            ephemeral=True,
+        )
+
+        # try:
+        #     config, iface_config = await self.get_config(message.channel)
+        # except (ValueError, ValidationError) as exc:
+        #     raise ConfigError() from exc
+        config = self.base_config
+        iface_config = self.iface_config
+
+        prompt = await self.get_prompt(message, config, iface_config)
+
+        try:
+            file = discord.File(
+                StringIO(prompt),
+                filename="prompt.txt",
+            )
+            await interaction.followup.send(
+                f".prompt for {message.jump_url}:",
+                file=file,
+                ephemeral=True,
+            )
+        except Exception as e:
+            print(f"Error handling context menu command: {e}")
+            await interaction.response.send_message(
+                "There was an error processing your request.", ephemeral=True
+            )
+
+    async def create_branch(
+        self, interaction: discord.Interaction, message: discord.Message
+    ):
+        try:
+            _, callback_message, _, _ = await self.create_thread_from_message(
+                message, f"...{message.content[-18:]}⌥"
+            )
+
+            # Reply to the interaction
+            await interaction.response.send_message(
+                f"Forked from {message.jump_url}:\n⌥ {callback_message.jump_url}",
+                ephemeral=True,
+            )
+        except discord.Forbidden:
+            await interaction.response.send_message(
+                "I don't have permission to create threads!", ephemeral=True
+            )
+        except Exception as e:
+            print(f"Error creating thread: {e}")
+            await interaction.response.send_message(
+                "There was an error creating the thread.", ephemeral=True
+            )
+
+    async def user_context_menu_command(
+        self, interaction: discord.Interaction, user: discord.Member
+    ):
+        await interaction.response.send_message(
+            f"User action on: {user.display_name}", ephemeral=True
+        )
+
+    async def get_prompt(
+        self,
+        message: discord.Message,
+        config: Config,
+        iface_config: DiscordInterfaceConfig,
+    ):
+        message_history = lambda message, first_message=None, config=config, iface_config=iface_config: self.message_history(
+            message, first_message, config, iface_config
+        )
+
+        history, _ = zip(
+            *(
+                await async_take(
+                    config.em.recency_window,
+                    async_generator_to_reusable_async_iterable(
+                        message_history, message
+                    ),
+                )
+            )
+        )
+        prompt = await get_prompt(history, config.em)
+        return prompt
+
+    @trace
+    async def message_history(
+        self,
+        message: discord.Message,
+        first_message=None,
+        config=None,
+        iface_config=None,
+    ):
+        if config is None:
+            try:
+                config, iface_config = await self.get_config(message.channel)
+            except (ValueError, ValidationError) as exc:
+                raise ConfigError() from exc
+
+        yield await self.discord_message_to_message(config, iface_config, message)
+        async for this_message in self.cache(message.channel).history(
+            limit=None,
+            before=message,
+            after=first_message,
+        ):
+            if is_continue_command(this_message.content):
+                pass
+            elif is_mu_command(this_message.content):
+                pass
+            elif iface_config.ignore_dotted_messages and (
+                re.match(self.DOTTED_MESSAGE_RE, this_message.content)
+                or this_message.type == discord.MessageType.thread_starter_message
+                or this_message.type == discord.MessageType.thread_created
+                or this_message.type == discord.MessageType.pins_add
+            ):
+                pass
+            else:
+                yield await self.discord_message_to_message(
+                    config, iface_config, this_message
+                )
+            config_message = parse_dot_command(this_message)
+            if config_message and config_message["command"] == "history":
+                if (
+                    len(config_message["args"]) == 0
+                    or self.name_in_list(
+                        config_message["args"]
+                    )  # TODO make not dependent on self
+                    or self.user.mentioned_in(this_message)
+                ):
+                    if "last" in config_message["yaml"]:
+                        last = await self.get_message_from_link(
+                            config_message["yaml"]["last"]
+                        )
+                        first = None
+                        if "first" in config_message["yaml"]:
+                            first = await self.get_message_from_link(
+                                config_message["yaml"]["first"]
+                            )
+                        if last is not None:
+                            async for msg in self.message_history(
+                                last, first, config, iface_config
+                            ):
+                                yield msg
+                    if (
+                        "passthrough" not in config_message["yaml"]
+                        or config_message["yaml"]["passthrough"] is False
+                    ):
+                        return
+        if first_message is not None:
+            yield await self.discord_message_to_message(
+                config, iface_config, first_message
+            )
+        elif iface_config.threads_inherit_history and isinstance(
+            message.channel, discord.threads.Thread
+        ):
+            thread = message.channel
+            # starter message id is the same as the thread id if the
+            # thread is attached to a message
+            if message.channel.name.startswith("new:"):
+                return
+            elif message.channel.name.startswith("past:"):
+                starter_message_id = message.channel.name.split("past:")[1]
+            elif thread.id is not None:
+                starter_message_id = thread.id
+            else:
+                return
+            starter_message = await message.channel.parent.fetch_message(
+                starter_message_id
+            )
+            if starter_message is not None:
+                async for msg in self.message_history(
+                    starter_message,
+                    first_message=None,
+                    config=config,
+                    iface_config=iface_config,
+                ):
+                    yield msg
+
     async def on_message(self, message: discord.Message) -> None:
         self.cache(message.channel).update(message, True)
+        if self.iface_config.infra:
+            return
         if is_command := is_continue_command(message.content):
             if not self.user.mentioned_in(message):
                 return
@@ -366,89 +587,9 @@ class DiscordInterface(discord.Client):
                 try:
                     my_user_id = UserID(str(self.user.id), "discord")
 
-                    @trace
-                    async def message_history(message, first_message=None):
-                        yield await self.discord_message_to_message(
-                            config, iface_config, message
-                        )
-                        async for this_message in self.cache(message.channel).history(
-                            limit=None,
-                            before=message,
-                            after=first_message,
-                        ):
-                            if is_continue_command(this_message.content):
-                                pass
-                            elif is_mu_command(this_message.content):
-                                pass
-                            elif iface_config.ignore_dotted_messages and (
-                                re.match(self.DOTTED_MESSAGE_RE, this_message.content)
-                                or this_message.type
-                                == discord.MessageType.thread_starter_message
-                                or this_message.type == discord.MessageType.pins_add
-                            ):
-                                pass
-                            else:
-                                yield await self.discord_message_to_message(
-                                    config, iface_config, this_message
-                                )
-                            config_message = parse_dot_command(this_message)
-                            if (
-                                config_message
-                                and config_message["command"] == "history"
-                            ):
-                                if (
-                                    len(config_message["args"]) == 0
-                                    or self.name_in_list(config_message["args"])
-                                    or self.user.mentioned_in(this_message)
-                                ):
-                                    if "last" in config_message["yaml"]:
-                                        last = await self.get_message_from_link(
-                                            config_message["yaml"]["last"]
-                                        )
-                                        first = None
-                                        if "first" in config_message["yaml"]:
-                                            first = await self.get_message_from_link(
-                                                config_message["yaml"]["first"]
-                                            )
-                                        if last is not None:
-                                            async for msg in message_history(
-                                                last, first
-                                            ):
-                                                yield msg
-                                    if (
-                                        "passthrough" not in config_message["yaml"]
-                                        or config_message["yaml"]["passthrough"]
-                                        is False
-                                    ):
-                                        return
-                        if first_message is not None:
-                            yield await self.discord_message_to_message(
-                                config, iface_config, first_message
-                            )
-                        elif iface_config.threads_inherit_history and isinstance(
-                            message.channel, discord.threads.Thread
-                        ):
-                            thread = message.channel
-                            # starter message id is the same as the thread id if the
-                            # thread is attached to a message
-                            if message.channel.name.startswith("new:"):
-                                return
-                            elif message.channel.name.startswith("past:"):
-                                starter_message_id = message.channel.name.split(
-                                    "past:"
-                                )[1]
-                            elif thread.id is not None:
-                                starter_message_id = thread.id
-                            else:
-                                return
-                            starter_message = (
-                                await message.channel.parent.fetch_message(
-                                    starter_message_id
-                                )
-                            )
-                            if starter_message is not None:
-                                async for msg in message_history(starter_message):
-                                    yield msg
+                    message_history = lambda message, first_message=None, config=config, iface_config=iface_config: self.message_history(
+                        message, first_message, config, iface_config
+                    )
 
                     if not await self.should_reply(
                         message,
@@ -611,7 +752,7 @@ class DiscordInterface(discord.Client):
                 continue
             if att_data["type"] == "text":
                 # don't strip leading whitespace; might be ASCII art
-                content += f"\n<|begin_of_attachment|>\n{(await get_attachment_content(attachment)).rstrip()}\n<|end_of_attachment|>\n"
+                content += f"\n<|begin_of_attachment|>{(await get_attachment_content(attachment)).rstrip()}<|end_of_attachment|>"
             elif iface_config.include_images and att_data["type"] == "image":
                 if (
                     attachment.width > iface_config.image_limits.max_width
@@ -632,6 +773,20 @@ class DiscordInterface(discord.Client):
                     url = attachment.proxy_url
                 content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
         channel = message.channel
+
+        if message.reference and content == "":
+            # hacky check for forwarded message; discord.py version 2.5 has a type for it but that doesnt seem to be out yet
+            if (
+                message.reference.channel_id is not None
+                and message.reference.message_id is not None
+            ):
+                thread = await self.get_channel_cached(message.reference.channel_id)
+                forwarded_message = await thread.fetch_message(
+                    message.reference.message_id
+                )
+                if forwarded_message:
+                    content = f"<|begin_of_fwd|>{parse_discord_content(forwarded_message, self.user.id, config.em.name)}<|end_of_fwd|>"
+
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
             content.strip(),
@@ -844,6 +999,8 @@ class DiscordInterface(discord.Client):
                 add_reactions=True,
                 manage_messages=True,
                 manage_webhooks=True,
+                # allows bot to use slash commands
+                use_application_commands=self.iface_config.infra,
             ),
         )
 
@@ -962,6 +1119,92 @@ class DiscordInterface(discord.Client):
         if payload.message_id in self.pinned_messages[channel.id]:
             await self.update_pins(channel)
 
+    async def get_thread_from_message(self, message: discord.Message):
+        # gets the thread associated with a message, if it exists
+        try:
+            thread = await self.get_channel_cached(message.id)
+            if isinstance(thread, discord.threads.Thread):
+                return thread
+            else:
+                return None
+        except Exception as e:
+            return None
+
+    async def create_thread_from_message(
+        self, message: discord.Message, name: str, reason: str = "Created by bot"
+    ):
+        children_message = None
+        message_thread = None
+        if not isinstance(message.channel, discord.threads.Thread):
+            channel = message.channel
+            message_thread = await self.get_thread_from_message(message)
+            if message_thread is not None:
+                # thread attached to message already exists
+                first_message = await get_first_thread_message(message_thread)
+                if first_message is not None and first_message.author == self.user:
+                    children_message = first_message
+            else:
+                # message has no thread yet; create a new one for storing links to children messages
+                message_thread_name = f"⌥"
+                message_thread = await message.create_thread(
+                    name=message_thread_name,
+                    reason=reason,
+                    type=discord.ChannelType.public_thread,
+                )
+                children_message = await message_thread.send(content=".children:")
+        else:
+            channel = message.channel.parent
+        new_thread = await channel.create_thread(
+            name=name, reason=reason, type=discord.ChannelType.public_thread
+        )
+        # embed a copy of the message in the thread with a link to the original message
+        embed = embed_from_message(message)
+        if children_message is not None:
+            embed.description = (
+                message.content
+                + f"\n\n-# [go to siblings]({children_message.jump_url})"
+            )
+        callback_message = await new_thread.send(
+            content=f".history\n---\nlast: {message.jump_url}", embed=embed
+        )
+
+        # edit children message to point to the callback message
+        if children_message is not None:
+            await children_message.edit(
+                content=children_message.content + f"\n{callback_message.jump_url}"
+            )
+
+        return new_thread, callback_message, message_thread, children_message
+
+
+async def get_first_thread_message(thread):
+    try:
+        # Get messages in the thread, excluding the starter message
+        messages = [
+            msg async for msg in thread.history(after=thread.starter_message, limit=1)
+        ]
+
+        # Return the first message if there is one
+        if messages:
+            return messages[0]
+        return None
+
+    except Exception as e:
+        print(f"Error getting thread message: {e}")
+        return None
+
+
+def embed_from_message(message: discord.Message, timestamp: bool = False):
+    embed = discord.Embed(description=message.content)
+    embed.set_author(
+        name=message.author.display_name,
+        icon_url=message.author.display_avatar.url,
+        url=message.jump_url,
+    )
+    if timestamp:
+        embed.set_footer(text=message.created_at.strftime("%Y-%m-%d %H:%M:%S"))
+    return embed
+
 
 def is_continue_command(message_content: str):
     return message_content.strip() == "/continue" or message_content.startswith(
@@ -974,7 +1217,6 @@ def is_mu_command(message_content: str):
 
 
 def realize_pings(
-    self,
     channel: discord.TextChannel,
     message_content: str,
     mentions: set[Union[discord.User, discord.Member]],

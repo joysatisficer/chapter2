@@ -16,14 +16,12 @@ from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
 from trace import trace, log_trace_id_to_console
 
 
-@trace
-async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmConfig):
+async def get_prompt(history: ActionHistory, em: EmConfig):
     count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
-    author = Author(em.name, my_user_id)
     completion_prefix = (
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
-    recent_messages = await async_take(em.recency_window, history)
+    # recent_messages = await async_take(em.recency_window, history)
     ctx_vars = {"now": datetime.now(), "hostname": platform.node()}
     max_prompt_length = (
         min(max_token_length(em.continuation_model), em.total_max_tokens)
@@ -68,13 +66,13 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
             faculty_config.ensemble_format[0].max_tokens,
         )
         if faculty_config.faculty == "history":
-            ensemble_format = [ 
+            ensemble_format = [
                 faculty_config.ensemble_format[0].model_copy(
                     update=dict(
-                        max_tokens=local_max_tokens, 
+                        max_tokens=local_max_tokens,
                         format=em.message_history_format,
                         separator=em.message_history_separator,
-                        operator=em.message_history_operator
+                        operator=em.message_history_operator,
                     )
                 )
             ]
@@ -89,6 +87,84 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
         )
         ensembles.append(ensemble)
     prompt = "".join(ensembles + [message_history_ensemble])
+    return prompt
+
+
+@trace
+async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmConfig):
+    author = Author(em.name, my_user_id)
+    prompt = await get_prompt(history, em)
+    # count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
+
+    completion_prefix = (
+        em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
+    )
+    recent_messages = await async_take(em.recency_window, history)
+    # ctx_vars = {"now": datetime.now(), "hostname": platform.node()}
+    # max_prompt_length = (
+    #     min(max_token_length(em.continuation_model), em.total_max_tokens)
+    #     - em.continuation_max_tokens
+    # )
+    # message_history_ensemble = (
+    #     (em.message_history_header.format(**ctx_vars))
+    #     + await format_ensemble(
+    #         history,
+    #         # todo: move to ontology
+    #         [
+    #             LayerOfEnsembleFormat(
+    #                 format=em.message_history_format,
+    #                 max_items=em.recency_window,
+    #                 max_tokens=min(max_prompt_length, em.message_history_max_tokens),
+    #                 operator=em.message_history_operator,
+    #                 separator=em.message_history_separator,
+    #                 footer=em.message_history_footer,
+    #             )
+    #         ],
+    #         em.continuation_model,
+    #         ctx_vars,
+    #     )
+    #     + completion_prefix
+    # )
+    # ensembles = []
+    # # TODO: Filter for empty ensembles
+    # for faculty_config in em.ensembles:
+    #     faculty_results = FACULTY_NAME_TO_FUNCTION[faculty_config.faculty](
+    #         history, faculty_config, em
+    #     )
+    #     local_max_tokens = min(
+    #         (
+    #             max_prompt_length
+    #             - sum(
+    #                 [
+    #                     count_continuation_model_tokens(ensemble)
+    #                     for ensemble in ensembles + [message_history_ensemble]
+    #                 ]
+    #             )
+    #         ),
+    #         faculty_config.ensemble_format[0].max_tokens,
+    #     )
+    #     if faculty_config.faculty == "history":
+    #         ensemble_format = [
+    #             faculty_config.ensemble_format[0].model_copy(
+    #                 update=dict(
+    #                     max_tokens=local_max_tokens,
+    #                     format=em.message_history_format,
+    #                     separator=em.message_history_separator,
+    #                     operator=em.message_history_operator,
+    #                 )
+    #             )
+    #         ]
+    #     else:
+    #         ensemble_format = [
+    #             faculty_config.ensemble_format[0].model_copy(
+    #                 update=dict(max_tokens=local_max_tokens)
+    #             )
+    #         ] + faculty_config.ensemble_format[1:]
+    #     ensemble = await format_ensemble(
+    #         faculty_results, ensemble_format, em.continuation_model, ctx_vars
+    #     )
+    #     ensembles.append(ensemble)
+    # prompt = "".join(ensembles + [message_history_ensemble])
     # assert (
     #    count_continuation_model_tokens(prompt) + em.continuation_max_tokens
     #    < int(max_prompt_length * 1.1)

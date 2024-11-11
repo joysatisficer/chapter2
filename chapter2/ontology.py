@@ -91,6 +91,7 @@ class SimFacultyConfig(FacultyConfig):
         ),
     ]
 
+
 class HistoryFacultyConfig(FacultyConfig):
     faculty: Literal["history"] = "history"
     filename: str = "history.txt"
@@ -99,7 +100,11 @@ class HistoryFacultyConfig(FacultyConfig):
     recent_message_attention: int | float = 0
     ensemble_format: EnsembleFormat = [
         LayerOfEnsembleFormat(
-            format=IRCMessageFormat(), operator="prepend", max_items=infinity, separator="", footer=""
+            format=IRCMessageFormat(),
+            operator="prepend",
+            max_items=infinity,
+            separator="",
+            footer="",
         ),
     ]
 
@@ -279,6 +284,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     image_limits: ImageLimits = ImageLimits()
     exo_enabled: bool = False
     airtable: AirtableConfig | None = None
+    infra: bool = False
 
 
 class MikotoInterfaceConfig(SharedInterfaceConfig):
