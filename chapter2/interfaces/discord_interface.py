@@ -331,16 +331,22 @@ class DiscordInterface(discord.Client):
         # Register the context menu command
         if self.iface_config.infra:
             try:
-                ctx_menu1 = app_commands.ContextMenu(
-                    name="Get History",
+                get_history_command = app_commands.ContextMenu(
+                    name="Get Prompt",
                     callback=self.get_history_command,
                     type=discord.AppCommandType.message,
                 )
 
                 # Second context menu command
-                ctx_menu2 = app_commands.ContextMenu(
+                create_branch_command = app_commands.ContextMenu(
                     name="Branch",
-                    callback=self.create_branch,
+                    callback=self.create_private_branch,
+                    type=discord.AppCommandType.message,
+                )
+
+                create_public_branch_command = app_commands.ContextMenu(
+                    name="Branch (public)",
+                    callback=self.create_public_branch,
                     type=discord.AppCommandType.message,
                 )
 
@@ -350,14 +356,15 @@ class DiscordInterface(discord.Client):
                 #     type=discord.AppCommandType.user,  # Note the different type
                 # )
 
-                self.tree.add_command(ctx_menu1)
-                self.tree.add_command(ctx_menu2)
+                self.tree.add_command(get_history_command)
+                self.tree.add_command(create_branch_command)
+                self.tree.add_command(create_public_branch_command)
                 # self.tree.add_command(ctx_menu3)
 
                 sync_result = await self.tree.sync()
-                # print(
-                #     f"Sync completed. Registered {len(sync_result)} commands: {[cmd.name for cmd in sync_result]}"
-                # )
+                print(
+                    f"Sync completed. Registered {len(sync_result)} commands: {[cmd.name for cmd in sync_result]}"
+                )
 
             except Exception as e:
                 print(f"Error registering context menu command: {e}")
@@ -394,19 +401,41 @@ class DiscordInterface(discord.Client):
                 "There was an error processing your request.", ephemeral=True
             )
 
-    async def create_branch(
+    async def create_public_branch(
         self, interaction: discord.Interaction, message: discord.Message
     ):
-        try:
-            _, callback_message, _, _ = await self.create_thread_from_message(
-                message, f"...{message.content[-18:]}⌥"
-            )
+        await self.create_branch(interaction, message, public=True)
 
-            # Reply to the interaction
-            await interaction.response.send_message(
-                f"Forked from {message.jump_url}:\n⌥ {callback_message.jump_url}",
+    async def create_private_branch(
+        self, interaction: discord.Interaction, message: discord.Message
+    ):
+        await self.create_branch(interaction, message, public=False)
+
+    async def create_branch(
+        self,
+        interaction: discord.Interaction,
+        message: discord.Message,
+        public: bool = False,
+    ):
+        await interaction.response.defer(
+            ephemeral=True,
+        )
+        try:
+            new_thread, callback_message, _, _ = await self.create_thread_from_message(
+                message,
+                f"...{message.content[-18:]}⌥",
+                reason=f"Created by {interaction.user} through {interaction.command.name}",
+                public=public,
+            )
+            await interaction.followup.send(
+                f"You created a new fork from {message.jump_url}: ⌥ {callback_message.jump_url}",
                 ephemeral=True,
             )
+
+            if not public:
+                # send a message to the new thread pinging the user
+                await new_thread.send(f".{interaction.user.mention}")
+
         except discord.Forbidden:
             await interaction.response.send_message(
                 "I don't have permission to create threads!", ephemeral=True
@@ -1131,7 +1160,11 @@ class DiscordInterface(discord.Client):
             return None
 
     async def create_thread_from_message(
-        self, message: discord.Message, name: str, reason: str = "Created by bot"
+        self,
+        message: discord.Message,
+        name: str,
+        reason: str = "Created by bot",
+        public: bool = False,
     ):
         children_message = None
         message_thread = None
@@ -1149,29 +1182,38 @@ class DiscordInterface(discord.Client):
                 message_thread = await message.create_thread(
                     name=message_thread_name,
                     reason=reason,
-                    type=discord.ChannelType.public_thread,
                 )
                 children_message = await message_thread.send(content=".children:")
         else:
             channel = message.channel.parent
-        new_thread = await channel.create_thread(
-            name=name, reason=reason, type=discord.ChannelType.public_thread
-        )
-        # embed a copy of the message in the thread with a link to the original message
+
         embed = embed_from_message(message)
         if children_message is not None:
             embed.description = (
                 message.content
-                + f"\n\n-# [go to siblings]({children_message.jump_url})"
+                + f"\n\n-# [go to all children]({children_message.jump_url})"
             )
+
+        if public:
+            new_thread_message = await channel.send(
+                content=f".New fork from {message.jump_url}: ⌥",
+                embed=embed,
+            )
+            new_thread = await new_thread_message.create_thread(
+                name=name, reason=reason
+            )
+        else:
+            new_thread = await channel.create_thread(name=name, reason=reason)
+        # embed a copy of the message in the thread with a link to the original message
         callback_message = await new_thread.send(
-            content=f".history\n---\nlast: {message.jump_url}", embed=embed
+            content=f".history\n---\nlast: {message.jump_url}",
+            embed=embed if not public else None,
         )
 
         # edit children message to point to the callback message
         if children_message is not None:
             await children_message.edit(
-                content=children_message.content + f"\n{callback_message.jump_url}"
+                content=children_message.content + f"\n⌥ {callback_message.jump_url}"
             )
 
         return new_thread, callback_message, message_thread, children_message
