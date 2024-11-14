@@ -750,6 +750,8 @@ class DiscordInterface(discord.Client):
                     ignore_dotted_messages: Optional[bool] = None,
                     # yaml: Optional[discord.Attachment] = None,
                 ):
+                    if targets is not None:
+                        targets = targets.split(" ")
                     config_dict = locals().copy()
                     del config_dict["interaction"]
                     del config_dict["targets"]
@@ -1020,9 +1022,9 @@ class DiscordInterface(discord.Client):
         command_prefix = kwargs.get("command_prefix", ".config")
         config_dict = kwargs.get("config_dict", None)
         targets = kwargs.get("targets", None)
-        targets_array = targets.split(" ") if targets else None
+        # targets_array = targets.split(" ") if targets else None
         config_message = compile_config_message(
-            command_prefix, config_dict, targets_array
+            command_prefix, config_dict, targets
         )
         sent_message = await interaction.followup.send(config_message)
         if sent_message is not None:
