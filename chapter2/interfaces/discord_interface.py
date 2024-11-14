@@ -724,20 +724,6 @@ class DiscordInterface(discord.Client):
                         public=public,
                     )
 
-                # params_string = ",\n".join([f"{key}: Optional[{type}] = None" for key, type in config_fields.items()])
-                # print(params_string)
-
-                # config_command_string = f"""async def configure({params_string}): pass"""
-                # print(config_command_string)
-
-                # exec(config_command_string)
-
-                # params_string = ",\n".join([f"{field['name']}: Optional[{field['type']}] = None" for field in config_fields])
-
-                # config_command_string = f"""async def configure({params_string}): pass"""
-
-                # print(config_command_string)
-
                 @self.tree.command(
                     name="config",
                     description="update configuration for channel (pins .config message)",
@@ -1282,34 +1268,6 @@ class DiscordInterface(discord.Client):
 
         await new_thread.send(f"m continue {message_author.mention}")
         # return success_message
-
-    # async def compile_history(
-    #     self,
-    #     message: discord.Message,
-    #     config: Config,
-    #     iface_config: DiscordInterfaceConfig,
-    #     pov_user: Optional[discord.User] = None,
-    #     first_message: Optional[discord.Message] = None,
-    #     inclusive: bool = True,
-    # ):
-    #     message_history = lambda message, first_message=first_message, config=config, iface_config=iface_config, pov_user=pov_user, inclusive=inclusive: self.message_history(
-    #         message, first_message, config, iface_config, pov_user, inclusive
-    #     )
-
-    #     history, raw_mentions = zip(
-    #         *(
-    #             await async_take(
-    #                 config.em.recency_window,
-    #                 async_generator_to_reusable_async_iterable(
-    #                     message_history, message
-    #                 ),
-    #             )
-    #         )
-    #     )
-
-    #     return history, raw_mentions
-    # prompt = await get_prompt(history, config.em)
-    # return prompt
 
     @trace
     async def message_history(
