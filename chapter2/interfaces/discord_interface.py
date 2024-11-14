@@ -570,6 +570,7 @@ class DiscordInterface(discord.Client):
                     "exa_search_api_key",
                     "vendors",
                     "discord_token",
+                    "discord_proxy_url",
                 }
                 all_keys = all_keys - blacklisted_keys
                 matches = [key for key in all_keys if current.lower() in key.lower()]
@@ -1093,14 +1094,14 @@ class DiscordInterface(discord.Client):
             content = f"✗ no steering vectors configured for {pov_user.mention}"
         else:
             content = f"### :information_source: current steering vectors for {pov_user.mention}:\n"
-            content += (
-                "```yaml\n"
-                + yaml.dump({"feature_levels": current_configuration})
-                + "\n```"
-            )
-            # for feature, level in current_configuration.items():
-            #     index = int(feature.split("_")[-1])
-            #     content += f'- `{index}` ("{INDEX_TO_DESC[index]}"): `{level}`\n'
+            # content += (
+            #     "```yaml\n"
+            #     + yaml.dump({"feature_levels": current_configuration})
+            #     + "\n```"
+            # )
+            for feature, level in current_configuration.items():
+                index = int(feature.split("_")[-1])
+                content += f'- `{index}` ("{INDEX_TO_DESC[index]}"): `{level}`\n'
 
         await interaction.followup.send(content)
 
@@ -1120,6 +1121,7 @@ class DiscordInterface(discord.Client):
                 "exa_search_api_key",
                 "vendors",
                 "discord_token",
+                "discord_proxy_url",
             ],
         )
         if property is not None:
