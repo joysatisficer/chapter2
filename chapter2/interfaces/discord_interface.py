@@ -1020,7 +1020,10 @@ class DiscordInterface(discord.Client):
         command_prefix = kwargs.get("command_prefix", ".config")
         config_dict = kwargs.get("config_dict", None)
         targets = kwargs.get("targets", None)
-        config_message = compile_config_message(command_prefix, config_dict, targets)
+        targets_array = targets.split(" ") if targets else None
+        config_message = compile_config_message(
+            command_prefix, config_dict, targets_array
+        )
         sent_message = await interaction.followup.send(config_message)
         if sent_message is not None:
             await sent_message.pin()
