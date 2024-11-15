@@ -2187,12 +2187,13 @@ def compile_config_message(
     dict_copy = {k: v for k, v in config_dict.items() if v is not None}
     config_yaml = yaml.dump(dict_copy) if len(dict_copy) > 0 else ""
     config_message = f".{command_prefix}"
-    for target in targets:
-        if target is not None:
-            config_message = (
-                config_message
-                + f" {target.mention if isinstance(target, discord.User) else target}"
-            )
+    if targets is not None:
+        for target in targets:
+            if target is not None:
+                config_message = (
+                    config_message
+                    + f" {target.mention if isinstance(target, discord.User) else target}"
+                )
     config_message = config_message + f"\n---\n{config_yaml}"
     return config_message
 
