@@ -73,6 +73,10 @@ def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) 
         transformed = transforms[type](id)
         return transformed
 
-    result = re.sub(r"<(@[!&]?|#)([0-9]{15,20})>", repl, self.system_content)
+    result = re.sub(
+        r"<(@[!&]?|#)([0-9]{15,20})>",
+        repl,
+        self.system_content if self.is_system() else self.content,
+    )
 
     return discord.utils.escape_mentions(result)

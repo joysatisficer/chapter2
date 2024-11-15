@@ -1023,9 +1023,7 @@ class DiscordInterface(discord.Client):
         config_dict = kwargs.get("config_dict", None)
         targets = kwargs.get("targets", None)
         # targets_array = targets.split(" ") if targets else None
-        config_message = compile_config_message(
-            command_prefix, config_dict, targets
-        )
+        config_message = compile_config_message(command_prefix, config_dict, targets)
         sent_message = await interaction.followup.send(config_message)
         if sent_message is not None:
             await sent_message.pin()
@@ -1368,7 +1366,9 @@ class DiscordInterface(discord.Client):
                     yield msg
 
     async def on_message(self, message: discord.Message) -> None:
+
         self.cache(message.channel).update(message, True)
+
         if self.iface_config.infra:
             # if message author is not the bot
             if message.author == self.user:
@@ -1641,7 +1641,6 @@ class DiscordInterface(discord.Client):
                 )
                 if forwarded_message:
                     content = f"<|begin_of_fwd|>{parse_discord_content(forwarded_message, pov_user.id, config.em.name)}<|end_of_fwd|>"
-
         return Message(
             Author(author_name, UserID(str(message.author.id), "discord")),
             content.strip(),
