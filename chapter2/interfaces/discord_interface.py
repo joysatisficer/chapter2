@@ -34,237 +34,6 @@ from declarations import GenerateResponse, Message, Author, JSON, ActionHistory
 from ontology import Config, DiscordInterfaceConfig
 
 
-class ChannelCache:
-    def __init__(self, channel: discord.TextChannel):
-        self.channel = channel
-        self.messages: dict[int, Optional[discord.Message]] = {}
-        # message id: is next (by iteration/reverse chronological order) message in cache?
-        # like a linked list, but we use SortedDict.irange() for iteration/traversal
-        # could be merged with messages, but risk of race conditions with message deletions
-        self.sparse: SortedDict[int, bool] = SortedDict()
-        self.up_to_date = False
-
-    def set_prev(self, index: int, func: Callable[[bool, bool], bool]) -> bool:
-        if len(self.sparse) == 0 or index >= self.sparse.keys()[-1]:
-            self.up_to_date = func(old := self.up_to_date, True)
-        else:
-            # get previous (against iteration/reverse chronological order) index
-            prev = next(
-                self.sparse.irange(
-                    minimum=index, reverse=False, inclusive=(False, False)
-                )
-            )
-            self.sparse[prev] = func(old := self.sparse[prev], False)
-        return old
-
-    def update(self, message, latest: bool):
-        "latest: if this message is the last message in the channel"
-
-        # in case a message comes in after its deletion. see delete()
-        # (possible with proxy bots)
-        if self.messages.get(message.id, True) is None:
-            return
-
-        if old := self.messages.get(message.id):
-            # in case of race condition, only record more recent edits
-            if not message.edited_at or message.edited_at <= old.edited_at:
-                return
-
-        self.messages[message.id] = message
-        # if message.id == self.channel.last_message_id:
-        if latest:
-            # [ b ...] -> [-a b ...]
-            # [-b ...] -> [-a-b ...]
-            # or, in case we get messages out of order, whether due to API error or asyncio:
-            # [ a c ...] -> [ a b c ...]
-            # [-a c ...] -> [-a b c ...]
-            # [ a-c ...] -> [ a-b-c ...]
-            # [-a-c ...] -> [-a-b-c ...]
-            # (no idea if this happens, but let's try to be fault tolerant)
-            self.sparse[message.id] = self.set_prev(
-                message.id, lambda prev, last: last or prev
-            )
-
-    def delete(self, id: int):
-        self.messages[id] = None
-        if id in self.sparse:
-            # a b c -> a c
-            # a-b c -> a c
-            # a b-c -> a c
-            # a-b-c -> a-c
-            # or, if this is the first message and the next message is known, we're still up to date
-            # (same as diagram above, but "a" is the up_to_date flag)
-            self.set_prev(id, lambda prev, last: prev & self.sparse[id])
-            del self.sparse[id]
-
-    async def history(
-        self,
-        limit: Optional[int] = 100,  # same as API default
-        before: Optional[discord.Message] = None,
-        after: Optional[discord.Message] = None,
-    ) -> AsyncIterator[discord.Message]:
-        remaining = limit
-        beforeid: Optional[int] = before and before.id
-        afterid: Optional[int] = after and after.id
-
-        # last cached message; to "link" with any fetched after this
-        last: Optional[int] = None
-        # if before isn't in cache and marked, we have no way of knowing if the "first" cached message is really the first
-        if (before is None and self.up_to_date) or self.sparse.get(beforeid):
-            # iter during addition/deletion is an error so make a copy
-            for index, value in [
-                (k, self.sparse[k])
-                for k in self.sparse.irange(
-                    minimum=afterid,
-                    maximum=beforeid,
-                    # we need to watch out for the after message, even if it won't be yielded
-                    inclusive=(True, False),
-                    reverse=True,
-                )
-            ]:
-                if index == afterid:
-                    return
-
-                # might have been deleted after the copy was made
-                if message := self.messages.get(index):
-                    yield message
-                    remaining = remaining and remaining - 1
-                    if remaining == 0:
-                        return
-                    last = index
-
-                if not value:
-                    break  # last item in the "linked list"
-
-        # just fetch the rest to keep it simple for now
-        # if you've been wondering "wait, why does this need a SortedDict, can't you just use a normal dict with explicit next/prev references"
-        # we'll really need the SortedDict to improve this
-        first = True
-        async for message in self.channel.history(
-            # oldest_first defaults to True if after is given
-            limit=remaining,
-            before=discord.Object(last) if last else before,
-            after=after,
-            oldest_first=False,
-        ):
-            # if this message wasn't already cached, assume it's the last one in the "linked list"
-            # (at this point we don't know how much more history will be read before the generator is discarded)
-            self.sparse[message.id] = self.sparse.get(message.id, False)
-            if last:
-                # mark the last yielded message, esp. from cache, if any
-                # (we want to join the "linked lists" if possible)
-                # note that before might be a message that we don't have
-                # that's why we don't initialize last = before
-                self.sparse[last] = True
-            self.update(message, first and (last or before) is None)
-            yield message
-            first = False
-            last = message.id
-
-
-async def test_cache():
-    randrange = random.randrange
-    choice = random.choice
-
-    class Message(discord.Object):
-        def __repr__(self):
-            return str(self.id)
-
-        @property
-        def edited_at(self):
-            return None
-
-    class Channel:
-        def __init__(self):
-            self._history = SortedDict(
-                {x: Message(x) for x in (randrange(1, 10000) for _ in range(10))}
-            )
-
-        def real(
-            self,
-            limit: Optional[int],
-            before: Optional[Message],
-            after: Optional[Message],
-        ) -> list[Message]:
-            return [
-                self._history[i]
-                for i in list(
-                    self._history.irange(
-                        minimum=after and after.id,
-                        maximum=before and before.id,
-                        inclusive=(False, False),
-                        reverse=True,
-                    )
-                )[:limit]
-            ]
-
-        async def history(
-            self,
-            limit: Optional[int],
-            before: Optional[Message],
-            after: Optional[Message],
-            oldest_first: bool = False,
-        ) -> AsyncIterator[Message]:
-            nonlocal misses
-            for i in self.real(limit, before, after):
-                misses += 1
-                yield i
-
-    total, misses = 0, 0
-    for _ in range(100000):
-        channel = Channel()
-        cache = ChannelCache(channel)
-        log = []
-        orig = list(channel._history.keys())
-        minid = orig[-1]
-        for _ in range(7):
-            if choice([True, False]):
-                # there was a bug with the same message ID being sent multiple times
-                # so make sure that message IDs are strictly increasing
-                minid += randrange(3, 1000)
-                # ... unless we want to test tolerance to out of order messages
-                send = [minid] + ([] if randrange(4) else [minid - 2, minid - 1])
-                for i in send:
-                    channel._history[i] = Message(i)
-                    cache.update(channel._history[i], True)
-                log.append(("send", send))
-            else:
-                del channel._history[id := choice(channel._history.keys())]
-                cache.delete(id)
-                log.append(("delete", id))
-
-            # this can happen with proxy bots
-            if choice([True, False]):
-                cache.delete(minid := minid + randrange(1, 1000))
-                cache.update(Message(minid), True)
-
-            limit = choice([randrange(1, 12), None])
-            after, before = sorted(random.sample(channel._history.keys(), 2))
-            # after = choice([Message(after - randrange(2)), None])
-            # before = choice([Message(before + randrange(2)), None])
-            after = choice([Message(after), None])
-            before = choice([Message(before), None])
-            log.append(("history", limit, before, after))
-
-            cached = [x async for x in cache.history(limit, before, after)]
-            real = channel.real(limit, before, after)
-            if cached != real:
-                breakpoint()
-            total += len(real)
-
-    print(f"Hit rate: {total-misses}/{total}={(total-misses)/total}")
-
-
-class Cache:
-    def __init__(self):
-        self.channels: dict[int, ChannelCache] = {}
-
-    def __call__(self, channel: discord.TextChannel) -> ChannelCache:
-        if channel.id not in self.channels:
-            self.channels[channel.id] = ChannelCache(channel)
-        return self.channels[channel.id]
-
-
 class DiscordInterface(discord.Client):
     DOTTED_MESSAGE_RE = r"^[.,][^\s.,]"
     MAX_CONCURRENT_MESSAGES = 100_000
@@ -1086,3 +855,234 @@ def unescape_string(escaped_string: str) -> str:
 
 class ConfigError(ValueError):
     pass
+
+
+class ChannelCache:
+    def __init__(self, channel: discord.TextChannel):
+        self.channel = channel
+        self.messages: dict[int, Optional[discord.Message]] = {}
+        # message id: is next (by iteration/reverse chronological order) message in cache?
+        # like a linked list, but we use SortedDict.irange() for iteration/traversal
+        # could be merged with messages, but risk of race conditions with message deletions
+        self.sparse: SortedDict[int, bool] = SortedDict()
+        self.up_to_date = False
+
+    def set_prev(self, index: int, func: Callable[[bool, bool], bool]) -> bool:
+        if len(self.sparse) == 0 or index >= self.sparse.keys()[-1]:
+            self.up_to_date = func(old := self.up_to_date, True)
+        else:
+            # get previous (against iteration/reverse chronological order) index
+            prev = next(
+                self.sparse.irange(
+                    minimum=index, reverse=False, inclusive=(False, False)
+                )
+            )
+            self.sparse[prev] = func(old := self.sparse[prev], False)
+        return old
+
+    def update(self, message, latest: bool):
+        "latest: if this message is the last message in the channel"
+
+        # in case a message comes in after its deletion. see delete()
+        # (possible with proxy bots)
+        if self.messages.get(message.id, True) is None:
+            return
+
+        if old := self.messages.get(message.id):
+            # in case of race condition, only record more recent edits
+            if not message.edited_at or message.edited_at <= old.edited_at:
+                return
+
+        self.messages[message.id] = message
+        # if message.id == self.channel.last_message_id:
+        if latest:
+            # [ b ...] -> [-a b ...]
+            # [-b ...] -> [-a-b ...]
+            # or, in case we get messages out of order, whether due to API error or asyncio:
+            # [ a c ...] -> [ a b c ...]
+            # [-a c ...] -> [-a b c ...]
+            # [ a-c ...] -> [ a-b-c ...]
+            # [-a-c ...] -> [-a-b-c ...]
+            # (no idea if this happens, but let's try to be fault tolerant)
+            self.sparse[message.id] = self.set_prev(
+                message.id, lambda prev, last: last or prev
+            )
+
+    def delete(self, id: int):
+        self.messages[id] = None
+        if id in self.sparse:
+            # a b c -> a c
+            # a-b c -> a c
+            # a b-c -> a c
+            # a-b-c -> a-c
+            # or, if this is the first message and the next message is known, we're still up to date
+            # (same as diagram above, but "a" is the up_to_date flag)
+            self.set_prev(id, lambda prev, last: prev & self.sparse[id])
+            del self.sparse[id]
+
+    async def history(
+        self,
+        limit: Optional[int] = 100,  # same as API default
+        before: Optional[discord.Message] = None,
+        after: Optional[discord.Message] = None,
+    ) -> AsyncIterator[discord.Message]:
+        remaining = limit
+        beforeid: Optional[int] = before and before.id
+        afterid: Optional[int] = after and after.id
+
+        # last cached message; to "link" with any fetched after this
+        last: Optional[int] = None
+        # if before isn't in cache and marked, we have no way of knowing if the "first" cached message is really the first
+        if (before is None and self.up_to_date) or self.sparse.get(beforeid):
+            # iter during addition/deletion is an error so make a copy
+            for index, value in [
+                (k, self.sparse[k])
+                for k in self.sparse.irange(
+                    minimum=afterid,
+                    maximum=beforeid,
+                    # we need to watch out for the after message, even if it won't be yielded
+                    inclusive=(True, False),
+                    reverse=True,
+                )
+            ]:
+                if index == afterid:
+                    return
+
+                # might have been deleted after the copy was made
+                if message := self.messages.get(index):
+                    yield message
+                    remaining = remaining and remaining - 1
+                    if remaining == 0:
+                        return
+                    last = index
+
+                if not value:
+                    break  # last item in the "linked list"
+
+        # just fetch the rest to keep it simple for now
+        # if you've been wondering "wait, why does this need a SortedDict, can't you just use a normal dict with explicit next/prev references"
+        # we'll really need the SortedDict to improve this
+        first = True
+        async for message in self.channel.history(
+            # oldest_first defaults to True if after is given
+            limit=remaining,
+            before=discord.Object(last) if last else before,
+            after=after,
+            oldest_first=False,
+        ):
+            # if this message wasn't already cached, assume it's the last one in the "linked list"
+            # (at this point we don't know how much more history will be read before the generator is discarded)
+            self.sparse[message.id] = self.sparse.get(message.id, False)
+            if last:
+                # mark the last yielded message, esp. from cache, if any
+                # (we want to join the "linked lists" if possible)
+                # note that before might be a message that we don't have
+                # that's why we don't initialize last = before
+                self.sparse[last] = True
+            self.update(message, first and (last or before) is None)
+            yield message
+            first = False
+            last = message.id
+
+
+async def test_cache():
+    randrange = random.randrange
+    choice = random.choice
+
+    class Message(discord.Object):
+        def __repr__(self):
+            return str(self.id)
+
+        @property
+        def edited_at(self):
+            return None
+
+    class Channel:
+        def __init__(self):
+            self._history = SortedDict(
+                {x: Message(x) for x in (randrange(1, 10000) for _ in range(10))}
+            )
+
+        def real(
+            self,
+            limit: Optional[int],
+            before: Optional[Message],
+            after: Optional[Message],
+        ) -> list[Message]:
+            return [
+                self._history[i]
+                for i in list(
+                    self._history.irange(
+                        minimum=after and after.id,
+                        maximum=before and before.id,
+                        inclusive=(False, False),
+                        reverse=True,
+                    )
+                )[:limit]
+            ]
+
+        async def history(
+            self,
+            limit: Optional[int],
+            before: Optional[Message],
+            after: Optional[Message],
+            oldest_first: bool = False,
+        ) -> AsyncIterator[Message]:
+            nonlocal misses
+            for i in self.real(limit, before, after):
+                misses += 1
+                yield i
+
+    total, misses = 0, 0
+    for _ in range(100000):
+        channel = Channel()
+        cache = ChannelCache(channel)
+        log = []
+        orig = list(channel._history.keys())
+        minid = orig[-1]
+        for _ in range(7):
+            if choice([True, False]):
+                # there was a bug with the same message ID being sent multiple times
+                # so make sure that message IDs are strictly increasing
+                minid += randrange(3, 1000)
+                # ... unless we want to test tolerance to out of order messages
+                send = [minid] + ([] if randrange(4) else [minid - 2, minid - 1])
+                for i in send:
+                    channel._history[i] = Message(i)
+                    cache.update(channel._history[i], True)
+                log.append(("send", send))
+            else:
+                del channel._history[id := choice(channel._history.keys())]
+                cache.delete(id)
+                log.append(("delete", id))
+
+            # this can happen with proxy bots
+            if choice([True, False]):
+                cache.delete(minid := minid + randrange(1, 1000))
+                cache.update(Message(minid), True)
+
+            limit = choice([randrange(1, 12), None])
+            after, before = sorted(random.sample(channel._history.keys(), 2))
+            # after = choice([Message(after - randrange(2)), None])
+            # before = choice([Message(before + randrange(2)), None])
+            after = choice([Message(after), None])
+            before = choice([Message(before), None])
+            log.append(("history", limit, before, after))
+
+            cached = [x async for x in cache.history(limit, before, after)]
+            real = channel.real(limit, before, after)
+            if cached != real:
+                breakpoint()
+            total += len(real)
+
+    print(f"Hit rate: {total-misses}/{total}={(total-misses)/total}")
+
+
+class Cache:
+    def __init__(self):
+        self.channels: dict[int, ChannelCache] = {}
+
+    def __call__(self, channel: discord.TextChannel) -> ChannelCache:
+        if channel.id not in self.channels:
+            self.channels[channel.id] = ChannelCache(channel)
+        return self.channels[channel.id]
