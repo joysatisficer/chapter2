@@ -8,15 +8,8 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class UserID:
-    id: str
-    platform: str
-
-
-@dataclass(frozen=True)
 class Author:
     name: str
-    user_id: UserID | None = None
 
 
 @dataclass(frozen=True)
@@ -33,5 +26,5 @@ Action = Union[Message]
 ActionHistory = AsyncIterable[Action]
 Ensemble = AsyncIterable[Action | AsyncIterable["Ensemble"]]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
-GenerateResponse = Callable[[UserID, ActionHistory, "EmConfig"], AsyncIterable[Action]]
-Faculty = Callable[[ActionHistory, "FacultyConfig", "Config"], AsyncIterable[Message]]
+GenerateResponse = Callable[["EmConfig", ActionHistory], AsyncIterable[Action]]
+Faculty = Callable[["EmConfig", "FacultyConfig", ActionHistory], AsyncIterable[Message]]

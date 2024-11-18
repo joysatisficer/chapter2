@@ -30,7 +30,7 @@ from trace import trace, ot_tracer, log_trace_id_to_console
 from interfaces.deserves_reply import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
-from declarations import GenerateResponse, Message, UserID, Author, JSON, ActionHistory
+from declarations import GenerateResponse, Message, Author, JSON, ActionHistory
 from ontology import Config, DiscordInterfaceConfig
 
 
@@ -364,7 +364,6 @@ class DiscordInterface(discord.Client):
                 return
             async with self.per_interlocutor_semaphore[message.author.id]:
                 try:
-                    my_user_id = UserID(str(self.user.id), "discord")
 
                     @trace
                     async def message_history(message, first_message=None):
@@ -454,7 +453,6 @@ class DiscordInterface(discord.Client):
                         message,
                         config,
                         iface_config,
-                        my_user_id,
                         async_generator_to_reusable_async_iterable(
                             lambda: (
                                 message async for message, _ in message_history(message)
@@ -478,9 +476,8 @@ class DiscordInterface(discord.Client):
                         mentions.update(these_mentions)
 
                     response_messages = self.generate_response(
-                        my_user_id,
-                        history,
                         config.em,
+                        history,
                     )
                     async with ScheduleTyping(
                         message.channel, typing=iface_config.send_typing
@@ -488,7 +485,7 @@ class DiscordInterface(discord.Client):
                         first_message = True
                         async for reply_message in response_messages:
                             if (
-                                reply_message.author.user_id == my_user_id
+                                reply_message.author.name == config.em.name
                                 and not isempty(reply_message.content)
                             ):
                                 # send a new typing event if it's not the first message
@@ -633,7 +630,7 @@ class DiscordInterface(discord.Client):
                 content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
         channel = message.channel
         return Message(
-            Author(author_name, UserID(str(message.author.id), "discord")),
+            Author(author_name),
             content.strip(),
             timestamp=message.created_at.timestamp(),
             id=hashint(message.id),
@@ -652,7 +649,6 @@ class DiscordInterface(discord.Client):
         message: discord.Message,
         config: Config,
         iface_config: DiscordInterfaceConfig,
-        user_id: UserID,
         message_history: ActionHistory,
     ) -> bool:
         return (
@@ -710,7 +706,6 @@ class DiscordInterface(discord.Client):
                     and await deserves_reply(
                         self.generate_response,
                         config,
-                        user_id,
                         message_history,
                         iface_config.reply_on_sim,
                     )

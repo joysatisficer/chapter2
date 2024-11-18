@@ -16,7 +16,7 @@ from trace import trace
 
 @trace
 async def character_faculty(
-    history: ActionHistory, faculty_config: CharacterFacultyConfig, em: EmConfig
+    em: EmConfig, faculty_config: CharacterFacultyConfig, history: ActionHistory
 ):
     if faculty_config.name is None:
         character_name = em.name

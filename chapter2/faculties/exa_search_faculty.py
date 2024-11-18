@@ -26,7 +26,7 @@ SharedExa = cache(Exa)
 
 @trace
 async def exa_search_faculty(
-    history: ActionHistory, faculty_config: ExaSearchFacultyConfig, em: EmConfig
+    em: EmConfig, faculty_config: ExaSearchFacultyConfig, history: ActionHistory
 ):
     message_history_string = format_message_section(
         faculty_config.input_format,

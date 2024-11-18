@@ -9,17 +9,17 @@ from aioitertools.more_itertools import take as async_take
 from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
 
-from declarations import UserID, ActionHistory, Author, Ensemble, Action
+from declarations import ActionHistory, Author, Ensemble, Action
 from faculties import FACULTY_NAME_TO_FUNCTION
-from mufflers import context_sentence_repetition, has_url, mufflers
+from mufflers import mufflers
 from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
 from trace import trace, log_trace_id_to_console
 
 
 @trace
-async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmConfig):
+async def generate_response(em: EmConfig, history: ActionHistory):
     count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
-    author = Author(em.name, my_user_id)
+    author = Author(em.name)
     completion_prefix = (
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
@@ -53,7 +53,7 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
     # TODO: Filter for empty ensembles
     for faculty_config in em.ensembles:
         faculty_results = FACULTY_NAME_TO_FUNCTION[faculty_config.faculty](
-            history, faculty_config, em
+            em, faculty_config, history
         )
         local_max_tokens = min(
             (

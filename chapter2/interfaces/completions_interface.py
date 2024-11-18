@@ -4,7 +4,7 @@ from typing import Optional, Literal
 
 from pydantic import BaseModel, ValidationError
 
-from declarations import GenerateResponse, Message, UserID, Author
+from declarations import GenerateResponse
 from ontology import Config, CompletionsInterfaceConfig
 from message_formats import IRCMessageFormat
 from abstractinterface import AbstractInterface
@@ -67,7 +67,6 @@ class CompletionsInterface(AbstractInterface):
 
     async def completions(self, completion_request: CompletionRequest):
         messages = IRCMessageFormat().parse(completion_request.prompt)
-        em_user_id = UserID("em::" + self.em_name, "completions")
         config: Config = self.base_config.copy()
         if completion_request.temperature is not None:
             config.temperature = completion_request.temperature
@@ -79,7 +78,7 @@ class CompletionsInterface(AbstractInterface):
         async def get_response_messages():
             response_messages = []
             async for message in self.generate_response(
-                em_user_id, eager_iterable_to_async_iterable(messages), config.em
+                config.em, eager_iterable_to_async_iterable(messages)
             ):
                 response_messages.append(message)
             return response_messages
@@ -92,7 +91,7 @@ class CompletionsInterface(AbstractInterface):
         for i, response_messages in enumerate(response_message_arrays):
             text = ""
             for response_message in response_messages:
-                text += irc_format.render(response_message)
+                text += IRCMessageFormat().render(response_message)
             response_choices.append(
                 {
                     "text": text,
