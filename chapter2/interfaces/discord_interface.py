@@ -1352,9 +1352,12 @@ class DiscordInterface(discord.Client):
                 starter_message_id = thread.id
             else:
                 return
-            starter_message = await message.channel.parent.fetch_message(
-                starter_message_id
-            )
+            try: 
+                starter_message = await message.channel.parent.fetch_message(
+                    starter_message_id
+                )
+            except discord.errors.NotFound:
+                starter_message = None
             if starter_message is not None:
                 async for msg in self.message_history(
                     starter_message,
