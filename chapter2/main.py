@@ -13,7 +13,7 @@ from generate_response import generate_response
 from interfaces import INTERFACE_NAME_TO_INTERFACE, INTERFACE_ADDON_NAME_TO_ADDON
 from interfaces.deserves_reply import deserves_reply
 from ontology import Config
-from declarations import Message, UserID, Author
+from declarations import Message, Author
 from util.asyncutil import eager_iterable_to_async_iterable
 
 
@@ -27,7 +27,6 @@ async def rehearse_em(config: Config):
             Message(Author("alice"), f"hi {config.em.name}!"),
         ][::-1]
     )
-    user_id = UserID("em::" + config.em.name, "rehearsal")
     config.em.vendors = Secret(
         {"fake-local": ontology.SingleVendorConfig(provides=[".*"])}
     )
@@ -37,15 +36,13 @@ async def rehearse_em(config: Config):
             d = await deserves_reply(
                 generate_response,
                 config,
-                user_id,
                 mock_message_hist,
                 interface.reply_on_sim,
             )
             assert isinstance(d, bool)
     async for response in generate_response(
-        user_id,
-        mock_message_hist,
         config.em,
+        mock_message_hist,
     ):
         pass
 
