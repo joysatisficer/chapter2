@@ -268,6 +268,10 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     airtable: AirtableConfig | None = None
 
 
+class RPCInterfaceConfig(SharedInterfaceConfig):
+    name: Literal["rpc"] = "rpc"
+
+
 class MikotoInterfaceConfig(SharedInterfaceConfig):
     name: Literal["mikoto"] = "mikoto"
     mikoto_token: str
@@ -289,6 +293,7 @@ class ChatCompletionsInterfaceConfig(SharedInterfaceConfig):
 
 InterfaceConfig = Annotated[
     DiscordInterfaceConfig
+    | RPCInterfaceConfig
     | MikotoInterfaceConfig
     | CompletionsInterfaceConfig
     | ChatCompletionsInterfaceConfig,

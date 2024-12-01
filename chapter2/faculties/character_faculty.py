@@ -8,7 +8,7 @@ from ontology import CharacterFacultyConfig, EmConfig
 from chr_loader import load_chr
 from retriever import KNNIndex, SVMIndex
 from message_formats import ColonMessageFormat
-from util.asyncutil import eager_iterable_to_async_iterable
+from util.asyncutil import to_async_iterable
 from trace import trace
 
 # todo: read character folder in the impure shell
@@ -53,7 +53,7 @@ async def character_faculty(
         query += ColonMessageFormat().render(message_tuple)
     results = await index.query(query.replace("\n", " "), 1000)
     for message_tuple in results:
-        yield eager_iterable_to_async_iterable(message_tuple)
+        yield to_async_iterable(message_tuple)
 
 
 @cache

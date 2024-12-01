@@ -14,12 +14,12 @@ from interfaces import INTERFACE_NAME_TO_INTERFACE, INTERFACE_ADDON_NAME_TO_ADDO
 from interfaces.deserves_reply import deserves_reply
 from ontology import Config
 from declarations import Message, Author
-from util.asyncutil import eager_iterable_to_async_iterable
+from util.asyncutil import to_async_iterable
 
 
 async def rehearse_em(config: Config):
     """Run an em in mock mode to populate caches and test the em"""
-    mock_message_hist = eager_iterable_to_async_iterable(
+    mock_message_hist = to_async_iterable(
         [
             Message(Author("alice"), "hello"),
             Message(Author("bob"), "hi alice!\nhow are you?"),

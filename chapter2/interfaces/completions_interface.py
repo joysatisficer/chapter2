@@ -8,7 +8,7 @@ from declarations import GenerateResponse
 from ontology import Config, CompletionsInterfaceConfig
 from message_formats import IRCMessageFormat
 from abstractinterface import AbstractInterface
-from util.asyncutil import eager_iterable_to_async_iterable
+from util.asyncutil import to_async_iterable
 
 
 class CompletionRequest(BaseModel):
@@ -78,7 +78,7 @@ class CompletionsInterface(AbstractInterface):
         async def get_response_messages():
             response_messages = []
             async for message in self.generate_response(
-                config.em, eager_iterable_to_async_iterable(messages)
+                config.em, to_async_iterable(messages)
             ):
                 response_messages.append(message)
             return response_messages

@@ -10,18 +10,19 @@
 #   universal: true
 
 -e file:.
-aiodns==3.2.0 ; (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')) and (sys_platform == 'darwin' or sys_platform == 'linux')
+aiodns==3.2.0 ; sys_platform == 'darwin' or sys_platform == 'linux'
     # via aiohttp
 aiofiles==24.1.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via matrix-nio
 aiohappyeyeballs==2.3.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via aiohttp
-aiohttp==3.10.10 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+aiohttp==3.11.8 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via aiohttp-socks
     # via anthropic
     # via chapter2
     # via discord-py
     # via intermodel
+    # via jsonrpc-websocket
     # via matrix-nio
     # via mikoto-py
     # via novelai-api
@@ -55,6 +56,7 @@ asgiref==3.7.2 ; python_version < '3.12' or python_version >= '3.13' or (python_
     # via chapter2
     # via intermodel
 async-timeout==4.0.3 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via jsonrpc-websocket
     # via python-socks
 asyncstdlib==3.10.9 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via chapter2
@@ -69,9 +71,9 @@ bidict==0.23.1 ; python_version < '3.12' or python_version >= '3.13' or (python_
 black==24.8.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
 blinker==1.8.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via streamlit
-brotli==1.1.0 ; platform_python_implementation == 'CPython' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
+brotli==1.1.0 ; platform_python_implementation == 'CPython'
     # via aiohttp
-brotlicffi==1.1.0.0 ; platform_python_implementation != 'CPython' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
+brotlicffi==1.1.0.0 ; platform_python_implementation != 'CPython'
     # via aiohttp
 build==1.2.1 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via poetry
@@ -226,6 +228,10 @@ jiter==0.6.1 ; python_version < '3.12' or python_version >= '3.13' or (python_ve
 joblib==1.4.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via nltk
     # via scikit-learn
+jsonrpc-base==2.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via jsonrpc-websocket
+jsonrpc-websocket==3.1.5 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via chapter2
 jsonschema==4.23.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via altair
     # via matrix-nio
@@ -346,6 +352,7 @@ poetry-plugin-export==1.8.0 ; python_version < '3.12' or python_version >= '3.13
     # via poetry
 pre-commit==3.8.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
 propcache==0.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+    # via aiohttp
     # via yarl
 protobuf==4.25.4 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via googleapis-common-protos
@@ -557,7 +564,7 @@ wsproto==1.2.0 ; python_version < '3.12' or python_version >= '3.13' or (python_
     # via simple-websocket
 xattr==1.1.0 ; sys_platform == 'darwin' and (python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12'))
     # via poetry
-yarl==1.15.2 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
+yarl==1.18.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via aiohttp
 zipp==3.20.0 ; python_version < '3.12' or python_version >= '3.13' or (python_version < '3.13' and python_version >= '3.12')
     # via importlib-metadata

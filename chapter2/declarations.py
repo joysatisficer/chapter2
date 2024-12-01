@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import pydantic.dataclasses
 from typing import Callable, Union, AsyncIterable, TYPE_CHECKING, Awaitable
 
 if TYPE_CHECKING:
     from ontology import Config, FacultyConfig
 
 
-@dataclass(frozen=True)
+@pydantic.dataclasses.dataclass
 class Author:
     name: str
 
 
-@dataclass(frozen=True)
+@pydantic.dataclasses.dataclass
 class Message:
     author: Author | None
     content: str
