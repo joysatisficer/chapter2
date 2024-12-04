@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 @pydantic.dataclasses.dataclass
 class Author:
-    name: str
+    name: str | None
 
 
 @pydantic.dataclasses.dataclass
