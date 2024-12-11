@@ -1,0 +1,12 @@
+# An em that uses as much functionality as possible for use in automated testing
+continuation_model: davinci-002
+ensembles:
+  - faculty: exa_search
+  - faculty: character
+interfaces:
+  - name: discord
+    addons:
+      - name: generate_avatar
+        prompt: colorful, many colors, portrait, rainbow, jack of all trades, omnicompetent
+# - name: chatcompletions
+representation_model: text-embedding-3-large
