@@ -287,7 +287,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     image_limits: ImageLimits = ImageLimits()
     exo_enabled: bool = False
     airtable: AirtableConfig | None = None
-    infra: bool = False
+    # infra: bool = False
 
 
 class MikotoInterfaceConfig(SharedInterfaceConfig):
@@ -309,11 +309,16 @@ class ChatCompletionsInterfaceConfig(SharedInterfaceConfig):
     port: int | None = None
 
 
+class InfraInterfaceConfig(DiscordInterfaceConfig):
+    name: Literal["infra"] = "infra"
+
+
 InterfaceConfig = Annotated[
     DiscordInterfaceConfig
     | MikotoInterfaceConfig
     | CompletionsInterfaceConfig
-    | ChatCompletionsInterfaceConfig,
+    | ChatCompletionsInterfaceConfig
+    | InfraInterfaceConfig,
     Field(..., discriminator="name"),
 ]
 
