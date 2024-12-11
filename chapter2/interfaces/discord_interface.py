@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import re
-import string
 import textwrap
 import time
 import random
@@ -11,10 +10,6 @@ from collections.abc import Callable
 from collections import defaultdict
 from functools import lru_cache
 from io import StringIO
-import json
-import pprint
-import enum
-import typing
 
 import aiohttp
 import discord
@@ -434,9 +429,9 @@ class DiscordInterface(discord.Client):
                     f"✓ **{command_name}** executed successfully",
                 )
         except Exception as e:
-            print(f'Error handling "{command_name}" command: {e}')
+            # print(f'Error handling "{command_name}" command: {e}')
             await interaction.followup.send(
-                f"Error handling **{command_name}** command: {e}",
+                f"**⚠ ERROR** handling **{command_name}** command:\n{e}",
             )
 
     async def setup_hook(self):
@@ -799,14 +794,14 @@ class DiscordInterface(discord.Client):
                     )
 
                 @self.tree.command(
-                    name="reset_config",
-                    description="reset configuration for channel (unpins all .config messages)",
+                    name="unset_config",
+                    description="unset/reset/clear configuration for channel (unpins all .config messages)",
                 )
-                async def reset_config(
+                async def unset_config(
                     interaction: discord.Interaction,
                 ):
                     await self.interaction_wrapper(
-                        command_name="/reset_config",
+                        command_name="/unset_config",
                         func=self.reset_config_command,
                         interaction=interaction,
                     )
@@ -843,18 +838,18 @@ class DiscordInterface(discord.Client):
                 if len(self.steerable_ems) > 0:
 
                     @self.tree.command(
-                        name="set_vector",
-                        description="configure claude 3 sonnet steering vector",
+                        name="set_feature",
+                        description="configure Claude 3 Sonnet steering feature",
                     )
                     @app_commands.autocomplete(target=steerable_users_autocomplete)
                     @app_commands.autocomplete(feature=feature_autocomplete)
                     @app_commands.describe(
-                        target="em to configure the steering vector of",
+                        target="em to configure the steering feature of",
                         feature="feature to configure",
                         level="feature level(-10 to 10)",
-                        reset="(FALSE by default) reset previously configured vectors",
+                        reset="(FALSE by default) reset previously configured features",
                     )
-                    async def set_vector(
+                    async def set_feature(
                         interaction: discord.Interaction,
                         target: str,
                         feature: str,
@@ -863,8 +858,8 @@ class DiscordInterface(discord.Client):
                         reset: bool = False,
                     ):
                         await self.interaction_wrapper(
-                            command_name="/set_vector",
-                            func=self.config_vector_command,
+                            command_name="/set_feature",
+                            func=self.config_steering_feature_command,
                             interaction=interaction,
                             command_prefix="config",
                             pov=target,
@@ -876,23 +871,23 @@ class DiscordInterface(discord.Client):
                         )
 
                     @self.tree.command(
-                        name="remove_vector",
-                        description="remove a steering vector",
+                        name="unset_feature",
+                        description="unset/reset/clear a steering feature",
                     )
                     @app_commands.autocomplete(feature=current_features_autocomplete)
                     @app_commands.autocomplete(target=steerable_users_autocomplete)
                     @app_commands.describe(
-                        target="em to remove the steering vector of",
-                        feature="feature to remove",
+                        target="em to unset the steering feature of",
+                        feature="feature to unset",
                     )
-                    async def remove_vector(
+                    async def unset_feature(
                         interaction: discord.Interaction,
                         target: str,
                         feature: str,
                     ):
                         await self.interaction_wrapper(
-                            command_name="/remove_vector",
-                            func=self.config_vector_command,
+                            command_name="/unset_feature",
+                            func=self.config_steering_feature_command,
                             interaction=interaction,
                             command_prefix="config",
                             pov=target,
@@ -904,14 +899,14 @@ class DiscordInterface(discord.Client):
                         )
 
                     @self.tree.command(
-                        name="reset_vectors",
-                        description="reset all steering vectors",
+                        name="unset_features",
+                        description="unset/reset/clear all steering features",
                     )
                     @app_commands.autocomplete(target=steerable_users_autocomplete)
                     @app_commands.describe(
-                        target="em to reset the steering vectors of",
+                        target="em to unset the steering features of",
                     )
-                    async def reset_vectors(
+                    async def unset_features(
                         interaction: discord.Interaction,
                         target: str,
                     ):
@@ -919,7 +914,7 @@ class DiscordInterface(discord.Client):
                             "continuation_options": {"steering": {"feature_levels": {}}}
                         }
                         await self.interaction_wrapper(
-                            command_name="/reset_vectors",
+                            command_name="/unset_features",
                             func=self.send_config_command,
                             interaction=interaction,
                             command_prefix="config",
@@ -928,12 +923,12 @@ class DiscordInterface(discord.Client):
                         )
 
                     @self.tree.command(
-                        name="get_vectors",
+                        name="get_features",
                         description="show current steering state",
                     )
                     @app_commands.autocomplete(pov=steerable_users_autocomplete)
                     @app_commands.describe(
-                        pov="em to show the steering vectors configuration of",
+                        pov="em to show the steering features configuration of",
                         # message_link="location to show the steering configuration of. defaults to last message in channel",
                         public="(FALSE by default) interaction is visible to the rest of the server",
                     )
@@ -944,7 +939,7 @@ class DiscordInterface(discord.Client):
                         public: bool = False,
                     ):
                         await self.interaction_wrapper(
-                            command_name="/get_vectors",
+                            command_name="/get_features",
                             func=self.steering_state_command,
                             interaction=interaction,
                             pov=pov,
@@ -1034,8 +1029,6 @@ class DiscordInterface(discord.Client):
                 self.tree.add_command(create_public_fork_command)
                 self.tree.add_command(mu_command)
 
-                # reset the tree
-
             except Exception as e:
                 print(f"Error registering context menu command: {e}")
                 exit(1)
@@ -1066,16 +1059,15 @@ class DiscordInterface(discord.Client):
                 await pin.unpin()
                 unpinned_messages.append(pin)
         if len(unpinned_messages) > 0:
-            content = f"### ✓ unpinned {len(unpinned_messages)} config messages:"
-            for message in unpinned_messages:
-                content += f"\n- {message.jump_url}"
+            content = f"✓ unpinned {len(unpinned_messages)} config messages"
+            # for message in unpinned_messages:
+            #     content += f"\n- {message.jump_url}"
         else:
             content = "✗ no config messages to unpin"
         await interaction.followup.send(content)
 
-    async def config_vector_command(self, **kwargs):
+    async def config_steering_feature_command(self, **kwargs):
         config = kwargs["config"]
-        pov = kwargs["pov"]
         feature = kwargs["feature"]
         level = kwargs["level"]
         reset = kwargs["reset"]
@@ -1096,7 +1088,6 @@ class DiscordInterface(discord.Client):
                 }
             }
         }
-        # feature = feature.value
         if level is not None:
             config_dict["continuation_options"]["steering"]["feature_levels"][
                 feature_key
@@ -1105,6 +1096,10 @@ class DiscordInterface(discord.Client):
             del config_dict["continuation_options"]["steering"]["feature_levels"][
                 feature_key
             ]
+
+        # check if sum of absolute values of all feature levels is greater than 10
+        if sum(abs(level) for level in config_dict["continuation_options"]["steering"]["feature_levels"].values()) > 10:
+            raise ValueError("Sum of absolute values of feature levels must be no greater than 10.\nUse **/get_features** to see current steering state and **/unset_features** to reset steering state.")
 
         kwargs["config_dict"] = config_dict
         await self.send_config_command(**kwargs)
@@ -1123,9 +1118,9 @@ class DiscordInterface(discord.Client):
             current_configuration = {}
 
         if len(current_configuration) == 0:
-            content = f"✗ no steering vectors configured for {pov_user.mention}"
+            content = f"✗ no steering features configured for {pov_user.mention}"
         else:
-            content = f"### :information_source: current steering vectors for {pov_user.mention}:\n"
+            content = f"### :information_source: current steering features for {pov_user.mention}:\n"
             # content += (
             #     "```yaml\n"
             #     + yaml.dump({"feature_levels": current_configuration})
