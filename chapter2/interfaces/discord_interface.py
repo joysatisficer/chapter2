@@ -31,7 +31,6 @@ from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON, ActionHistory
 from ontology import Config, DiscordInterfaceConfig
-from pathlib import Path
 
 
 class ChannelCache:
@@ -537,9 +536,7 @@ class DiscordInterface(discord.Client):
                                     continue
                                 content = reply_message.content
                                 await message.channel.send(
-                                    self.realize_pings(
-                                        message.channel, content, mentions
-                                    ),
+                                    self.realize_pings(content, mentions),
                                 )
                                 if self.iface_config.exo_enabled:
                                     await self.respond_to_tools(
@@ -776,7 +773,7 @@ class DiscordInterface(discord.Client):
     @trace
     async def get_config(
         self,
-        channel: "discord.abc.MessageableChannel",
+        channel: Optional["discord.abc.MessageableChannel"] = None,
         base_config: Optional[Config] = None,
         base_iface_config: Optional[DiscordInterfaceConfig] = None,
         pov_user: Optional[discord.User] = None,
@@ -1028,7 +1025,6 @@ class DiscordInterface(discord.Client):
 
     @staticmethod
     def realize_pings(
-        channel: discord.TextChannel,
         message_content: str,
         mentions: set[Union[discord.User, discord.Member]],
     ):

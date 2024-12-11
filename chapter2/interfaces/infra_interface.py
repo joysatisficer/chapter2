@@ -9,16 +9,12 @@ from aioitertools.more_itertools import take as async_take
 from interfaces.discord_interface import DiscordInterface, ConfigError
 from util.asyncutil import async_generator_to_reusable_async_iterable
 from util.discord_improved import parse_discord_content
-
 import ontology
 from ontology import Config, DiscordInterfaceConfig
-
 from load import load_em_kv
 from util.steering_api import INDEX_TO_DESC, USABLE_FEATURES
-
 from util.app_info import get_emname_id_map, get_steerable_ems
 from generate_response import get_prompt
-
 
 
 def clean_config_dict(config_dict: dict | list, blacklisted_keys: list[str] = []):
@@ -44,16 +40,27 @@ async def load_em_configs(emname):
 
 
 class InfraInterface(DiscordInterface):
+    BLACKLISTED_KEYS = {
+        "folder",
+        "novelai_api_key",
+        "exa_search_api_key",
+        "vendors",
+        "discord_token",
+        "discord_proxy_url",
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tree = app_commands.CommandTree(self)
         self.emname_to_id = get_emname_id_map()
         self.id_to_emname = {v: k for k, v in self.emname_to_id.items()}
         self.steerable_ems = get_steerable_ems()
-        self.discord_iface_config = DiscordInterfaceConfig(**{
-            **self.iface_config.model_dump(),
-            "name": "discord",
-        })
+        self.discord_iface_config = DiscordInterfaceConfig(
+            **{
+                **self.iface_config.model_dump(),
+                "name": "discord",
+            }
+        )
 
     def get_invite_link(self):
         if self.user.id is None:
@@ -87,10 +94,13 @@ class InfraInterface(DiscordInterface):
                 and parent.author == message.author
             ):
                 return
-            name = "⌥ " + parse_discord_content(message, self.user.id, self.user.name)[:40] + "..."
+            name = (
+                "⌥ "
+                + parse_discord_content(message, self.user.id, self.user.name)[:40]
+                + "..."
+            )
             await message.channel.edit(name=name)
         return
-
 
     async def resolve_message(
         self,
@@ -180,9 +190,7 @@ class InfraInterface(DiscordInterface):
                 }
             )
 
-        async def em_users_autocomplete(
-            interaction: discord.Interaction, current: str
-        ):
+        async def em_users_autocomplete(interaction: discord.Interaction, current: str):
             # filter em_users by users that are in the server
             guild = interaction.guild
             matching_em_members = [
@@ -224,9 +232,7 @@ class InfraInterface(DiscordInterface):
                 for user in matches[:25]
             ]
 
-        async def feature_autocomplete(
-            interaction: discord.Interaction, current: str
-        ):
+        async def feature_autocomplete(interaction: discord.Interaction, current: str):
             matching_features = [
                 feature
                 for feature in USABLE_FEATURES
@@ -248,9 +254,9 @@ class InfraInterface(DiscordInterface):
             config, _, _ = await self.load_pov(emname, message)
             try:
                 config_dict = config.em.model_dump()
-                current_configuration = config_dict["continuation_options"][
-                    "steering"
-                ]["feature_levels"]
+                current_configuration = config_dict["continuation_options"]["steering"][
+                    "feature_levels"
+                ]
             except:
                 current_configuration = {}
             current_features = [
@@ -264,9 +270,7 @@ class InfraInterface(DiscordInterface):
                 for feature in current_features[:25]
             ]
 
-        async def targets_autocomplete(
-            interaction: discord.Interaction, current: str
-        ):
+        async def targets_autocomplete(interaction: discord.Interaction, current: str):
             targets = current.split(" ")
             prefix = " ".join(targets[:-1])
             guild = interaction.guild
@@ -292,19 +296,9 @@ class InfraInterface(DiscordInterface):
             interface_keys.update(ontology.SHARED_INTERFACE_KEYS)
             em_keys = ontology.EM_KEYS.copy()
             all_keys = interface_keys.union(em_keys)
-            blacklisted_keys = {
-                "folder",
-                "novelai_api_key",
-                "exa_search_api_key",
-                "vendors",
-                "discord_token",
-                "discord_proxy_url",
-            }
-            all_keys = all_keys - blacklisted_keys
+            all_keys = all_keys - self.BLACKLISTED_KEYS
             matches = [key for key in all_keys if current.lower() in key.lower()]
-            return [
-                app_commands.Choice(name=key, value=key) for key in matches[:25]
-            ]
+            return [app_commands.Choice(name=key, value=key) for key in matches[:25]]
 
         format_names = ["irc", "colon", "infrastruct", "chat"]
         message_history_formats = [
@@ -361,7 +355,7 @@ class InfraInterface(DiscordInterface):
                 )
 
             @self.tree.command(
-                name="prompt", description="send the prompt of a message"
+                name="get_prompt", description="send the prompt of a message"
             )
             @app_commands.autocomplete(pov=em_users_autocomplete)
             @app_commands.describe(
@@ -382,7 +376,7 @@ class InfraInterface(DiscordInterface):
                     if str(message.author.id) in self.id_to_emname:
                         pov = self.id_to_emname[str(message.author.id)]
                 await self.interaction_wrapper(
-                    command_name="/prompt",
+                    command_name="/get_prompt",
                     func=self.get_context_command,
                     interaction=interaction,
                     message_link=message_link,
@@ -479,7 +473,6 @@ class InfraInterface(DiscordInterface):
                     },
                     targets=None,
                 )
-
 
             @self.tree.command(
                 name="config",
@@ -777,7 +770,12 @@ class InfraInterface(DiscordInterface):
         command_prefix = kwargs.get("command_prefix", ".config")
         config_dict = kwargs.get("config_dict", None)
         targets = kwargs.get("targets", None)
-        config_message = compile_config_message(command_prefix, config_dict, targets, codeblock=False if command_prefix == "history" else True)
+        config_message = compile_config_message(
+            command_prefix,
+            config_dict,
+            targets,
+            codeblock=False if command_prefix == "history" else True,
+        )
         sent_message = await interaction.followup.send(config_message)
         if sent_message is not None:
             await sent_message.pin()
@@ -830,8 +828,18 @@ class InfraInterface(DiscordInterface):
             ]
 
         # check if sum of absolute values of all feature levels is greater than 10
-        if sum(abs(level) for level in config_dict["continuation_options"]["steering"]["feature_levels"].values()) > 10:
-            raise ValueError("Sum of absolute values of feature levels must be no greater than 10.\nUse **/get_features** to see current steering state and **/unset_features** to reset steering state.")
+        if (
+            sum(
+                abs(level)
+                for level in config_dict["continuation_options"]["steering"][
+                    "feature_levels"
+                ].values()
+            )
+            > 10
+        ):
+            raise ValueError(
+                "Sum of absolute values of feature levels must be no greater than 10.\nUse **/get_features** to see current steering state and **/unset_features** to reset steering state."
+            )
 
         kwargs["config_dict"] = config_dict
         await self.send_config_command(**kwargs)
@@ -866,7 +874,7 @@ class InfraInterface(DiscordInterface):
 
     async def get_cleaned_config(self, **kwargs):
         interaction = kwargs["interaction"]
-        message = kwargs["message"]
+        # message = kwargs["message"]
         config = kwargs["config"]
         pov = kwargs["pov"]
         pov_user = kwargs["pov_user"]
@@ -874,14 +882,7 @@ class InfraInterface(DiscordInterface):
         property = kwargs.get("property", None)
         cleaned_config = clean_config_dict(
             config.model_dump(),
-            [
-                "folder",
-                "novelai_api_key",
-                "exa_search_api_key",
-                "vendors",
-                "discord_token",
-                "discord_proxy_url",
-            ],
+            list(self.BLACKLISTED_KEYS),
         )
         if property is not None:
             flattened_config = cleaned_config["em"] | cleaned_config["interfaces"][0]
@@ -912,7 +913,7 @@ class InfraInterface(DiscordInterface):
         message = kwargs["message"]
         config = kwargs["config"]
         iface_config = kwargs["iface_config"]
-        pov = kwargs["pov"]
+        # pov = kwargs["pov"]
         pov_user = kwargs["pov_user"]
         inclusive = kwargs.get("inclusive", True)
         message_history = lambda message, first_message=None, config=config, iface_config=iface_config, pov_user=pov_user, inclusive=inclusive: self.message_history(
@@ -1043,7 +1044,11 @@ class InfraInterface(DiscordInterface):
         index_msg = None
         message_thread = None
         if title is None:
-            title = "..." + parse_discord_content(message, self.user.id, self.user.name)[-15:] + "⌥"
+            title = (
+                "..."
+                + parse_discord_content(message, self.user.id, self.user.name)[-15:]
+                + "⌥"
+            )
         if not isinstance(message.channel, discord.threads.Thread):
             channel = message.channel
             message_thread = await self.get_thread_from_message(message)
@@ -1090,10 +1095,6 @@ class InfraInterface(DiscordInterface):
                 content=f".:rewind:{message.jump_url}",
                 embed=embed,
             )
-            # new_thread_message = await interaction.followup.send(
-            #     content=f".:new: ## branch at {message.jump_url}⌥",
-            #     embed=embed,
-            # )
             new_thread = await new_thread_message.create_thread(
                 name=title, reason=reason
             )
@@ -1101,7 +1102,9 @@ class InfraInterface(DiscordInterface):
             new_thread = await channel.create_thread(name=title, reason=reason)
         # embed a copy of the message in the thread with a link to the original message
         history_message = await new_thread.send(
-            content=compile_config_message(command_prefix="history", config_dict={"last": message.jump_url}),
+            content=compile_config_message(
+                command_prefix="history", config_dict={"last": message.jump_url}
+            ),
             embed=embed if not public else None,
         )
 
@@ -1117,7 +1120,6 @@ class InfraInterface(DiscordInterface):
             await new_thread.send(f".{interaction.user.mention}")
 
         return new_thread, history_message
-
 
 
 async def get_first_non_system_thread_message(thread):
@@ -1138,7 +1140,7 @@ async def get_first_non_system_thread_message(thread):
     except Exception as e:
         print(f"Error getting thread message: {e}")
         return None
-    
+
 
 def embed_from_message(message: discord.Message, timestamp: bool = False):
     embed = discord.Embed(description=message.content)
@@ -1150,6 +1152,7 @@ def embed_from_message(message: discord.Message, timestamp: bool = False):
     if timestamp:
         embed.set_footer(text=message.created_at.strftime("%Y-%m-%d %H:%M:%S"))
     return embed
+
 
 async def search_for_message_in_channels(
     message_id: int, channels: list[discord.TextChannel | None]
@@ -1182,25 +1185,26 @@ async def last_normal_message(
         ):
             return message
 
+
 def compile_config_message(
-        command_prefix: str = "config",
-        config_dict: Optional[dict] = None,
-        targets: Optional[list[discord.User] | str] = None,
-        codeblock: bool = True,
-    ):
-        dict_copy = {k: v for k, v in config_dict.items() if v is not None}
-        config_yaml = yaml.dump(dict_copy) if len(dict_copy) > 0 else ""
-        config_message = f".{command_prefix}"
-        if targets is not None:
-            for target in targets:
-                if target is not None:
-                    config_message = (
-                        config_message
-                        + f" {target.mention if isinstance(target, discord.User) else target}"
-                    )
-        config_message = config_message + "\n---\n"
-        if codeblock:
-            config_message = config_message + f"```yaml\n{config_yaml}\n```"
-        else:
-            config_message = config_message + config_yaml
-        return config_message
+    command_prefix: str = "config",
+    config_dict: Optional[dict] = None,
+    targets: Optional[list[discord.User] | str] = None,
+    codeblock: bool = True,
+):
+    dict_copy = {k: v for k, v in config_dict.items() if v is not None}
+    config_yaml = yaml.dump(dict_copy) if len(dict_copy) > 0 else ""
+    config_message = f".{command_prefix}"
+    if targets is not None:
+        for target in targets:
+            if target is not None:
+                config_message = (
+                    config_message
+                    + f" {target.mention if isinstance(target, discord.User) else target}"
+                )
+    config_message = config_message + "\n---\n"
+    if codeblock:
+        config_message = config_message + f"```yaml\n{config_yaml}\n```"
+    else:
+        config_message = config_message + config_yaml
+    return config_message
