@@ -726,6 +726,34 @@ class DiscordInterface(discord.Client):
                     )
 
                 @self.tree.command(
+                    name="config_speakers",
+                    description="update configuration for may_speak (pins .config message)",
+                )
+                @app_commands.autocomplete(may_speak=targets_autocomplete)
+                @app_commands.describe(
+                    may_speak="space-separated list of ems to allow to speak (if not set, allow all ems)",
+                )
+                async def configure_speakers(
+                    interaction: discord.Interaction,
+                    may_speak: Optional[str] = None,
+                ):
+                    if may_speak is not None:
+                        may_speak = may_speak.split(" ")
+                    else:
+                        may_speak = []
+                    await self.interaction_wrapper(
+                        command_name="/config_speakers",
+                        func=self.send_config_command,
+                        interaction=interaction,
+                        command_prefix="config",
+                        config_dict={
+                            "may_speak": may_speak,
+                        },
+                        targets=None,
+                    )
+
+
+                @self.tree.command(
                     name="config",
                     description="update configuration for channel (pins .config message)",
                 )
@@ -748,6 +776,7 @@ class DiscordInterface(discord.Client):
                     message_history_format: Optional[str] = None,
                     reply_on_random: Optional[int] = None,
                     ignore_dotted_messages: Optional[bool] = None,
+                    mute: Optional[bool] = None,
                     # yaml: Optional[discord.Attachment] = None,
                 ):
                     if targets is not None:
@@ -929,17 +958,17 @@ class DiscordInterface(discord.Client):
 
             try:
 
-                # async def private_fork_menu_command(
-                #     interaction: discord.Interaction, message: discord.Message
-                # ):
-                #     await self.interaction_wrapper(
-                #         command_name="/fork",
-                #         func=self.fork_command,
-                #         interaction=interaction,
-                #         message=message,
-                #         public=False,
-                #         title=None,
-                #     )
+                async def private_fork_menu_command(
+                    interaction: discord.Interaction, message: discord.Message
+                ):
+                    await self.interaction_wrapper(
+                        command_name="/fork",
+                        func=self.fork_command,
+                        interaction=interaction,
+                        message=message,
+                        public=False,
+                        title=None,
+                    )
 
                 async def public_fork_menu_command(
                     interaction: discord.Interaction, message: discord.Message
@@ -976,11 +1005,11 @@ class DiscordInterface(discord.Client):
                 #         pov=None,
                 #     )
 
-                # create_private_fork_command = app_commands.ContextMenu(
-                #     name="fork (private)",
-                #     callback=private_fork_menu_command,
-                #     type=discord.AppCommandType.message,
-                # )
+                create_private_fork_command = app_commands.ContextMenu(
+                    name="fork (private)",
+                    callback=private_fork_menu_command,
+                    type=discord.AppCommandType.message,
+                )
 
                 create_public_fork_command = app_commands.ContextMenu(
                     name="fork",
@@ -1001,7 +1030,7 @@ class DiscordInterface(discord.Client):
                 # )
 
                 # self.tree.add_command(get_history_command)
-                # self.tree.add_command(create_private_fork_command)
+                self.tree.add_command(create_private_fork_command)
                 self.tree.add_command(create_public_fork_command)
                 self.tree.add_command(mu_command)
 
@@ -1274,7 +1303,7 @@ class DiscordInterface(discord.Client):
         await new_thread.send(f"m continue {message_author.mention}")
         # return success_message
 
-    @trace
+    # @trace
     async def message_history(
         self,
         message: discord.Message,
@@ -1390,7 +1419,7 @@ class DiscordInterface(discord.Client):
                     and parent.author == message.author
                 ):
                     return
-                name = "⌥ " + message.content[:40] + "..."
+                name = "⌥ " + parse_discord_content(message, self.user.id, self.user.name)[:40] + "..."
                 await message.channel.edit(name=name)
             return
         if is_command := is_continue_command(message.content):
@@ -1439,9 +1468,15 @@ class DiscordInterface(discord.Client):
                 try:
                     my_user_id = UserID(str(self.user.id), "discord")
 
-                    message_history = lambda message, first_message=None, config=config, iface_config=iface_config: self.message_history(
-                        message, first_message, config, iface_config
-                    )
+                    # message_history = lambda message, first_message=None, config=config, iface_config=iface_config: self.message_history(
+                    #     message, first_message, config, iface_config
+                    # )
+
+                    @trace
+                    def message_history(message, first_message=None, config=config, iface_config=iface_config):
+                        return self.message_history(
+                            message, first_message, config, iface_config
+                        )
 
                     if not await self.should_reply(
                         message,
@@ -1987,7 +2022,7 @@ class DiscordInterface(discord.Client):
         index_msg = None
         message_thread = None
         if title is None:
-            title = "..." + message.content[-15:] + "⌥"
+            title = "..." + parse_discord_content(message, self.user.id, self.user.name)[-15:] + "⌥"
         if not isinstance(message.channel, discord.threads.Thread):
             channel = message.channel
             message_thread = await self.get_thread_from_message(message)
@@ -2005,7 +2040,7 @@ class DiscordInterface(discord.Client):
                     and first_message.content.startswith(index_message_prefix)
                 ):
                     index_msg = first_message
-            else:
+            elif public:
                 # message has no thread yet; create a new one for storing links to children messages
                 index_thread_name = "..." + message.content[-15:] + "⌥*"
                 message_thread = await message.create_thread(
