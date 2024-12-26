@@ -1,6 +1,6 @@
 __pycache__/
 .idea/
-doc/todo.md
+doc/todo/todo.md
 .pyre/*
 chapter2/.pyre/*
 chapter2/.pytest_cache/*
