@@ -29,7 +29,7 @@ from message_formats import hashint
 from trace import trace, ot_tracer, log_trace_id_to_console
 from interfaces.deserves_reply import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
-from util.discord_improved import ScheduleTyping, parse_discord_content
+from util.discord_improved import ScheduleTyping, parse_discord_content, resolve_member
 from declarations import GenerateResponse, Message, Author, JSON, ActionHistory
 from ontology import Config, DiscordInterfaceConfig
 
@@ -368,6 +368,30 @@ class DiscordInterface(discord.Client):
         else:
             author_name = message.author.name
         content = parse_discord_content(message, self.user.id, config.em.name)
+        if message.reference is not None and not message.is_system():  # is it a reply?
+            if message.reference.resolved is not None:
+                referenced_message = message.reference.resolved
+            elif message.reference.cached_message is not None:
+                referenced_message = message.reference.cached_message
+            else:
+                referenced_message = await message.channel.fetch_message(
+                    message.reference.message_id
+                )
+            if referenced_message is None or isinstance(
+                referenced_message, discord.DeletedReferencedMessage
+            ):
+                prefix = "@deleted-message "
+            else:
+                prefix = (
+                    resolve_member(
+                        message,
+                        referenced_message.author.id,
+                        self.user.id,
+                        config.em.name,
+                    )
+                    + " "
+                )
+            content = prefix + content
         for attachment in message.attachments:
             att_data = await parse_attachment(attachment)
             if iface_config.ignore_dotted_messages and (
