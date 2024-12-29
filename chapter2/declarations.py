@@ -7,12 +7,12 @@ if TYPE_CHECKING:
     from ontology import Config, FacultyConfig
 
 
-@pydantic.dataclasses.dataclass
+@pydantic.dataclasses.dataclass(frozen=True)
 class Author:
     name: str | None
 
 
-@pydantic.dataclasses.dataclass
+@pydantic.dataclasses.dataclass(frozen=True)
 class Message:
     author: Author | None
     content: str
