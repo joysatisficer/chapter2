@@ -83,7 +83,7 @@ async def exa_search_faculty(
             if result.url in yielded_urls or result.url in faculty_config.ignored_urls:
                 continue
             if result.published_date is None:
-                published_timestamp = None
+                published_timestamp = time.time()  # Default to current timestamp
             else:
                 published_timestamp = time.mktime(
                     dateutil.parser.parse(result.published_date).timetuple()
@@ -107,7 +107,6 @@ async def exa_search_faculty(
                 n_results + faculty_config.impl_hint_initial_num_results,
                 faculty_config.max_results,
             )
-
 
 def strip_leading_indentation(string: str) -> str:
     result = []
