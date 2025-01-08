@@ -110,7 +110,7 @@ class ChatCompletionsInterface(AbstractInterface):
             async def messages_iterator():
                 for chat_completion_message in chat_completions_request.messages[::-1]:
                     if chat_completion_message.role == "assistant":
-                        author = Author(self.em_name, my_user_id)
+                        author = Author(self.em_name)
                         message_type = None
                     elif chat_completion_message.role == "user":
                         name = (
@@ -179,7 +179,6 @@ class ChatCompletionsInterface(AbstractInterface):
         import uvicorn
         from util.uvicorn_improved import RapidShutdownUvicornServer
 
-        # TODO: Option for listening on an HTTP port (port 0 = random port)
         if self.iface_config.port is None:
             socket_loc = str(self.base_config.em.folder / "socket")
             uv_config = uvicorn.Config(

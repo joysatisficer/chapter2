@@ -116,10 +116,19 @@ class CompletionsInterface(AbstractInterface):
         import uvicorn
         from util.uvicorn_improved import RapidShutdownUvicornServer
 
-        # TODO: read port from config, read config from env, read unix socket from env
-        uv_config = uvicorn.Config(
-            self.app, port=6006, log_level="info", host="0.0.0.0"
-        )
+        if self.iface_config.port is None:
+            socket_loc = str(self.base_config.em.folder / "socket")
+            uv_config = uvicorn.Config(
+                self.app,
+                log_level="info",
+                uds=socket_loc,
+            )
+            print(f"Listening on {socket_loc}")
+        else:
+            uv_config = uvicorn.Config(
+                self.app, log_level="info", port=self.iface_config.port
+            )
+            print(f"Listening on {self.iface_config.port}")
         self.uv_server = RapidShutdownUvicornServer(uv_config)
         self.uv_server.install_signal_handlers = lambda: None
         self.task_serve = asyncio.create_task(self.uv_server.serve())

@@ -283,6 +283,8 @@ class MikotoInterfaceConfig(SharedInterfaceConfig):
 
 class CompletionsInterfaceConfig(SharedInterfaceConfig):
     name: Literal["completions"] = "completions"
+    default_name: str = "user"
+    port: int | None = None
 
 
 class ChatCompletionsInterfaceConfig(SharedInterfaceConfig):
