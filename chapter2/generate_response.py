@@ -19,7 +19,6 @@ from trace import trace, log_trace_id_to_console
 @trace
 async def get_prompt(history: ActionHistory, em: EmConfig):
     count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
-    author = Author(em.name)
     completion_prefix = (
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
