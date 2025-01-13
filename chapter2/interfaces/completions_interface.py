@@ -40,6 +40,8 @@ class CompletionResponse(BaseModel):
 
 
 class CompletionsInterface(AbstractInterface):
+    """Stability: Beta"""
+
     def __init__(
         self,
         base_config: Config,

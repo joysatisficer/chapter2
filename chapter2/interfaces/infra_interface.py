@@ -40,6 +40,8 @@ async def load_em_configs(emname):
 
 
 class InfraInterface(DiscordInterface):
+    """Stability: Alpha"""
+
     BLACKLISTED_KEYS = {
         "folder",
         "novelai_api_key",

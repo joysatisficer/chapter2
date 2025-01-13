@@ -14,6 +14,8 @@ import ontology
 
 # todo: refactor so that subclassing and using super with AbstractInterface are possible
 class MikotoInterface(mikoto.MikotoClient):
+    """Stability: Deprecated"""
+
     def __init__(
         self,
         base_config: Config,

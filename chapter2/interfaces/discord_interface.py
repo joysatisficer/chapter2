@@ -34,6 +34,8 @@ from ontology import Config, DiscordInterfaceConfig
 
 
 class DiscordInterface(discord.Client):
+    """Stability: Gold"""
+
     MAX_CONCURRENT_MESSAGES = 100_000
     DOTTED_MESSAGE_RE = r"^[.,][^\s.,]"
 
