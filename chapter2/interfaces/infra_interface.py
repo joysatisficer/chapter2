@@ -1,4 +1,7 @@
+import inspect
+
 import discord
+import pydantic
 from discord import app_commands
 from typing import Optional
 from pydantic import ValidationError
@@ -42,11 +45,6 @@ async def load_em_configs(emname):
 class InfraInterface(DiscordInterface):
     BLACKLISTED_KEYS = {
         "folder",
-        "novelai_api_key",
-        "exa_search_api_key",
-        "vendors",
-        "discord_token",
-        "discord_proxy_url",
     }
 
     def __init__(self, *args, **kwargs):
@@ -289,15 +287,17 @@ class InfraInterface(DiscordInterface):
                 for user in matches[:25]
             ]
 
-        async def config_keys_autocomplete(
-            interaction: discord.Interaction, current: str
-        ):
+        async def config_keys_autocomplete(_: discord.Interaction, current: str):
             interface_keys = ontology.ALL_INTERFACE_KEYS.copy()
             interface_keys.update(ontology.SHARED_INTERFACE_KEYS)
-            em_keys = ontology.EM_KEYS.copy()
-            all_keys = interface_keys.union(em_keys)
-            all_keys = all_keys - self.BLACKLISTED_KEYS
-            matches = [key for key in all_keys if current.lower() in key.lower()]
+            all_keys = interface_keys.union(ontology.EM_KEYS)
+            annotations = inspect.get_annotations(ontology.EmConfig)
+            filtered_keys = [
+                key in self.BLACKLISTED_KEYS
+                or isinstance(annotations[key], pydantic.Secret)
+                for key in all_keys
+            ]
+            matches = [key for key in filtered_keys if current.lower() in key.lower()]
             return [app_commands.Choice(name=key, value=key) for key in matches[:25]]
 
         format_names = ["irc", "colon", "infrastruct", "chat"]
