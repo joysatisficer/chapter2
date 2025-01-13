@@ -1,6 +1,5 @@
 import asyncio
 import re
-
 import discord
 import discord.context_managers
 import discord.utils
@@ -71,6 +70,10 @@ def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) 
         transformed = transforms[type](self, id, my_user_id, my_name)
         return transformed
 
-    result = re.sub(r"<(@[!&]?|#)([0-9]{15,20})>", repl, self.system_content)
+    result = re.sub(
+        r"<(@[!&]?|#)([0-9]{15,20})>",
+        repl,
+        self.system_content if self.is_system() else self.content,
+    )
 
     return discord.utils.escape_mentions(result)

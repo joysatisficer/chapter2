@@ -108,6 +108,7 @@ async def exa_search_faculty(
                 faculty_config.max_results,
             )
 
+
 def strip_leading_indentation(string: str) -> str:
     result = []
     for line in string.splitlines():

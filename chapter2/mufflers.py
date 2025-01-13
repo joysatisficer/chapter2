@@ -24,10 +24,15 @@ def has_pump_fun_ca(context: str, reply: str):
     return match(r"[a-zA-Z0-9]{40}pump", reply)
 
 
+def has_img_url_token(context: str, reply: str):
+    return match(r"<begin_of_img_url>", reply)
+
+
 mufflers: dict[str, Muffler] = {
     "context_sentence_repetition": context_sentence_repetition,
     "has_url": has_url,
     "has_pump_fun_ca": has_pump_fun_ca,
+    "has_img_url_token": has_img_url_token,
 }
 
 

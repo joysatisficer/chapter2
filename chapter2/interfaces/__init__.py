@@ -4,6 +4,7 @@ from interfaces.discord_interface import DiscordInterface
 from interfaces.mikoto_interface import MikotoInterface
 from interfaces.rpc_interface import RPCInterface
 from interfaces.addons.discord_generate_avatar import discord_generate_avatar
+from interfaces.infra_interface import InfraInterface
 
 INTERFACE_NAME_TO_INTERFACE = {
     "discord": DiscordInterface,
@@ -14,6 +15,7 @@ INTERFACE_NAME_TO_INTERFACE = {
     "completions": CompletionsInterface,
     # compatible with OpenAI's API for chat models
     "chatcompletions": ChatCompletionsInterface,
+    "infra": InfraInterface,
 }
 INTERFACE_ADDON_NAME_TO_ADDON = {
     "discord": {

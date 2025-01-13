@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import re
-import string
 import textwrap
 import time
 import random
@@ -35,8 +34,8 @@ from ontology import Config, DiscordInterfaceConfig
 
 
 class DiscordInterface(discord.Client):
-    DOTTED_MESSAGE_RE = r"^[.,][^\s.,]"
     MAX_CONCURRENT_MESSAGES = 100_000
+    DOTTED_MESSAGE_RE = r"^[.,][^\s.,]"
 
     def __init__(
         self,
@@ -68,6 +67,7 @@ class DiscordInterface(discord.Client):
         )
         self.pinned_yaml: dict[int, dict] = {}
         self.pinned_messages: defaultdict[int, set[int]] = defaultdict(set)
+        self.pins: dict[int, list[discord.Message]] = {}
         self.cache = Cache()
         self.pending_shutdown = False
         if (
@@ -90,8 +90,104 @@ class DiscordInterface(discord.Client):
             self._connection._get_websocket = self._get_websocket
             self._connection._get_client = lambda: self
 
+    # @trace
+    async def message_history(
+        self,
+        message: discord.Message,
+        first_message: Optional[discord.Message] = None,
+        config: Optional[Config] = None,
+        iface_config: Optional[DiscordInterfaceConfig] = None,
+        pov_user: Optional[discord.User] = None,
+        inclusive: bool = True,
+    ):
+        if pov_user is None:
+            pov_user = self.user
+        if inclusive and message and not self.message_invisible(message, iface_config):
+            yield await self.discord_message_to_message(
+                config, iface_config, message, pov_user
+            )
+
+        async for this_message in self.cache(message.channel).history(
+            limit=None,
+            before=message,
+            after=first_message,
+        ):
+            if not message or self.message_invisible(this_message, iface_config):
+                pass
+            else:
+                yield await self.discord_message_to_message(
+                    config, iface_config, this_message, pov_user
+                )
+            config_message = self.parse_dot_command(this_message)
+            if config_message and config_message["command"] == "history":
+                if (
+                    len(config_message["args"]) == 0
+                    or self.name_in_list(
+                        name_list=config_message["args"],
+                        config=config,
+                        user=pov_user,
+                    )
+                    or pov_user.mentioned_in(this_message)
+                ):
+                    if "last" in config_message["yaml"]:
+                        last = await self.get_message_from_link(
+                            config_message["yaml"]["last"]
+                        )
+                        first = None
+                        if "first" in config_message["yaml"]:
+                            first = await self.get_message_from_link(
+                                config_message["yaml"]["first"]
+                            )
+                        if last is not None:
+                            if first is None:
+                                first = first_message
+                            async for msg in self.message_history(
+                                last, first, config, iface_config, pov_user
+                            ):
+                                yield msg
+                    if (
+                        "passthrough" not in config_message["yaml"]
+                        or config_message["yaml"]["passthrough"] is False
+                    ):
+                        return
+        if first_message is not None:
+            yield await self.discord_message_to_message(
+                config, iface_config, first_message, pov_user
+            )
+        elif iface_config.threads_inherit_history and isinstance(
+            message.channel, discord.threads.Thread
+        ):
+            thread = message.channel
+            # starter message id is the same as the thread id if the
+            # thread is attached to a message
+            if message.channel.name.startswith("new:"):
+                return
+            elif message.channel.name.startswith("past:"):
+                starter_message_id = message.channel.name.split("past:")[1]
+            elif thread.id is not None:
+                starter_message_id = thread.id
+            else:
+                return
+            try:
+                starter_message = await message.channel.parent.fetch_message(
+                    starter_message_id
+                )
+            except discord.errors.NotFound:
+                starter_message = None
+            if starter_message is not None:
+                async for msg in self.message_history(
+                    starter_message,
+                    first_message=None,
+                    config=config,
+                    iface_config=iface_config,
+                    pov_user=pov_user,
+                ):
+                    yield msg
+
     async def on_message(self, message: discord.Message) -> None:
+
         self.cache(message.channel).update(message, True)
+
         if is_command := is_continue_command(message.content):
             if not self.user.mentioned_in(message):
                 return
@@ -107,6 +203,9 @@ class DiscordInterface(discord.Client):
                     pass
                 else:
                     break
+        # elif message_invisible(message, self.iface_config):
+        #     return
+
         async with self.handle_exceptions(
             (
                 # cache misses are unlikely here
@@ -134,89 +233,20 @@ class DiscordInterface(discord.Client):
             async with self.per_interlocutor_semaphore[message.author.id]:
                 try:
 
+                    # message_history = lambda message, first_message=None, config=config, iface_config=iface_config: self.message_history(
+                    #     message, first_message, config, iface_config
+                    # )
+
                     @trace
-                    async def message_history(message, first_message=None):
-                        yield await self.discord_message_to_message(
-                            config, iface_config, message
+                    def message_history(
+                        message,
+                        first_message=None,
+                        config=config,
+                        iface_config=iface_config,
+                    ):
+                        return self.message_history(
+                            message, first_message, config, iface_config
                         )
-                        async for this_message in self.cache(message.channel).history(
-                            limit=None,
-                            before=message,
-                            after=first_message,
-                        ):
-                            if is_continue_command(this_message.content):
-                                pass
-                            elif is_mu_command(this_message.content):
-                                pass
-                            elif iface_config.ignore_dotted_messages and (
-                                re.match(self.DOTTED_MESSAGE_RE, this_message.content)
-                                or this_message.type
-                                == discord.MessageType.thread_starter_message
-                                or this_message.type == discord.MessageType.pins_add
-                            ):
-                                pass
-                            else:
-                                yield await self.discord_message_to_message(
-                                    config, iface_config, this_message
-                                )
-                            config_message = parse_dot_command(this_message)
-                            if (
-                                config_message
-                                and config_message["command"] == "history"
-                            ):
-                                if (
-                                    len(config_message["args"]) == 0
-                                    or self.name_in_list(config_message["args"])
-                                    or self.user.mentioned_in(this_message)
-                                ):
-                                    if "last" in config_message["yaml"]:
-                                        last = await self.get_message_from_link(
-                                            config_message["yaml"]["last"]
-                                        )
-                                        first = None
-                                        if "first" in config_message["yaml"]:
-                                            first = await self.get_message_from_link(
-                                                config_message["yaml"]["first"]
-                                            )
-                                        if last is not None:
-                                            async for msg in message_history(
-                                                last, first
-                                            ):
-                                                yield msg
-                                    if (
-                                        "passthrough" not in config_message["yaml"]
-                                        or config_message["yaml"]["passthrough"]
-                                        is False
-                                    ):
-                                        return
-                        if first_message is not None:
-                            yield await self.discord_message_to_message(
-                                config, iface_config, first_message
-                            )
-                        elif iface_config.threads_inherit_history and isinstance(
-                            message.channel, discord.threads.Thread
-                        ):
-                            thread = message.channel
-                            # starter message id is the same as the thread id if the
-                            # thread is attached to a message
-                            if message.channel.name.startswith("new:"):
-                                return
-                            elif message.channel.name.startswith("past:"):
-                                starter_message_id = message.channel.name.split(
-                                    "past:"
-                                )[1]
-                            elif thread.id is not None:
-                                starter_message_id = thread.id
-                            else:
-                                return
-                            starter_message = (
-                                await message.channel.parent.fetch_message(
-                                    starter_message_id
-                                )
-                            )
-                            if starter_message is not None:
-                                async for msg in message_history(starter_message):
-                                    yield msg
 
                     if not await self.should_reply(
                         message,
@@ -240,6 +270,7 @@ class DiscordInterface(discord.Client):
                             )
                         )
                     )
+
                     mentions = set()
                     for these_mentions in raw_mentions:
                         mentions.update(these_mentions)
@@ -271,9 +302,7 @@ class DiscordInterface(discord.Client):
                                     continue
                                 content = reply_message.content
                                 await message.channel.send(
-                                    realize_pings(
-                                        self, message.channel, content, mentions
-                                    ),
+                                    self.realize_pings(content, mentions),
                                 )
                                 if self.iface_config.exo_enabled:
                                     await self.respond_to_tools(
@@ -361,13 +390,20 @@ class DiscordInterface(discord.Client):
             )
 
     async def discord_message_to_message(
-        self, config, iface_config: DiscordInterfaceConfig, message: discord.Message
+        self,
+        config,
+        iface_config: DiscordInterfaceConfig,
+        message: discord.Message,
+        pov_user: Optional[discord.User] = None,
     ) -> Tuple[Message, frozenset[Union[discord.User, discord.Member]]]:
-        if message.author.id == self.user.id:
+        if pov_user is None:
+            pov_user = self.user
+
+        if message.author.id == pov_user.id:
             author_name = config.em.name
         else:
             author_name = message.author.name
-        content = parse_discord_content(message, self.user.id, config.em.name)
+        content = parse_discord_content(message, pov_user.id, config.em.name)
         if message.reference is not None and not message.is_system():  # is it a reply?
             if message.reference.resolved is not None:
                 referenced_message = message.reference.resolved
@@ -393,7 +429,7 @@ class DiscordInterface(discord.Client):
                 )
             content = prefix + content
         for attachment in message.attachments:
-            att_data = await parse_attachment(attachment)
+            att_data = await self.parse_attachment(attachment)
             if iface_config.ignore_dotted_messages and (
                 att_data["command"] in ["config", "history"]
                 or re.match(self.DOTTED_MESSAGE_RE, attachment.filename)
@@ -401,7 +437,7 @@ class DiscordInterface(discord.Client):
                 continue
             if att_data["type"] == "text":
                 # don't strip leading whitespace; might be ASCII art
-                content += f"\n<|begin_of_attachment|>\n{(await get_attachment_content(attachment)).rstrip()}\n<|end_of_attachment|>\n"
+                content += f"\n<|begin_of_attachment|>{(await self.get_attachment_content(attachment)).rstrip()}<|end_of_attachment|>"
             elif iface_config.include_images and att_data["type"] == "image":
                 if (
                     attachment.width > iface_config.image_limits.max_width
@@ -422,6 +458,19 @@ class DiscordInterface(discord.Client):
                     url = attachment.proxy_url
                 content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
         channel = message.channel
+
+        if message.reference and content == "":
+            # hacky check for forwarded message; discord.py version 2.5 has a type for it but that doesnt seem to be out yet
+            if (
+                message.reference.channel_id is not None
+                and message.reference.message_id is not None
+            ):
+                thread = await self.get_channel_cached(message.reference.channel_id)
+                forwarded_message = await thread.fetch_message(
+                    message.reference.message_id
+                )
+                if forwarded_message:
+                    content = f"<|begin_of_fwd|>{parse_discord_content(forwarded_message, pov_user.id, config.em.name)}<|end_of_fwd|>"
         return Message(
             Author(author_name),
             content.strip(),
@@ -454,7 +503,10 @@ class DiscordInterface(discord.Client):
                 iface_config.ignore_dotted_messages
                 and re.match(self.DOTTED_MESSAGE_RE, message.content)
             )
-            and not (iface_config.mute is True or self.name_in_list(iface_config.mute))
+            and not (
+                iface_config.mute is True
+                or self.name_in_list(iface_config.mute, config, self.user)
+            )
             and not (
                 iface_config.thread_mute
                 and message.channel.type == discord.ChannelType.public_thread
@@ -465,7 +517,7 @@ class DiscordInterface(discord.Client):
             )
             and (
                 len(iface_config.may_speak) == 0
-                or self.name_in_list(iface_config.may_speak)
+                or self.name_in_list(iface_config.may_speak, config, self.user)
             )
             and (
                 (iface_config.reply_on_ping and self.user.mentioned_in(message))
@@ -506,33 +558,42 @@ class DiscordInterface(discord.Client):
             )
         )
 
-    def name_in_list(self, name_list, nicknames=None):
-        if isinstance(name_list, str):
-            name_list = [name_list]
-        elif not isinstance(name_list, list):
-            return False
-        if nicknames is None:
-            nicknames = []
-        return any(
-            name in name_list for name in (self.user.name, self.sysname, *nicknames)
-        )
-
     @trace
     async def get_config(
-        self, channel: "discord.abc.MessageableChannel"
+        self,
+        channel: Optional["discord.abc.MessageableChannel"] = None,
+        base_config: Optional[Config] = None,
+        base_iface_config: Optional[DiscordInterfaceConfig] = None,
+        pov_user: Optional[discord.User] = None,
     ) -> Tuple[Config, DiscordInterfaceConfig]:
+        if base_config is None:
+            base_config = self.base_config
+        if base_iface_config is None:
+            base_iface_config = self.iface_config
+        if pov_user is None:
+            pov_user = self.user
         if isinstance(channel, dict):
             kv = channel
         elif channel is not None:
             if channel.id not in self.pinned_yaml:
                 await self.update_pins(channel)
-            kv = get_yaml_from_channel(channel) | self.pinned_yaml[channel.id]
+            if pov_user.id == self.user.id:
+                kv = self.get_yaml_from_channel(channel) | self.pinned_yaml[channel.id]
+            else:
+                pinned_config = {}
+                for message in reversed(self.pins[channel.id]):
+                    pinned_config.update(
+                        await self.get_config_from_message(
+                            message, base_config, pov_user
+                        )
+                    )
+                kv = self.get_yaml_from_channel(channel) | pinned_config
         else:
             kv = {}
-        config = ontology.load_config_from_kv(kv, self.base_config.model_dump())
+        config = ontology.load_config_from_kv(kv, base_config.model_dump())
         iface_config = DiscordInterfaceConfig(
             **ontology.transpose_keys(
-                ontology.overlay(kv, {"interfaces": [self.iface_config.model_dump()]})
+                ontology.overlay(kv, {"interfaces": [base_iface_config.model_dump()]})
             )["interfaces"][0]
         )
         return config, iface_config
@@ -564,7 +625,7 @@ class DiscordInterface(discord.Client):
                     print(
                         "bad config in channel",
                         f"#{message.channel.name}",
-                        get_channel_topic(message.channel),
+                        self.get_channel_topic(message.channel),
                     )
                     raise exc.__cause__
 
@@ -680,39 +741,16 @@ class DiscordInterface(discord.Client):
         else:
             return None
 
-    async def get_config_from_message(self, message: discord.Message):
-        config = {}
-        is_config_message = False
-        dot_command = parse_dot_command(message)
-        if dot_command:
-            if dot_command["command"] == "config" and (
-                len(dot_command["args"]) == 0
-                or self.name_in_list(dot_command["args"])
-                or self.user.mentioned_in(message)
-            ):
-                config = dot_command["yaml"]
-                is_config_message = True
-        for attachment in message.attachments:
-            att_data = await parse_attachment(attachment)
-            if att_data["type"] == "text" and (
-                len(att_data["args"]) == 0
-                or self.name_in_list(att_data["args"])
-                or self.user.mentioned_in(message)
-            ):
-                if att_data["command"] == "config":
-                    config.update(att_data["yaml"])
-                    is_config_message = True
-                elif is_config_message:
-                    config[att_data["command"]] = att_data["yaml"]
-        return config
-
     async def update_pins(self, channel: discord.abc.Messageable):
         pins = await channel.pins()
         self.pinned_messages[channel.id] = {m.id for m in pins}
+        self.pins[channel.id] = pins
         config = {}
         # pins() is newest first; new pins should be last and override older ones
         for message in reversed(pins):
-            config.update(await self.get_config_from_message(message))
+            config.update(
+                await self.get_config_from_message(message, self.base_config, self.user)
+            )
         self.pinned_yaml[channel.id] = config
 
     async def on_guild_channel_pins_update(self, channel, _last_pin):
@@ -750,6 +788,215 @@ class DiscordInterface(discord.Client):
         if payload.message_id in self.pinned_messages[channel.id]:
             await self.update_pins(channel)
 
+    async def get_thread_from_message(self, message: discord.Message):
+        # gets the thread associated with a message, if it exists
+        try:
+            thread = await self.get_channel_cached(message.id)
+            if isinstance(thread, discord.threads.Thread):
+                return thread
+            else:
+                return None
+        except Exception as e:
+            return None
+
+    @staticmethod
+    def embed_from_message(message: discord.Message, timestamp: bool = False):
+        embed = discord.Embed(description=message.content)
+        embed.set_author(
+            name=message.author.display_name,
+            icon_url=message.author.display_avatar.url,
+            url=message.jump_url,
+        )
+        if timestamp:
+            embed.set_footer(text=message.created_at.strftime("%Y-%m-%d %H:%M:%S"))
+        return embed
+
+    @staticmethod
+    def realize_pings(
+        message_content: str,
+        mentions: set[Union[discord.User, discord.Member]],
+    ):
+        for member in mentions:
+            if "@" + member.name in message_content:
+                message_content = message_content.replace(
+                    "@" + member.name, f"<@!{member.id}>"
+                )
+        return message_content
+
+    @staticmethod
+    def get_yaml_from_channel(
+        channel: "discord.abc.MessageableChannel",
+    ) -> JSON:
+        topic = DiscordInterface.get_channel_topic(channel)
+        if topic is not None and "---" in topic:
+            try:
+                return DiscordInterface.parse_yaml_config(topic) or {}
+            except Exception as e:
+                print(f"Error parsing YAML in channel {channel.name}: {e}")
+                return {}
+        else:
+            return {}
+
+    @staticmethod
+    def parse_yaml_config(content: str):
+        content = (
+            content.split("---")[1].replace("```yaml", "").replace("```", "").strip()
+        )
+        return yaml.safe_load(content)
+
+    @staticmethod
+    def parse_dot_command(message: discord.Message):
+        match = re.match(
+            r"^\.(\w+)(?:[\s|\.]+(.+))?$", message.content.split("---", 1)[0]
+        )
+        if match:
+            try:
+                yaml_content = DiscordInterface.parse_yaml_config(message.content)
+            except Exception as e:
+                print(f"Error parsing YAML")
+                yaml_content = {}
+            return {
+                "command": match.group(1),
+                "args": re.split("[\s|\.]", match.group(2)) if match.group(2) else [],
+                "yaml": yaml_content or {},
+            }
+        else:
+            return None
+
+    @staticmethod
+    async def parse_attachment(attachment: discord.Attachment):
+        att_info = {"command": None, "args": [], "type": attachment.content_type}
+        if (
+            attachment.height is not None
+            and attachment.width is not None
+            and attachment.content_type.startswith("image/")
+        ):
+            att_info["type"] = "image"
+        elif not attachment.content_type or attachment.content_type.startswith("text/"):
+            att_info["type"] = "text"
+            match = re.match(
+                r"^\.?(.+?)(?:[\s|-](.+?))?(?:\.(.+?))?$", attachment.filename
+            )
+            if match:
+                try:
+                    att_info["yaml"] = yaml.safe_load(
+                        await DiscordInterface.get_attachment_content(attachment)
+                    )
+                    att_info["command"] = match.group(1)
+                    att_info["args"] = (
+                        re.split("[\s|-]", match.group(2)) if match.group(2) else []
+                    )
+                except Exception as e:
+                    print(f"Error parsing YAML")
+        return att_info
+
+    @staticmethod
+    def get_channel_topic(
+        channel: "discord.abc.MessageableChannel",
+    ) -> str | None:
+        if hasattr(channel, "topic"):
+            return channel.topic
+        elif hasattr(channel, "parent"):
+            return channel.parent.topic
+        else:
+            return None
+
+    @staticmethod
+    async def get_attachment_content(attachment: discord.Attachment) -> str:
+        # @lru_cache doesn't work on async functions, so use this as a workaround
+        return await asyncio.to_thread(
+            DiscordInterface.get_attachment_content_inner, attachment
+        )
+
+    @staticmethod
+    @lru_cache
+    def get_attachment_content_inner(attachment: discord.Attachment):
+        r = requests.get(attachment.url, allow_redirects=True)
+        attachment_content = r.content
+        decoded_content = attachment_content.decode("utf-8")  # Assuming UTF-8 encoding
+        unescaped_content = DiscordInterface.unescape_string(decoded_content)
+        return unescaped_content
+
+    @staticmethod
+    def unescape_string(escaped_string: str) -> str:
+        try:
+            # Use ast.literal_eval to safely evaluate the string
+            return ast.literal_eval(f"'''{escaped_string}'''")
+        except (SyntaxError, ValueError):
+            # If there's an error, return the original string
+            return escaped_string
+
+    @staticmethod
+    def message_invisible(
+        message: discord.Message, iface_config: DiscordInterfaceConfig
+    ):
+        if is_continue_command(message.content):
+            return True
+        elif is_mu_command(message.content):
+            return True
+        elif iface_config.ignore_dotted_messages and (
+            re.match(DiscordInterface.DOTTED_MESSAGE_RE, message.content)
+            or message.type == discord.MessageType.thread_starter_message
+            or message.type == discord.MessageType.thread_created
+            or message.type == discord.MessageType.pins_add
+            or message.type == discord.MessageType.channel_name_change
+        ):
+            return True
+        return False
+
+    @staticmethod
+    async def get_config_from_message(
+        message: discord.Message,
+        pov_config: Optional[Config] = None,
+        pov_user: Optional[discord.User] = None,
+    ):
+        config = {}
+        is_config_message = False
+        dot_command = DiscordInterface.parse_dot_command(message)
+        if dot_command:
+            if dot_command["command"] == "config" and (
+                len(dot_command["args"]) == 0
+                or DiscordInterface.name_in_list(
+                    dot_command["args"], config=pov_config, user=pov_user
+                )
+                or pov_user.mentioned_in(message)
+            ):
+                config = dot_command["yaml"]
+                is_config_message = True
+        for attachment in message.attachments:
+            att_data = await DiscordInterface.parse_attachment(attachment)
+            if att_data["type"] == "text" and (
+                len(att_data["args"]) == 0
+                or DiscordInterface.name_in_list(
+                    att_data["args"], config=pov_config, user=pov_user
+                )
+                or pov_user.mentioned_in(message)
+            ):
+                if att_data["command"] == "config":
+                    config.update(att_data["yaml"])
+                    is_config_message = True
+                elif is_config_message:
+                    config[att_data["command"]] = att_data["yaml"]
+        return config
+
+    @staticmethod
+    def name_in_list(
+        name_list,
+        config: Optional[Config] = None,
+        user: Optional[discord.User] = None,
+        nicknames: list[str] = [],
+    ):
+        if isinstance(name_list, str):
+            name_list = [name_list]
+        elif not isinstance(name_list, list):
+            return False
+
+        return any(
+            # name in name_list for name in (self.user.name, self.sysname, *nicknames)
+            name in name_list
+            for name in (user.name, config.em.emname, *nicknames)
+        )
+
 
 def is_continue_command(message_content: str):
     return message_content.strip() == "/continue" or message_content.startswith(
@@ -759,87 +1006,6 @@ def is_continue_command(message_content: str):
 
 def is_mu_command(message_content: str):
     return message_content.strip() == "/mu" or message_content.startswith("m mu")
-
-
-def realize_pings(
-    self,
-    channel: discord.TextChannel,
-    message_content: str,
-    mentions: set[Union[discord.User, discord.Member]],
-):
-    for member in mentions:
-        if "@" + member.name in message_content:
-            message_content = message_content.replace(
-                "@" + member.name, f"<@!{member.id}>"
-            )
-    return message_content
-
-
-def get_yaml_from_channel(
-    channel: "discord.abc.MessageableChannel",
-) -> JSON:
-    topic = get_channel_topic(channel)
-    if topic is not None and "---" in topic:
-        try:
-            return yaml.safe_load(topic.split("---")[1]) or {}
-        except Exception as e:
-            print(f"Error parsing YAML in channel {channel.name}: {e}")
-            return {}
-    else:
-        return {}
-
-
-def parse_dot_command(message: discord.Message):
-    match = re.match(r"^\.(\w+)(?:[\s|\.]+(.+))?$", message.content.split("---", 1)[0])
-    if match:
-        try:
-            yaml_content = yaml.safe_load(message.content.split("---", 1)[-1])
-        except Exception as e:
-            print(f"Error parsing YAML")
-            yaml_content = {}
-        return {
-            "command": match.group(1),
-            "args": re.split("[\s|\.]", match.group(2)) if match.group(2) else [],
-            "yaml": yaml_content or {},
-        }
-    else:
-        return None
-
-
-async def parse_attachment(attachment: discord.Attachment):
-    att_info = {"command": None, "args": [], "type": attachment.content_type}
-    if (
-        attachment.height is not None
-        and attachment.width is not None
-        and attachment.content_type.startswith("image/")
-    ):
-        att_info["type"] = "image"
-    elif not attachment.content_type or attachment.content_type.startswith("text/"):
-        att_info["type"] = "text"
-        match = re.match(r"^\.?(.+?)(?:[\s|-](.+?))?(?:\.(.+?))?$", attachment.filename)
-        if match:
-            try:
-                att_info["yaml"] = yaml.safe_load(
-                    await get_attachment_content(attachment)
-                )
-                att_info["command"] = match.group(1)
-                att_info["args"] = (
-                    re.split("[\s|-]", match.group(2)) if match.group(2) else []
-                )
-            except Exception as e:
-                print(f"Error parsing YAML")
-    return att_info
-
-
-def get_channel_topic(
-    channel: "discord.abc.MessageableChannel",
-) -> str | None:
-    if hasattr(channel, "topic"):
-        return channel.topic
-    elif hasattr(channel, "parent"):
-        return channel.parent.topic
-    else:
-        return None
 
 
 async def wait_until_timestamp(timestamp, coroutine):
@@ -852,29 +1018,6 @@ async def wait_until_timestamp(timestamp, coroutine):
 
 def isempty(string):
     return string == "" or string.isspace()
-
-
-async def get_attachment_content(attachment: discord.Attachment) -> str:
-    # @lru_cache doesn't work on async functions, so use this as a workaround
-    return await asyncio.to_thread(get_attachment_content_inner, attachment)
-
-
-@lru_cache
-def get_attachment_content_inner(attachment: discord.Attachment):
-    r = requests.get(attachment.url, allow_redirects=True)
-    attachment_content = r.content
-    decoded_content = attachment_content.decode("utf-8")  # Assuming UTF-8 encoding
-    unescaped_content = unescape_string(decoded_content)
-    return unescaped_content
-
-
-def unescape_string(escaped_string: str) -> str:
-    try:
-        # Use ast.literal_eval to safely evaluate the string
-        return ast.literal_eval(f"'''{escaped_string}'''")
-    except (SyntaxError, ValueError):
-        # If there's an error, return the original string
-        return escaped_string
 
 
 class ConfigError(ValueError):

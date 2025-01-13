@@ -15,6 +15,7 @@ from interfaces.deserves_reply import deserves_reply
 from ontology import Config
 from declarations import Message, Author
 from util.asyncutil import to_async_iterable
+from load import load_em
 
 
 async def rehearse_em(config: Config):
@@ -45,44 +46,6 @@ async def rehearse_em(config: Config):
         mock_message_hist,
     ):
         pass
-
-
-def load_em(name) -> Config:
-    parent_dir = Path(__file__).resolve().parents[1]
-    em_folder = parent_dir / "ems" / name
-    kv = {
-        # vendors.yaml is deprecated
-        **load_optional(os.path.expanduser("~/.config/chapter2/vendors.yaml")),
-        **load_optional(parent_dir / "ems/vendors.yaml"),
-        **load_optional(os.path.expanduser("~/.config/chapter2/config.yaml")),
-        **load_optional(parent_dir / "ems/config.yaml"),
-        **load_optional(em_folder / "config.yaml"),
-        "folder": em_folder,
-    }
-    for subpath in em_folder.iterdir():
-        valid_key = (
-            lambda key: key in Config.model_fields.keys()
-            or key in Config.model_fields.keys()
-            or key in ontology.ALIASES.keys()
-            or key in ontology.EM_KEYS
-            or key in ontology.SHARED_INTERFACE_KEYS
-            or key in ontology.ALL_INTERFACE_KEYS
-        )
-        if valid_key(subpath.name):
-            kv[subpath.name] = subpath.read_text()
-        elif subpath.name.endswith(".yaml") and valid_key(
-            key := subpath.name.removesuffix(".yaml")
-        ):
-            kv[key] = yaml.safe_load(subpath.read_text())
-    if "name" not in kv:
-        kv["name"] = name
-    # TODO: Replace with defaults versioning system
-    if kv.get("legacy", False):
-        defaults = ontology.LEGACY_DEFAULTS
-        del kv["legacy"]
-    else:
-        defaults = ontology.DEFAULTS
-    return ontology.load_config_from_kv(kv, defaults)
 
 
 async def run_em(name, end_to_end_test=False):
@@ -138,18 +101,6 @@ async def run_em(name, end_to_end_test=False):
         ):
             exit_code = 1
     return exit_code
-
-
-def load_optional(filename):
-    try:
-        with open(filename) as file:
-            kv = yaml.safe_load(file)
-            if kv is None:
-                return {}
-            else:
-                return kv
-    except FileNotFoundError:
-        return {}
 
 
 if __name__ == "__main__":

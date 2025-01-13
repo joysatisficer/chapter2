@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pprint
 import types
 import typing
 from pathlib import Path
@@ -92,6 +93,23 @@ class SimFacultyConfig(FacultyConfig):
     ]
 
 
+class HistoryFacultyConfig(FacultyConfig):
+    faculty: Literal["history"] = "history"
+    filename: str = "history.txt"
+    nickname: str | None = None
+    nicknames: dict[str, str] = {}
+    recent_message_attention: int | float = 0
+    ensemble_format: EnsembleFormat = [
+        LayerOfEnsembleFormat(
+            format=IRCMessageFormat(),
+            operator="prepend",
+            max_items=infinity,
+            separator="",
+            footer="",
+        ),
+    ]
+
+
 class ExaSearchFullTextConfig(BaseModel):
     max_characters: int = 2500
     include_html_tags: bool = False
@@ -144,6 +162,7 @@ class AirtableNotesFacultyConfig(FacultyConfig):
 
 EnsembleConfig = Annotated[
     CharacterFacultyConfig
+    | HistoryFacultyConfig
     | ExaSearchFacultyConfig
     | SimFacultyConfig
     | AirtableNotesFacultyConfig,
@@ -171,6 +190,7 @@ class DiscordGenerateAvatarAddonConfig(BaseModel):
 
 class EmConfig(BaseModel):
     name: str
+    emname: str
     continuation_model: str = "meta-llama/Meta-Llama-3.1-405B"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"
@@ -195,6 +215,7 @@ class EmConfig(BaseModel):
     mufflers: list[str] = [
         "has_url",
         "has_pump_fun_ca",
+        "has_img_url_token",
     ]  # "context_sentence_repetition"
 
     temperature: Annotated[float, Ge(0)] = 0.95  # todo: vary on model
@@ -266,6 +287,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     image_limits: ImageLimits = ImageLimits()
     exo_enabled: bool = False
     airtable: AirtableConfig | None = None
+    # infra: bool = False
 
 
 class RPCInterfaceConfig(SharedInterfaceConfig):
@@ -293,12 +315,17 @@ class ChatCompletionsInterfaceConfig(SharedInterfaceConfig):
     port: int | None = None
 
 
+class InfraInterfaceConfig(DiscordInterfaceConfig):
+    name: Literal["infra"] = "infra"
+
+
 InterfaceConfig = Annotated[
     DiscordInterfaceConfig
     | RPCInterfaceConfig
     | MikotoInterfaceConfig
     | CompletionsInterfaceConfig
-    | ChatCompletionsInterfaceConfig,
+    | ChatCompletionsInterfaceConfig
+    | InfraInterfaceConfig,
     Field(..., discriminator="name"),
 ]
 
@@ -469,10 +496,10 @@ for interface_config_subclass in get_union_members(InterfaceConfig):
     ALL_INTERFACE_KEYS.update(interface_config_subclass.model_fields.keys())
 
 
-def transpose_keys(kv: dict):
+def transpose_keys(kv: dict, defaults: dict = DEFAULTS):
     result = {
         "em": {},
-        "interfaces": kv.get("interfaces", DEFAULTS["interfaces"]),
+        "interfaces": kv.get("interfaces", defaults["interfaces"]),
     }
     for key in kv.copy():
         if key in EM_KEYS:
@@ -506,5 +533,5 @@ def load_config_from_kv(kv: dict | None, defaults: dict = DEFAULTS) -> Config:
         interfaces = [{"name": interface_name} for interface_name in active_interfaces]
         kv["interfaces"] = interfaces
         del kv["active_interfaces"]
-    dictionary = overlay(defaults, transpose_keys(rename_keys(kv, ALIASES)))
+    dictionary = overlay(defaults, transpose_keys(rename_keys(kv, ALIASES), defaults))
     return Config(**dictionary)

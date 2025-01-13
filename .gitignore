@@ -20,3 +20,5 @@ ems/multiprong/avatars
 ems/multiprong/avatar_changed_at
 prompts/
 nohup.out
+.DS_Store
+**/.DS_Store
