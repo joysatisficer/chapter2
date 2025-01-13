@@ -23,7 +23,6 @@ async def get_prompt(history: ActionHistory, em: EmConfig):
     completion_prefix = (
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
-    # recent_messages = await async_take(em.recency_window, history)
     ctx_vars = {"now": datetime.now(), "hostname": platform.node()}
     max_prompt_length = (
         min(max_token_length(em.continuation_model), em.total_max_tokens)

@@ -287,7 +287,6 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     image_limits: ImageLimits = ImageLimits()
     exo_enabled: bool = False
     airtable: AirtableConfig | None = None
-    # infra: bool = False
 
 
 class RPCInterfaceConfig(SharedInterfaceConfig):
