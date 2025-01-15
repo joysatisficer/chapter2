@@ -42,8 +42,8 @@ async def rehearse_em(config: Config):
             )
             assert isinstance(d, bool)
     async for response in generate_response(
-        mock_message_hist,
         config.em,
+        mock_message_hist,
     ):
         pass
 
