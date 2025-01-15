@@ -8,15 +8,22 @@ from declarations import Message, Author, ActionHistory, Faculty
 async def history_faculty(
     history: ActionHistory, faculty_config: HistoryFacultyConfig, em: EmConfig
 ):
-    if faculty_config.filename is None:
-        filename = "history.txt"
-    else:
-        filename = faculty_config.filename
+    filename = faculty_config.filename
     directory = str(em.folder / f"{filename}")
     with open(directory, "r") as f:
-        messages = faculty_config.input_format.parse(f.read())
+        transcript = f.read()
+    async for message in transcript_to_messages(transcript, faculty_config, em):
+        yield message
+
+
+async def transcript_to_messages(
+    transcript: str, faculty_config: HistoryFacultyConfig, em: EmConfig
+) -> ActionHistory:
+    messages = faculty_config.input_format.parse(transcript)
     for message in reversed(messages):
-        if (
+        if not message.author:
+            yield message
+        elif (
             faculty_config.nickname is not None
             and message.author.name == faculty_config.nickname
         ):
