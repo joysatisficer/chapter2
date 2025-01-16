@@ -11,6 +11,7 @@ from collections import defaultdict
 from functools import lru_cache
 
 import aiohttp
+from faculties.history_faculty import transcript_to_messages
 import discord
 import discord.http
 import discord.threads
@@ -24,13 +25,13 @@ from aioitertools.more_itertools import take as async_take
 
 import ontology
 from faculties.contrib.airtable_notes_faculty import get_airtable
-from message_formats import hashint
+from message_formats import ColonMessageFormat, hashint
 from trace import trace, ot_tracer, log_trace_id_to_console
 from interfaces.deserves_reply import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
 from util.discord_improved import ScheduleTyping, parse_discord_content
 from declarations import GenerateResponse, Message, UserID, Author, JSON, ActionHistory
-from ontology import Config, DiscordInterfaceConfig
+from ontology import Config, DiscordInterfaceConfig, HistoryFacultyConfig
 
 
 class ChannelCache:
@@ -376,6 +377,29 @@ class DiscordInterface(discord.Client):
                                 last, first, config, iface_config, pov_user
                             ):
                                 yield msg
+                    for attachment in this_message.attachments:
+                        att_data = await self.parse_attachment(attachment)
+                        # print(att_data)
+
+                        if att_data and att_data["type"] == "text":
+                            transcript = att_data["content"]
+                            if transcript:
+                                # default_history_faculty = HistoryFacultyConfig()
+                                # update with any parameters in the config_message yaml
+                                config_params = {
+                                    k: v
+                                    for k, v in config_message["yaml"].items()
+                                    if k in ["nickname", "nicknames", "input_format"]
+                                }
+
+                                # print(default_history_faculty)
+                                async for msg in transcript_to_messages(
+                                    transcript,
+                                    HistoryFacultyConfig(**config_params),
+                                    config.em,
+                                ):
+                                    # print(msg)
+                                    yield (msg, frozenset())
                     if (
                         "passthrough" not in config_message["yaml"]
                         or config_message["yaml"]["passthrough"] is False
@@ -1065,7 +1089,7 @@ class DiscordInterface(discord.Client):
             try:
                 yaml_content = DiscordInterface.parse_yaml_config(message.content)
             except Exception as e:
-                print(f"Error parsing YAML")
+                # print(f"Error parsing YAML {message.content}")
                 yaml_content = {}
             return {
                 "command": match.group(1),
@@ -1086,20 +1110,22 @@ class DiscordInterface(discord.Client):
             att_info["type"] = "image"
         elif not attachment.content_type or attachment.content_type.startswith("text/"):
             att_info["type"] = "text"
+            att_info["content"] = await DiscordInterface.get_attachment_content(
+                attachment
+            )
             match = re.match(
                 r"^\.?(.+?)(?:[\s|-](.+?))?(?:\.(.+?))?$", attachment.filename
             )
             if match:
                 try:
-                    att_info["yaml"] = yaml.safe_load(
-                        await DiscordInterface.get_attachment_content(attachment)
-                    )
+                    att_info["yaml"] = yaml.safe_load(att_info["content"])
                     att_info["command"] = match.group(1)
                     att_info["args"] = (
                         re.split("[\s|-]", match.group(2)) if match.group(2) else []
                     )
                 except Exception as e:
-                    print(f"Error parsing YAML")
+                    # print(f"Error parsing attachment {attachment.filename}")
+                    pass
         return att_info
 
     @staticmethod
