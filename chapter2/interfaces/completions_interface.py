@@ -4,11 +4,11 @@ from typing import Optional, Literal
 
 from pydantic import BaseModel, ValidationError
 
-from declarations import GenerateResponse, Message, UserID, Author
+from declarations import GenerateResponse
 from ontology import Config, CompletionsInterfaceConfig
 from message_formats import IRCMessageFormat
 from abstractinterface import AbstractInterface
-from util.asyncutil import eager_iterable_to_async_iterable
+from util.asyncutil import to_async_iterable
 
 
 class CompletionRequest(BaseModel):
@@ -40,6 +40,8 @@ class CompletionResponse(BaseModel):
 
 
 class CompletionsInterface(AbstractInterface):
+    """Stability: Beta"""
+
     def __init__(
         self,
         base_config: Config,
@@ -67,7 +69,6 @@ class CompletionsInterface(AbstractInterface):
 
     async def completions(self, completion_request: CompletionRequest):
         messages = IRCMessageFormat().parse(completion_request.prompt)
-        em_user_id = UserID("em::" + self.em_name, "completions")
         config: Config = self.base_config.copy()
         if completion_request.temperature is not None:
             config.temperature = completion_request.temperature
@@ -79,7 +80,7 @@ class CompletionsInterface(AbstractInterface):
         async def get_response_messages():
             response_messages = []
             async for message in self.generate_response(
-                em_user_id, eager_iterable_to_async_iterable(messages), config.em
+                config.em, to_async_iterable(messages)
             ):
                 response_messages.append(message)
             return response_messages
@@ -92,7 +93,7 @@ class CompletionsInterface(AbstractInterface):
         for i, response_messages in enumerate(response_message_arrays):
             text = ""
             for response_message in response_messages:
-                text += irc_format.render(response_message)
+                text += IRCMessageFormat().render(response_message)
             response_choices.append(
                 {
                     "text": text,
@@ -117,10 +118,19 @@ class CompletionsInterface(AbstractInterface):
         import uvicorn
         from util.uvicorn_improved import RapidShutdownUvicornServer
 
-        # TODO: read port from config, read config from env, read unix socket from env
-        uv_config = uvicorn.Config(
-            self.app, port=6006, log_level="info", host="0.0.0.0"
-        )
+        if self.iface_config.port is None:
+            socket_loc = str(self.base_config.em.folder / "socket")
+            uv_config = uvicorn.Config(
+                self.app,
+                log_level="info",
+                uds=socket_loc,
+            )
+            print(f"Listening on {socket_loc}")
+        else:
+            uv_config = uvicorn.Config(
+                self.app, log_level="info", port=self.iface_config.port
+            )
+            print(f"Listening on {self.iface_config.port}")
         self.uv_server = RapidShutdownUvicornServer(uv_config)
         self.uv_server.install_signal_handlers = lambda: None
         self.task_serve = asyncio.create_task(self.uv_server.serve())

@@ -1,25 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import pydantic.dataclasses
 from typing import Callable, Union, AsyncIterable, TYPE_CHECKING, Awaitable
 
 if TYPE_CHECKING:
     from ontology import Config, FacultyConfig
 
 
-@dataclass(frozen=True)
-class UserID:
-    id: str
-    platform: str
-
-
-@dataclass(frozen=True)
+@pydantic.dataclasses.dataclass(frozen=True)
 class Author:
-    name: str
-    user_id: UserID | None = None
+    name: str | None
 
 
-@dataclass(frozen=True)
+@pydantic.dataclasses.dataclass(frozen=True)
 class Message:
     author: Author | None
     content: str
@@ -33,5 +26,5 @@ Action = Union[Message]
 ActionHistory = AsyncIterable[Action]
 Ensemble = AsyncIterable[Action | AsyncIterable["Ensemble"]]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
-GenerateResponse = Callable[[UserID, ActionHistory, "EmConfig"], AsyncIterable[Action]]
-Faculty = Callable[[ActionHistory, "FacultyConfig", "Config"], AsyncIterable[Message]]
+GenerateResponse = Callable[["EmConfig", ActionHistory], AsyncIterable[Action]]
+Faculty = Callable[["EmConfig", "FacultyConfig", ActionHistory], AsyncIterable[Message]]

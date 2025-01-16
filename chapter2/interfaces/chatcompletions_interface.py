@@ -5,7 +5,7 @@ from typing import Callable, Awaitable, Optional, AsyncIterable, Any, Union, Lit
 
 from pydantic import BaseModel
 
-from declarations import GenerateResponse, Message, UserID, Author
+from declarations import GenerateResponse, Message, Author
 from abstractinterface import AbstractInterface
 from ontology import Config, ChatCompletionsInterfaceConfig
 from util import asyncutil
@@ -64,6 +64,8 @@ class ChatCompletionsResponse(BaseModel):
 
 
 class ChatCompletionsInterface(AbstractInterface):
+    """Stability: Beta"""
+
     def __init__(
         self,
         base_config: Config,
@@ -105,14 +107,12 @@ class ChatCompletionsInterface(AbstractInterface):
             if chat_completions_request.logit_bias is not None:
                 config.em.logit_bias |= chat_completions_request.logit_bias
 
-            my_user_id = UserID("em::" + self.em_name, "chatcompletions")
-
             # todo: error handling
 
             async def messages_iterator():
                 for chat_completion_message in chat_completions_request.messages[::-1]:
                     if chat_completion_message.role == "assistant":
-                        author = Author(self.em_name, my_user_id)
+                        author = Author(self.em_name)
                         message_type = None
                     elif chat_completion_message.role == "user":
                         name = (
@@ -120,9 +120,7 @@ class ChatCompletionsInterface(AbstractInterface):
                             if chat_completion_message.name is not None
                             else self.iface_config.default_name
                         )
-                        author = Author(
-                            name, UserID(str(hash(name)), "chatcompletions")
-                        )
+                        author = Author(name)
                         message_type = None
                     elif chat_completion_message.role == "system":
                         name = (
@@ -130,9 +128,7 @@ class ChatCompletionsInterface(AbstractInterface):
                             if chat_completion_message.name is not None
                             else "system"
                         )
-                        author = Author(
-                            name, UserID(str(hash(name)), "chatcompletions")
-                        )
+                        author = Author(name)
                         message_type = "instructions"
                     else:
                         continue
@@ -144,11 +140,10 @@ class ChatCompletionsInterface(AbstractInterface):
 
             valid_messages = []
             async for reply_message in generate_response(
-                my_user_id,
-                async_generator_to_reusable_async_iterable(messages_iterator),
                 config.em,
+                async_generator_to_reusable_async_iterable(messages_iterator),
             ):
-                if reply_message.author.user_id == my_user_id and not isempty(
+                if reply_message.name == config.em.name and isempty(
                     reply_message.content
                 ):
                     valid_messages.append(reply_message)
@@ -186,7 +181,6 @@ class ChatCompletionsInterface(AbstractInterface):
         import uvicorn
         from util.uvicorn_improved import RapidShutdownUvicornServer
 
-        # TODO: Option for listening on an HTTP port (port 0 = random port)
         if self.iface_config.port is None:
             socket_loc = str(self.base_config.em.folder / "socket")
             uv_config = uvicorn.Config(

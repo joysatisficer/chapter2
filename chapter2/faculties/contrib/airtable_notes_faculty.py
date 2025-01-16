@@ -13,7 +13,7 @@ def get_airtable(airtable_config: AirtableConfig):
 
 @trace
 async def airtable_notes_faculty(
-    history: ActionHistory, faculty_config: AirtableNotesFacultyConfig, em: EmConfig
+    em: EmConfig, faculty_config: AirtableNotesFacultyConfig, history: ActionHistory
 ):
     for row in await sync_to_async(
         get_airtable(faculty_config.airtable).all, thread_sensitive=False

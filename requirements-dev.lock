@@ -16,11 +16,12 @@ aiofiles==24.1.0
     # via matrix-nio
 aiohappyeyeballs==2.3.5
     # via aiohttp
-aiohttp==3.10.10
+aiohttp==3.11.8
     # via aiohttp-socks
     # via chapter2
     # via discord-py
     # via intermodel
+    # via jsonrpc-websocket
     # via matrix-nio
     # via mikoto-py
     # via novelai-api
@@ -55,6 +56,7 @@ asgiref==3.7.2
     # via chapter2
     # via intermodel
 async-timeout==4.0.3
+    # via jsonrpc-websocket
     # via python-socks
 asyncstdlib==3.10.9
     # via chapter2
@@ -228,6 +230,10 @@ jiter==0.6.1
 joblib==1.4.2
     # via nltk
     # via scikit-learn
+jsonrpc-base==2.2.0
+    # via jsonrpc-websocket
+jsonrpc-websocket==3.1.5
+    # via chapter2
 jsonschema==4.23.0
     # via altair
     # via matrix-nio
@@ -348,6 +354,7 @@ poetry-plugin-export==1.8.0
     # via poetry
 pre-commit==3.8.0
 propcache==0.2.0
+    # via aiohttp
     # via yarl
 protobuf==4.25.4
     # via googleapis-common-protos
@@ -560,7 +567,7 @@ wsproto==1.2.0
     # via simple-websocket
 xattr==1.1.0 ; sys_platform == 'darwin'
     # via poetry
-yarl==1.15.2
+yarl==1.18.0
     # via aiohttp
 zipp==3.20.0
     # via importlib-metadata

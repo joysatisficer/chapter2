@@ -9,19 +9,19 @@ from aioitertools.more_itertools import take as async_take
 from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
 
-from declarations import UserID, ActionHistory, Author, Ensemble, Action
+from declarations import ActionHistory, Author, Ensemble, Action
 from faculties import FACULTY_NAME_TO_FUNCTION
-from mufflers import context_sentence_repetition, has_url, mufflers
+from mufflers import mufflers
 from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
 from trace import trace, log_trace_id_to_console
 
 
-async def get_prompt(history: ActionHistory, em: EmConfig):
+@trace
+async def get_prompt(em: EmConfig, history: ActionHistory):
     count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
     completion_prefix = (
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
-    # recent_messages = await async_take(em.recency_window, history)
     ctx_vars = {"now": datetime.now(), "hostname": platform.node()}
     max_prompt_length = (
         min(max_token_length(em.continuation_model), em.total_max_tokens)
@@ -51,7 +51,7 @@ async def get_prompt(history: ActionHistory, em: EmConfig):
     # TODO: Filter for empty ensembles
     for faculty_config in em.ensembles:
         faculty_results = FACULTY_NAME_TO_FUNCTION[faculty_config.faculty](
-            history, faculty_config, em
+            em, faculty_config, history
         )
         local_max_tokens = min(
             (
@@ -91,9 +91,9 @@ async def get_prompt(history: ActionHistory, em: EmConfig):
 
 
 @trace
-async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmConfig):
-    author = Author(em.name, my_user_id)
-    prompt = await get_prompt(history, em)
+async def generate_response(em: EmConfig, history: ActionHistory):
+    author = Author(em.name)
+    prompt = await get_prompt(em, history)
     completion_prefix = (
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )

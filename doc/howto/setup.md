@@ -1,6 +1,6 @@
-# Development
+# Setup
 
-## Setup
+## Installing dependencies
 
 1. Install [Rye](https://rye.astral.sh/guide/installation/), a one-stop-shop
 for Python dependency management written in Rust. On POSIX systems, you can

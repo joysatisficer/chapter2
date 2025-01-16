@@ -27,38 +27,36 @@ class ScheduleTyping(discord.context_managers.Typing):
             await asyncio.sleep(9)
 
 
+def resolve_member(
+    message: discord.Message, id: int, my_user_id: int, my_name: str
+) -> str:
+    if id == my_user_id:
+        return "@" + my_name
+    if message.guild:
+        m = message.guild.get_member(id) or discord.utils.get(message.mentions, id=id)
+    else:
+        m = discord.utils.get(message.mentions, id=id)
+    return f"@{m.name}" if m else "@deleted-user"
+
+
+def resolve_role(message: discord.Message, id: int, _, __) -> str:
+    if message.guild:
+        r = message.guild.get_role(id) or discord.utils.get(
+            message.role_mentions, id=id
+        )
+        return f"@{r.name}" if r else "@deleted-role"
+    return "@deleted-role"
+
+
+def resolve_channel(message: discord.Message, id: int, _, __) -> str:
+    if message.guild:
+        c = message.guild._resolve_channel(id)
+        return f"#{c.name}" if c else "#deleted-channel"
+    return "#deleted-channel"
+
+
 def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) -> str:
     """discord.Message.clean_content() where "name" is used in place of display_name"""
-    if self.guild:
-
-        def resolve_member(id: int) -> str:
-            if id == my_user_id:
-                return "@" + my_name
-            m = self.guild.get_member(id) or discord.utils.get(self.mentions, id=id)  # type: ignore
-            return f"@{m.name}" if m else "@deleted-user"
-
-        def resolve_role(id: int) -> str:
-            r = self.guild.get_role(id) or discord.utils.get(self.role_mentions, id=id)  # type: ignore
-            return f"@{r.name}" if r else "@deleted-role"
-
-        def resolve_channel(id: int) -> str:
-            c = self.guild._resolve_channel(id)  # type: ignore
-            return f"#{c.name}" if c else "#deleted-channel"
-
-    else:
-
-        def resolve_member(id: int) -> str:
-            if id == my_user_id:
-                return "@" + my_name
-            m = discord.utils.get(self.mentions, id=id)
-            return f"@{m.name}" if m else "@deleted-user"
-
-        def resolve_role(id: int) -> str:
-            return "@deleted-role"
-
-        def resolve_channel(id: int) -> str:
-            return "#deleted-channel"
-
     transforms = {
         "@": resolve_member,
         "@!": resolve_member,
@@ -69,7 +67,7 @@ def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) 
     def repl(match: re.Match) -> str:
         type = match[1]
         id = int(match[2])
-        transformed = transforms[type](id)
+        transformed = transforms[type](self, id, my_user_id, my_name)
         return transformed
 
     result = re.sub(

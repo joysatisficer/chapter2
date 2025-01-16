@@ -288,7 +288,10 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     image_limits: ImageLimits = ImageLimits()
     exo_enabled: bool = False
     airtable: AirtableConfig | None = None
-    # infra: bool = False
+
+
+class RPCInterfaceConfig(SharedInterfaceConfig):
+    name: Literal["rpc"] = "rpc"
 
 
 class MikotoInterfaceConfig(SharedInterfaceConfig):
@@ -302,6 +305,8 @@ class MikotoInterfaceConfig(SharedInterfaceConfig):
 
 class CompletionsInterfaceConfig(SharedInterfaceConfig):
     name: Literal["completions"] = "completions"
+    default_name: str = "user"
+    port: int | None = None
 
 
 class ChatCompletionsInterfaceConfig(SharedInterfaceConfig):
@@ -316,6 +321,7 @@ class InfraInterfaceConfig(DiscordInterfaceConfig):
 
 InterfaceConfig = Annotated[
     DiscordInterfaceConfig
+    | RPCInterfaceConfig
     | MikotoInterfaceConfig
     | CompletionsInterfaceConfig
     | ChatCompletionsInterfaceConfig

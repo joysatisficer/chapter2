@@ -26,7 +26,7 @@ SharedExa = cache(Exa)
 
 @trace
 async def exa_search_faculty(
-    history: ActionHistory, faculty_config: ExaSearchFacultyConfig, em: EmConfig
+    em: EmConfig, faculty_config: ExaSearchFacultyConfig, history: ActionHistory
 ):
     message_history_string = format_message_section(
         faculty_config.input_format,
@@ -83,7 +83,7 @@ async def exa_search_faculty(
             if result.url in yielded_urls or result.url in faculty_config.ignored_urls:
                 continue
             if result.published_date is None:
-                published_timestamp = None
+                published_timestamp = time.time()  # Default to current timestamp
             else:
                 published_timestamp = time.mktime(
                     dateutil.parser.parse(result.published_date).timetuple()

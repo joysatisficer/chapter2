@@ -7,3 +7,6 @@
 
 ## Principles
 - Sensible defaults with the ability to disable and customize features as appropriate
+
+## Style
+- Put high-level functions first because Python supports forward declarations. For example, DiscordInterface uses ChannelCache, so DiscordInterface goes before ChannelCache

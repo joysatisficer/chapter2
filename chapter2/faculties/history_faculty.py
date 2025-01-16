@@ -1,6 +1,6 @@
 from ontology import HistoryFacultyConfig, EmConfig
 
-from declarations import Message, Author, ActionHistory, Faculty
+from declarations import Message, Author, ActionHistory
 
 # loads and formats the history
 

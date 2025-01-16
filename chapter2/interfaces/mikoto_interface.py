@@ -6,7 +6,7 @@ from datetime import datetime
 import mikoto
 
 from util.asyncutil import async_generator_to_reusable_async_iterable
-from declarations import GenerateResponse, Message, Author, UserID
+from declarations import GenerateResponse, Message, Author
 from ontology import MikotoInterfaceConfig, Config
 from interfaces.discord_interface import is_continue_command, isempty
 import ontology
@@ -14,6 +14,8 @@ import ontology
 
 # todo: refactor so that subclassing and using super with AbstractInterface are possible
 class MikotoInterface(mikoto.MikotoClient):
+    """Stability: Deprecated"""
+
     def __init__(
         self,
         base_config: Config,
@@ -34,7 +36,6 @@ class MikotoInterface(mikoto.MikotoClient):
         else:
             command_message = None
         try:
-            my_user_id = UserID((await self.users.me()).id, "mikoto")
             config = ontology.overlay(
                 self.base_config.model_dump(), self.interface_config.custom_config
             )
@@ -58,13 +59,12 @@ class MikotoInterface(mikoto.MikotoClient):
                         cursor = message.id
 
             response_messages = self.generate_response(
-                my_user_id,
-                async_generator_to_reusable_async_iterable(message_history),
                 config.em,
+                async_generator_to_reusable_async_iterable(message_history),
             )
             with typing(this_message.channelId, self.messages):
                 async for reply_message in response_messages:
-                    if reply_message.author.user_id == my_user_id and not isempty(
+                    if reply_message.author.name == config.em.name and not isempty(
                         reply_message.content
                     ):
                         current_time = time.time()
