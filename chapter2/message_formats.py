@@ -4,6 +4,8 @@ from abc import abstractmethod
 from functools import reduce
 from typing import Callable, Annotated, Literal
 from datetime import datetime
+from typing import Union, List, Optional, Iterable
+
 
 import pydantic
 
@@ -65,12 +67,8 @@ class AbstractMessageFormat:
                     )
         yield merged_message
 
-
-def has_open_code_block(text: str | None) -> bool:
-    if text is None:
-        return False
-    code_block_count = text.count("```")
-    return code_block_count % 2 == 1
+    def api_name_prefix(self, name: str | None = None) -> str:
+        return self.name_prefix(name)
 
 
 class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
@@ -159,7 +157,11 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                 name, raw_content = groups
                 if name is None or name.strip() == "":
                     author = None
-                elif re.match(r"^\s*\d*\.", line) or re.match(r"^-|•", line):
+                elif (
+                    re.match(r"^\s*\d*\.", line)
+                    or re.match(r"^-|•", line)
+                    or re.match(r"^\*+$", raw_content)
+                ):
                     author = None
                     raw_content = name + ": " + raw_content
                 else:
@@ -194,11 +196,12 @@ class WebDocumentMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["chat"] = "chat"
     assistant_name: str | None
-    name_start: str
-    name_end: str
-    role_start: str
-    role_end: str
-    turn_end: str
+    name_start: str = "<|name_start|>"
+    name_end: str = "<|name_end|>"
+    role_start: str = "<|im_start|>"
+    role_end: str = "<|im_sep|>"
+    turn_end: str = "<|im_end|>"
+    api_accepts_name: bool = True
 
     def render(self, message: Message) -> str:
         if message.author is not None and message.author.name != "":
@@ -227,6 +230,79 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
             Message(author=Author(self.assistant_name), content=line)
             for line in a.splitlines()
         ]
+
+    def format_messages(
+        self,
+        string: str,
+        initial_role,
+        initial_name=None,
+        sticky_name=True,
+    ) -> list:
+        role = initial_role
+        name = initial_name
+        all_delimiters = [
+            self.role_start,
+            self.role_end,
+            self.turn_end,
+            self.name_start,
+            self.name_end,
+        ]
+        substrings = split_many(string, all_delimiters)
+        i = 0
+        messages = []
+        cur_message_content = ""
+        while i < len(substrings):
+            substring = substrings[i]
+            if substring == self.role_start:
+                sofar = ""
+                j = i + 1
+                while j < len(substrings):
+                    search = substrings[j]
+                    if search == self.role_end:
+                        role = sofar
+                        break
+                    else:
+                        sofar += substrings[j]
+                    j += 1
+                i = j
+            elif substring == self.name_start:
+                sofar = ""
+                j = i + 1
+                while j < len(substrings):
+                    search = substrings[j]
+                    if search == self.name_end:
+                        name = sofar
+                        break
+                    else:
+                        sofar += substrings[j]
+                    j += 1
+                i = j
+            elif substring == self.turn_end:
+                messages.append(self.format_message(role, cur_message_content, name))
+                if not sticky_name:
+                    name = None
+                cur_message_content = ""
+            else:
+                cur_message_content += substring
+            i += 1
+        if cur_message_content != "":
+            messages.append(self.format_message(role, cur_message_content, name))
+        return messages
+
+    def format_message(self, role: str, content: str, name: str | None = None) -> dict:
+        message = {"content": content, "role": role}
+        if name is not None:
+            if self.api_accepts_name:
+                message["name"] = name
+            else:
+                message["content"] = self.api_name_prefix(name) + content
+        return message
+
+    def api_name_prefix(self, name: str | None = None) -> str:
+        if self.api_accepts_name:
+            return self.name_prefix(name)
+        else:
+            return name + ": "
 
 
 def hashint(integer: int) -> str:
@@ -378,3 +454,19 @@ MessageFormat = (
     | InfrastructMessageFormat
     | ChatMessageFormat
 )
+
+
+def has_open_code_block(text: str | None) -> bool:
+    if text is None:
+        return False
+    code_block_count = text.count("```")
+    return code_block_count % 2 == 1
+
+
+def split_many(string: str, delimiters: Iterable[str]) -> List[str]:
+    # Escape special regex characters and join delimiters with '|'
+    pattern = "(" + "|".join(re.escape(d) for d in delimiters) + ")"
+    # Split the string
+    result = re.split(pattern, string)
+    # Remove empty strings from the result
+    return [part.strip() for part in result if part.strip()]
