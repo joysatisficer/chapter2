@@ -106,9 +106,9 @@ async def generate_response(my_user_id: UserID, history: ActionHistory, em: EmCo
             # immediately. if that's the case, we don't want to
             # prepend a newline to author-based stop sequences
             ("" if completion_prefix == "" else "\n")
-            + em.message_history_format.name_prefix(message.author.name)
+            + em.message_history_format.api_name_prefix(message.author.name)
             for message in recent_messages
-            if message.author.name != em.name
+            if (message.author is not None and message.author.name != em.name)
         ]
     )
     retry = True
@@ -159,6 +159,10 @@ async def get_replies(
     print(prompt, flush=True)
     if em.continuation_model_local_tokenization:
         prompt = callgpt.tokenize(em.continuation_model, prompt)
+    kwargs = {
+        "message_history_format": em.message_history_format,
+        "continuation_options": em.continuation_options,
+    }
     completion = (
         await callgpt.complete(
             prompt=trace.prompt(prompt, attr=True),
@@ -171,7 +175,7 @@ async def get_replies(
             vendor_config=em.vendors.get_secret_value(),
             logit_bias=logit_bias,
             best_of=em.best_of,
-            **em.continuation_options,
+            **kwargs,
         )
     )["completions"][0]["text"]
     if (
