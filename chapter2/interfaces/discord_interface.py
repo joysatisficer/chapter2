@@ -431,9 +431,12 @@ class DiscordInterface(discord.Client):
             elif message.reference.cached_message is not None:
                 referenced_message = message.reference.cached_message
             else:
-                referenced_message = await message.channel.fetch_message(
-                    message.reference.message_id
-                )
+                try:
+                    referenced_message = await message.channel.fetch_message(
+                        message.reference.message_id
+                    )
+                except discord.NotFound:
+                    referenced_message = None
             if referenced_message is None or isinstance(
                 referenced_message, discord.DeletedReferencedMessage
             ):
