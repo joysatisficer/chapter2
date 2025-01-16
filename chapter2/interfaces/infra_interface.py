@@ -175,7 +175,7 @@ class InfraInterface(DiscordInterface):
         except Exception as e:
             print(f'Error handling "{command_name}" command: {e}')
             await interaction.followup.send(
-                f"**⚠ ERROR** handling **{command_name}** command:\n{e}",
+                f"**⚠ ERROR** handling **{command_name}** command",
             )
 
     async def setup_hook(self):
@@ -497,6 +497,7 @@ class InfraInterface(DiscordInterface):
                 message_history_format: Optional[str] = None,
                 reply_on_random: Optional[int] = None,
                 ignore_dotted_messages: Optional[bool] = None,
+                include_images: Optional[bool] = None,
                 mute: Optional[bool] = None,
                 # yaml: Optional[discord.Attachment] = None,
             ):
@@ -774,7 +775,6 @@ class InfraInterface(DiscordInterface):
             command_prefix,
             config_dict,
             targets,
-            codeblock=False if command_prefix == "history" else True,
         )
         sent_message = await interaction.followup.send(config_message)
         if sent_message is not None:
@@ -1103,7 +1103,8 @@ class InfraInterface(DiscordInterface):
         # embed a copy of the message in the thread with a link to the original message
         history_message = await new_thread.send(
             content=compile_config_message(
-                command_prefix="history", config_dict={"last": message.jump_url}
+                command_prefix="history",
+                config_dict={"last": message.jump_url},
             ),
             embed=embed if not public else None,
         )
@@ -1190,7 +1191,6 @@ def compile_config_message(
     command_prefix: str = "config",
     config_dict: Optional[dict] = None,
     targets: Optional[list[discord.User] | str] = None,
-    codeblock: bool = True,
 ):
     dict_copy = {k: v for k, v in config_dict.items() if v is not None}
     config_yaml = yaml.dump(dict_copy) if len(dict_copy) > 0 else ""
@@ -1202,9 +1202,5 @@ def compile_config_message(
                     config_message
                     + f" {target.mention if isinstance(target, discord.User) else target}"
                 )
-    config_message = config_message + "\n---\n"
-    if codeblock:
-        config_message = config_message + f"```yaml\n{config_yaml}\n```"
-    else:
-        config_message = config_message + config_yaml
+    config_message = config_message + "\n---\n" + config_yaml
     return config_message
