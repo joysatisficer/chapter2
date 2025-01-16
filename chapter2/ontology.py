@@ -99,6 +99,7 @@ class HistoryFacultyConfig(FacultyConfig):
     nickname: str | None = None
     nicknames: dict[str, str] = {}
     recent_message_attention: int | float = 0
+    input_format: MessageFormat = ColonMessageFormat()
     ensemble_format: EnsembleFormat = [
         LayerOfEnsembleFormat(
             format=IRCMessageFormat(),
