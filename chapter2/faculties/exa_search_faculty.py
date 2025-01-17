@@ -82,7 +82,7 @@ async def exa_search_faculty(
         for result in results:
             if result.url in yielded_urls or result.url in faculty_config.ignored_urls:
                 continue
-            if result.published_date is None:
+            if result.published_date is None or not result.published_date.strip():
                 published_timestamp = time.time()  # Default to current timestamp
             else:
                 published_timestamp = time.mktime(
