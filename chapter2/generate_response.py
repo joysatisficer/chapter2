@@ -206,7 +206,7 @@ async def get_replies(
             and message.content.strip() == em.scene_break.strip()
         ):
             break
-        elif em.name_prefix_optional and (
+        elif em.name_prefix_optional or (
             message.author is None or message.author.name == my_name
         ):
             if em.split_message:
