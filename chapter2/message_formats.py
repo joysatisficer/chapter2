@@ -194,8 +194,7 @@ class WebDocumentMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["chat"] = "chat"
     assistant_name: str | None
-    name_start: str
-    name_end: str
+    name_format: str = "<{}>"
     role_start: str
     role_end: str
     turn_end: str
@@ -216,7 +215,7 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         if cleaned_name != "":
             if self.assistant_name == cleaned_name:
                 role = "assistant"
-            part_change_name = self.name_start + cleaned_name + self.name_end
+            part_change_name = self.name_format.format(cleaned_name)
         part_role = self.role_start + role + self.role_end
         return part_role + part_change_name
 
