@@ -557,6 +557,10 @@ class DiscordInterface(discord.Client):
                         iface_config.reply_on_sim,
                     )
                 )
+                or (
+                    iface_config.reply_on_regex
+                    and re.match(iface_config.reply_on_regex, message.content)
+                )
             )
         )
 
