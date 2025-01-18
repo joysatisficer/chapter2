@@ -559,7 +559,7 @@ class DiscordInterface(discord.Client):
                 )
                 or (
                     iface_config.reply_on_regex
-                    and re.match(iface_config.reply_on_regex, message.content)
+                    and re.fullmatch(iface_config.reply_on_regex, message.content)
                 )
             )
         )
