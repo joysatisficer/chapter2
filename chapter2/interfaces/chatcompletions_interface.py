@@ -143,7 +143,7 @@ class ChatCompletionsInterface(AbstractInterface):
                 config.em,
                 async_generator_to_reusable_async_iterable(messages_iterator),
             ):
-                if reply_message.name == config.em.name and isempty(
+                if reply_message.author.name == config.em.name and not isempty(
                     reply_message.content
                 ):
                     valid_messages.append(reply_message)
