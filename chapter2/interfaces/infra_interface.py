@@ -933,11 +933,11 @@ class InfraInterface(DiscordInterface):
             )
         )
 
-        prompt = await get_prompt(history, config.em)
+        prompt = await get_prompt(config.em, history)
 
         file = discord.File(
             StringIO(prompt),
-            filename="prompt.txt",
+            filename=f"prompt-{pov_user.name}-{message.id}.txt",
         )
         message_content = f"### :page_with_curl: prompt for message {message.jump_url}"
         if pov_user is not None:
