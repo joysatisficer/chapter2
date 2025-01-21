@@ -25,7 +25,7 @@ from aioitertools.more_itertools import take as async_take
 
 import ontology
 from faculties.contrib.airtable_notes_faculty import get_airtable
-from message_formats import ColonMessageFormat, hashint
+from message_formats import hashint
 from trace import trace, ot_tracer, log_trace_id_to_console
 from interfaces.deserves_reply import deserves_reply
 from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
