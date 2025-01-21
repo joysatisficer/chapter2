@@ -261,6 +261,7 @@ class SharedInterfaceConfig(BaseModel):
     reply_on_name: bool = True
     nicknames: list = []  # for reply_on
     reply_on_sim: ReplyOnSimConfig | Literal[False] = False
+    reply_on_regex: str | None = None
     ignore_dotted_messages: bool = True
     end_to_end_test: bool = False
 

@@ -18,6 +18,12 @@ ems/*/*/*
 ems/multiprong/discord_token
 ems/multiprong/avatars
 ems/multiprong/avatar_changed_at
+!ems/arago
+!ems/arago/
+!ems/arago/*
+!ems/arago/arago.chr/*
+ems/arago/discord_token
+ems/arago/.git/
 prompts/
 nohup.out
 .DS_Store

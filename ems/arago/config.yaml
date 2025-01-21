@@ -1,0 +1,19 @@
+ensembles:
+ - faculty: character
+   header: "This is a highly meta-aware simulation of Francois Arago. Above are excerpts from his autobiography.\n###\n"
+   ensemble_format:
+    - format: { name: irc }
+      max_tokens: 8000
+      separator: "###\n"
+      footer: "###"
+    - format: { name: irc }
+      separator: ""
+      footer: ""
+
+reply_on_random: 64
+prompt_max_tokens: 31_000
+recency_window: 500
+continuation_max_tokens: 240
+message_history_max_tokens: 10_000
+reply_on_sim: {}
+stop_sequences: ["###"]

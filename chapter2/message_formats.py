@@ -196,12 +196,13 @@ class WebDocumentMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["chat"] = "chat"
     assistant_name: str | None
-    name_start: str = "<|name_start|>"
-    name_end: str = "<|name_end|>"
+    name_format: str = "<{}>"
+    # name_start: str = "<|name_start|>"
+    # name_end: str = "<|name_end|>"
     role_start: str = "<|im_start|>"
     role_end: str = "<|im_sep|>"
     turn_end: str = "<|im_end|>"
-    api_accepts_name: bool = True
+    # api_accepts_name: bool = True
 
     def render(self, message: Message) -> str:
         if message.author is not None and message.author.name != "":
@@ -219,7 +220,7 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         if cleaned_name != "":
             if self.assistant_name == cleaned_name:
                 role = "assistant"
-            part_change_name = self.name_start + cleaned_name + self.name_end
+            part_change_name = self.name_format.format(cleaned_name)
         part_role = self.role_start + role + self.role_end
         return part_role + part_change_name
 
@@ -235,17 +236,17 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         self,
         string: str,
         initial_role,
-        initial_name=None,
-        sticky_name=True,
+        # initial_name=None,
+        # sticky_name=True,
     ) -> list:
         role = initial_role
-        name = initial_name
+        # name = initial_name
         all_delimiters = [
             self.role_start,
             self.role_end,
             self.turn_end,
-            self.name_start,
-            self.name_end,
+            # self.name_start,
+            # self.name_end,
         ]
         substrings = split_many(string, all_delimiters)
         i = 0
@@ -265,44 +266,44 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                         sofar += substrings[j]
                     j += 1
                 i = j
-            elif substring == self.name_start:
-                sofar = ""
-                j = i + 1
-                while j < len(substrings):
-                    search = substrings[j]
-                    if search == self.name_end:
-                        name = sofar
-                        break
-                    else:
-                        sofar += substrings[j]
-                    j += 1
-                i = j
+            # elif substring == self.name_start:
+            #     sofar = ""
+            #     j = i + 1
+            #     while j < len(substrings):
+            #         search = substrings[j]
+            #         if search == self.name_end:
+            #             name = sofar
+            #             break
+            #         else:
+            #             sofar += substrings[j]
+            #         j += 1
+            #     i = j
             elif substring == self.turn_end:
-                messages.append(self.format_message(role, cur_message_content, name))
-                if not sticky_name:
-                    name = None
+                messages.append({"content": cur_message_content, "role": role})
+                # if not sticky_name:
+                #     name = None
                 cur_message_content = ""
             else:
                 cur_message_content += substring
             i += 1
         if cur_message_content != "":
-            messages.append(self.format_message(role, cur_message_content, name))
+            messages.append({"content": cur_message_content, "role": role})
         return messages
 
-    def format_message(self, role: str, content: str, name: str | None = None) -> dict:
-        message = {"content": content, "role": role}
-        if name is not None:
-            if self.api_accepts_name:
-                message["name"] = name
-            else:
-                message["content"] = self.api_name_prefix(name) + content
-        return message
+    # def format_message(self, role: str, content: str, name: str | None = None) -> dict:
+    #     message = {"content": content, "role": role}
+    #     if name is not None:
+    #         if self.api_accepts_name:
+    #             message["name"] = name
+    #         else:
+    #             message["content"] = self.api_name_prefix(name) + content
+    #     return message
 
-    def api_name_prefix(self, name: str | None = None) -> str:
-        if self.api_accepts_name:
-            return self.name_prefix(name)
-        else:
-            return name + ": "
+    # def api_name_prefix(self, name: str | None = None) -> str:
+    #     if self.api_accepts_name:
+    #         return self.name_prefix(name)
+    #     else:
+    #         return name + ": "
 
 
 def hashint(integer: int) -> str:
