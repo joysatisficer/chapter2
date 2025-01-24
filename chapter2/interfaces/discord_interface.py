@@ -304,7 +304,9 @@ class DiscordInterface(discord.Client):
                                     continue
                                 content = reply_message.content
                                 await message.channel.send(
-                                    self.realize_pings(content, mentions),
+                                    self.realize_discord_formatting(
+                                        content, message.guild, mentions
+                                    ),
                                 )
                                 if self.iface_config.exo_enabled:
                                     await self.respond_to_tools(
@@ -818,8 +820,9 @@ class DiscordInterface(discord.Client):
         return embed
 
     @staticmethod
-    def realize_pings(
+    def realize_discord_formatting(
         message_content: str,
+        guild: discord.Guild,
         mentions: set[Union[discord.User, discord.Member]],
     ):
         for member in mentions:
@@ -827,7 +830,13 @@ class DiscordInterface(discord.Client):
                 message_content = message_content.replace(
                     "@" + member.name, f"<@!{member.id}>"
                 )
-        return message_content
+        return re.sub(
+            r":([a-zA-Z0-9_~]{2,32}):",
+            lambda match: str(
+                discord.utils.get(guild.emojis, name=match[1]) or match[0]
+            ),
+            message_content,
+        )
 
     @staticmethod
     def get_yaml_from_channel(

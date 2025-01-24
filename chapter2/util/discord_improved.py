@@ -67,11 +67,12 @@ def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) 
     def repl(match: re.Match) -> str:
         type = match[1]
         id = int(match[2])
-        transformed = transforms[type](self, id, my_user_id, my_name)
-        return transformed
+        # if type isn't in transforms, it's an emoji :name:
+        transform = transforms.get(type, lambda *_: type)
+        return transform(self, id, my_user_id, my_name)
 
     result = re.sub(
-        r"<(@[!&]?|#)([0-9]{15,20})>",
+        r"<(@[!&]?|#|:[a-zA-Z0-9_~]{2,32}:)([0-9]{15,20})>",
         repl,
         self.system_content if self.is_system() else self.content,
     )
