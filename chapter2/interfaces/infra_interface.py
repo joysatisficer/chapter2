@@ -1,5 +1,6 @@
 import discord
 from discord import app_commands
+from discord.ui import Button, View
 from typing import Optional
 from pydantic import ValidationError
 from io import StringIO
@@ -51,6 +52,9 @@ class InfraInterface(DiscordInterface):
         "discord_proxy_url",
     }
 
+    FUTURES_PREFIX = ".:twisted_rightwards_arrows: **futures**"
+    ANCESTRY_PREFIX = ".:arrows_counterclockwise: **ancestry**:"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tree = app_commands.CommandTree(self)
@@ -79,7 +83,6 @@ class InfraInterface(DiscordInterface):
         )
 
     async def on_message(self, message: discord.Message) -> None:
-        # if message author is not the bot
         if message.author == self.user:
             return
         elif self.message_invisible(message, self.discord_iface_config):
@@ -88,7 +91,6 @@ class InfraInterface(DiscordInterface):
         elif isinstance(
             message.channel, discord.threads.Thread
         ) and message.channel.name.endswith("⌥"):
-            # if the parent of the message is a regular message
             parent = await last_normal_message(message.channel, before=message)
             if (
                 parent
@@ -96,13 +98,36 @@ class InfraInterface(DiscordInterface):
                 and parent.author == message.author
             ):
                 return
-            name = (
-                "⌥ "
-                + parse_discord_content(message, self.user.id, self.user.name)[:40]
-                + "..."
+            name = "⌥ " + self.message_preview_text(
+                message, max_length=40, styled=False
             )
             await message.channel.edit(name=name)
+            await self.update_index_pointer(message)
+
         return
+
+    async def update_index_pointer(self, message: discord.Message):
+        parent_node = await self.get_parent_node(message)
+        if parent_node is not None:
+            _, index_msg, _, _, _ = await self.get_loom_index(parent_node)
+            if index_msg is not None:
+                _, children_links = parse_index_message(index_msg)
+                if children_links is not None:
+                    new_children_links = []
+                    for child in children_links:
+                        if isinstance(child, dict):
+                            new_children_links.append(child["link"])
+                        else:
+                            new_children_links.append(child)
+                    for child_link in new_children_links:
+                        if child_link == message.channel.jump_url:
+                            new_children_links.remove(child_link)
+                            new_children_links.append(message.jump_url)
+                            view, index_msg_content = await self.futures_message(
+                                parent_node, new_children_links
+                            )
+                            await index_msg.edit(content=index_msg_content, view=view)
+                            return
 
     async def resolve_message(
         self,
@@ -191,6 +216,46 @@ class InfraInterface(DiscordInterface):
                     "steerable": emname in self.steerable_ems,
                 }
             )
+
+        @self.event
+        async def on_interaction(interaction: discord.Interaction):
+            if not interaction.type == discord.InteractionType.component:
+                return
+
+            try:
+                custom_id = interaction.data.get("custom_id", "")
+                if custom_id.startswith("fork_button|"):
+
+                    _, message_url, is_public = custom_id.split("|")
+                    message = await self.get_message_from_link(
+                        reconstruct_link(message_url)
+                    )
+                    is_public = is_public.lower() == "true"
+                    # Handle the button click
+                    await self.fork_to_thread_callback(
+                        interaction=interaction,
+                        message=message,
+                        ephemeral=not is_public,
+                        public=is_public,
+                    )
+                # elif custom_id.startswith("select_menu|"):
+                # values = interaction.data.get("values", [])
+                # if not values:
+                #     return
+
+                # # Parse the custom_id to get message info
+                # _, message_url = custom_id.split("|")
+
+                # Handle the selection
+                # await interaction.response.send_message(
+                #     f"You selected option: {values[0]}",
+                #     ephemeral=True
+                # )
+
+                else:
+                    return
+            except Exception as e:
+                print(f"Error handling button interaction: {e}")
 
         async def em_users_autocomplete(interaction: discord.Interaction, current: str):
             # filter em_users by users that are in the server
@@ -564,6 +629,23 @@ class InfraInterface(DiscordInterface):
                     public=public,
                 )
 
+            @self.tree.command(
+                name="get_ancestry",
+                description="get the loom ancestry of a message",
+            )
+            async def get_ancestry(
+                interaction: discord.Interaction,
+                message_link: Optional[str] = None,
+                public: bool = False,
+            ):
+                await self.interaction_wrapper(
+                    command_name="/get_ancestry",
+                    func=self.get_ancestry_command,
+                    interaction=interaction,
+                    message_link=message_link,
+                    public=public,
+                )
+
             if len(self.steerable_ems) > 0:
 
                 @self.tree.command(
@@ -767,6 +849,7 @@ class InfraInterface(DiscordInterface):
         print(
             f"Sync completed. Registered {len(sync_result)} commands: {[cmd.name for cmd in sync_result]}"
         )
+        await super().setup_hook()
 
     async def send_config_command(self, **kwargs):
         interaction = kwargs["interaction"]
@@ -907,6 +990,16 @@ class InfraInterface(DiscordInterface):
                 file=file,
             )
 
+    async def get_ancestry_command(self, **kwargs):
+        interaction = kwargs["interaction"]
+        message = kwargs["message"]
+        ancestry = await self.get_node_ancestry(message)
+        ancestry = reversed(ancestry)
+        ancestry_string = self.ANCESTRY_PREFIX
+        ancestry_string += format_ancestry_chain(ancestry, None, message)
+        ancestry_string += f" :point_left:"
+        await interaction.followup.send(ancestry_string)
+
     async def get_context_command(
         self,
         **kwargs,
@@ -1005,21 +1098,13 @@ class InfraInterface(DiscordInterface):
         public = kwargs["public"]
         title = kwargs["title"]
 
-        new_thread, history_message = await self.fork_to_thread(
+        return await self.fork_to_thread_callback(
+            interaction=interaction,
             message=message,
-            reason=f"Created by {interaction.user} through {interaction.command.name}",
+            ephemeral=not public,
             public=public,
             title=title,
-            interaction=interaction,
         )
-
-        emoji = "✓" if public else "✓ :lock:"
-
-        await interaction.followup.send(
-            f".{emoji} **created fork:** {message.jump_url} ⌥ {history_message.jump_url}"
-        )
-
-        return new_thread
 
     async def mu_command(self, **kwargs):
         message = kwargs["message"]
@@ -1031,143 +1116,450 @@ class InfraInterface(DiscordInterface):
         message_author = message.author
 
         await new_thread.send(f"m continue {message_author.mention}")
-        # return success_message
+        # return
+
+    async def fork_to_thread_callback(
+        self,
+        interaction: discord.Interaction,
+        message: discord.Message,
+        ephemeral: bool = True,
+        public: bool = True,
+        title: Optional[str] = None,
+    ):
+        # Only defer if the interaction hasn't been responded to
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=ephemeral)
+
+        reason = f"Created by {interaction.user}" + (
+            f" through {interaction.command.name}"
+            if interaction.command
+            else " through button click"
+        )
+
+        new_thread, ancestry_message, index_message = await self.fork_to_thread(
+            message=message,
+            reason=reason,
+            public=public,
+            title=title,
+            interaction=interaction,
+        )
+        emoji = "✓" if public else "✓ :lock:"
+        fork_message = f".{emoji} **created fork:** {message.jump_url} ⌥ {ancestry_message.jump_url}"
+        interaction_in_index = (
+            index_message is not None
+            and interaction.channel.id == index_message.channel.id
+        )
+        if index_message is not None and not interaction_in_index:
+            fork_message += f"\n[(see in loom index)]({index_message.jump_url})"
+
+        if not interaction_in_index:
+            view = discord.ui.View(timeout=None)
+            view.add_item(
+                discord.ui.Button(
+                    style=discord.ButtonStyle.primary,
+                    label="+⌥",
+                    custom_id=f"fork_button|{min_link(message.jump_url)}|{public}",
+                )
+            )
+            await interaction.followup.send(
+                fork_message,
+                ephemeral=ephemeral,
+                view=view,
+            )
+        else:
+            await interaction.followup.send(
+                fork_message,
+                ephemeral=True,
+            )
+        return new_thread
 
     async def fork_to_thread(
         self,
         interaction: discord.Interaction,
         message: discord.Message,
         title: Optional[str] = None,
-        reason: str = "Created by bot",
+        reason: str = "Created by infra",
         public: bool = False,
-        # interaction: Optional[discord.Interaction] = None,
-        # user: discord.User = None,
     ):
-        index_msg = None
-        message_thread = None
         if title is None:
             title = (
-                "..."
-                + parse_discord_content(message, self.user.id, self.user.name)[-15:]
+                self.message_preview_text(
+                    message, max_length=20, anchor_at_end=True, include_sender=False
+                )
                 + "⌥"
             )
-        if not isinstance(message.channel, discord.threads.Thread):
-            channel = message.channel
-            message_thread = await self.get_thread_from_message(message)
-            index_message_prefix = ".:twisted_rightwards_arrows: **futures**"
-            if message_thread is not None:
-                # if thread attached to message already exists
-                # get first message after the thread starter message
-                first_message = await get_first_non_system_thread_message(
-                    message_thread
-                )
 
-                if (
-                    first_message is not None
-                    and first_message.author == self.user
-                    and first_message.content.startswith(index_message_prefix)
-                ):
-                    index_msg = first_message
-            elif public:
-                # message has no thread yet; create a new one for storing links to children messages
-                index_thread_name = "..." + message.content[-15:] + "⌥*"
-                message_thread = await message.create_thread(
-                    name=index_thread_name,
-                    reason=reason,
-                )
-                index_msg = await message_thread.send(
-                    content=index_message_prefix + f"\n- {message.jump_url}"
-                )
-                # get the next message after message in the main channel if it exists
+        index_thread, index_msg, thread_channel, ancestors, ancestor_index_messages = (
+            await self.get_loom_index(message)
+        )
 
-        else:
-            channel = message.channel.parent
+        if thread_channel and index_thread is None and public:
+            # if index thread does not exist, create it
+            index_thread_name = (
+                "[LOOM INDEX] "
+                + self.message_preview_text(
+                    ancestors[-1],
+                    max_length=20,
+                    anchor_at_end=True,
+                    include_sender=False,
+                )
+                + "⌥*"
+            )
+            index_thread = await ancestors[-1].create_thread(
+                name=index_thread_name,
+                reason=reason,
+            )
 
+        new_thread = await thread_channel.create_thread(name=title, reason=reason)
         embed = embed_from_message(message)
-        if index_msg is not None:
-            embed.description = (
-                message.content
-                + f"\n\n-# [:twisted_rightwards_arrows: alt futures]({index_msg.jump_url})"
+        ancestry_message_content = (
+            self.ANCESTRY_PREFIX
+            + format_ancestry_chain(
+                reversed(ancestors), ancestor_index_messages, message
+            )
+            + "**⌥** ((:eye:))"
+        )
+
+        reference = None
+        if len(ancestors) > 1 and ancestors[1].jump_url in ancestor_index_messages:
+            reference = await self.get_message_from_link(
+                ancestor_index_messages[ancestors[1].jump_url]
             )
 
-        if public:
-            # if interaction is provided and in the same channel as the message
-            # send the message in response to the interaction
-            new_thread_message = await channel.send(
-                content=f".:rewind:{message.jump_url}",
-                embed=embed,
-            )
-            new_thread = await new_thread_message.create_thread(
-                name=title, reason=reason
-            )
-        else:
-            new_thread = await channel.create_thread(name=title, reason=reason)
-        # embed a copy of the message in the thread with a link to the original message
-        history_message = await new_thread.send(
+        new_history_message = await new_thread.send(
             content=compile_config_message(
                 command_prefix="history",
                 config_dict={"last": message.jump_url},
             ),
-            embed=embed if not public else None,
         )
 
-        # edit children message to point to the history message
-        if index_msg is not None:
-            # num = children_message.content.count("⌥") + 1
-            await index_msg.edit(
-                content=index_msg.content + f"\n- {history_message.jump_url}",
-            )
+        new_ancestry_message = await new_thread.send(
+            content=ancestry_message_content,
+            embed=embed,
+        )
 
         if not public:
-            # send a message to the new thread pinging the user to add them
+            # send a message to the new private thread pinging the user to add them
             await new_thread.send(f".{interaction.user.mention}")
+        elif index_thread is not None:
+            if index_msg is None:
 
-        return new_thread, history_message
+                index_ancestry_message = await index_thread.send(
+                    content=ancestry_message_content,
+                    embed=embed,
+                    reference=reference,
+                )
+
+                next_message = None
+                async for next_msg in message.channel.history(
+                    after=message, oldest_first=True, limit=3
+                ):
+                    # async for next_msg in self.cache(message.channel).history(after=message, limit=3):
+                    if not next_msg.is_system() and not next_msg.author == self.user:
+                        next_message = next_msg
+                        break
+
+                children_links = (
+                    [next_message.jump_url] if next_message is not None else []
+                )
+                children_links.append(new_thread.jump_url)
+
+                view, index_msg_content = await self.futures_message(
+                    message, children_links, public
+                )
+                index_msg = await index_thread.send(
+                    content=index_msg_content,
+                    view=view,
+                )
+            else:
+                root_link, children_links = parse_index_message(index_msg)
+                if root_link is None:
+                    raise ValueError("Error parsing index message")
+                    # new_future_content = f"\n- {new_ancestry_message.jump_url}"
+                    # await index_msg.edit(
+                    #     content=index_msg.content + new_future_content
+                    # )
+                elif children_links is not None:
+                    children_links.append(new_thread.jump_url)
+                    view, index_msg_content = await self.futures_message(
+                        message, children_links, public
+                    )
+                    await index_msg.edit(content=index_msg_content, view=view)
+
+            embed.description = (
+                message.content
+                + f"\n\n-# [:twisted_rightwards_arrows: alt futures]({index_msg.jump_url})"
+            )
+            await new_ancestry_message.edit(embed=embed)
+
+        return new_thread, new_ancestry_message, index_msg
+
+    async def futures_message(
+        self,
+        message: discord.Message,
+        children_links: list[str | dict],
+        public: bool = True,
+    ):
+
+        view = discord.ui.View(timeout=None)
+
+        view.add_item(
+            discord.ui.Button(
+                style=discord.ButtonStyle.primary,
+                label="+⌥",
+                custom_id=f"fork_button|{min_link(message.jump_url)}|{public}",
+            )
+        )
+
+        child_options = []
+        if len(children_links) > 0:
+            child_options = await self.make_child_options(children_links)
+
+            view.add_item(
+                discord.ui.Select(
+                    custom_id=f"select_menu|{min_link(message.jump_url)}",
+                    placeholder="Browse futures",
+                    options=child_options,
+                )
+            )
+
+        index_tree = {message.jump_url: child_options}
+
+        index_msg_content = await self.format_futures(index_tree)
+
+        return view, index_msg_content
+
+    async def get_loom_index(self, message: discord.Message):
+        ancestors = await self.get_node_ancestry(message)
+        thread_channel = None
+        index_thread = None
+        index_msg = None
+        ancestor_index_messages = {}
+
+        if not isinstance(ancestors[-1].channel, discord.threads.Thread):
+            thread_channel = ancestors[-1].channel
+            index_thread = await self.get_thread_from_message(ancestors[-1])
+            if index_thread is not None:
+                index_msg, ancestor_index_messages = await self.get_index_message(
+                    message, index_thread, ancestors
+                )
+        else:
+            thread_channel = message.channel.parent
+
+        return (
+            index_thread,
+            index_msg,
+            thread_channel,
+            ancestors,
+            ancestor_index_messages,
+        )
+
+    async def get_index_message(
+        self,
+        message: discord.Message,
+        index_thread: discord.Thread,
+        ancestors: list[discord.Message] | None = None,
+    ):
+        index_msg = index_thread.starter_message
+        ancestor_links = (
+            [ancestor.jump_url for ancestor in ancestors]
+            if ancestors is not None
+            else []
+        )
+        ancestor_index_messages = {}
+        async for next_msg in index_thread.history(
+            after=index_msg, oldest_first=True, limit=None
+        ):
+            # async for next_msg in self.cache(index_thread).history(after=index_msg, limit=None):
+            index_msg = next_msg
+            try:
+                root_link, children = parse_index_message(index_msg)
+            except StopIteration:
+                pass
+            if root_link == message.jump_url:
+                break
+            if root_link in ancestor_links:
+                ancestor_index_messages[root_link] = index_msg.jump_url
+        else:
+            index_msg = None
+        return index_msg, ancestor_index_messages
+
+    async def get_parent_node(self, message: discord.Message):
+        message_thread = message.channel
+        if not isinstance(message_thread, discord.threads.Thread):
+            return None
+        async for msg in message_thread.history(
+            after=message_thread.starter_message, oldest_first=True
+        ):
+            # async for msg in self.cache(message.channel).history(after=message, limit=None):
+            if msg is not None and msg.content.startswith(".history"):
+                history_config = self.parse_dot_command(msg)
+                if history_config and history_config["yaml"]:
+                    parent_message = await self.get_message_from_link(
+                        history_config["yaml"]["last"]
+                    )
+                    return parent_message
+        return None
+
+    async def get_node_ancestry(self, message: discord.Message):
+        ancestry = []
+        current_message = message
+        while current_message is not None:
+            ancestry.append(current_message)
+            current_message = await self.get_parent_node(current_message)
+        return ancestry
+
+    async def format_futures(self, tree: dict):
+        futures_string = self.FUTURES_PREFIX
+        root_link, children = next(iter(tree.items()))
+        futures_string += f" of {root_link}:"
+        for child in children:
+            link = f"\n- {child}"
+            description = ""
+            if isinstance(child, dict):
+                link = child["link"]
+                description = child["description"]
+            elif isinstance(child, discord.SelectOption):
+                link = reconstruct_link(child.value)
+                description = child.description
+            futures_string += f"\n- {link}"
+            if description is not None and description != "":
+                futures_string += f"\n> -# {description}"
+
+        return futures_string
+
+    async def make_child_options(self, children_links: list[str | dict]):
+        child_options = []
+        for child_link in children_links:
+            if isinstance(child_link, dict):
+                child_link = child_link["link"]
+            url_parts = child_link.split("channels/")[1].split("/")
+            description = ""
+            label = url_parts[-1]
+            # check if link is a channel or message link
+            if len(url_parts) == 3:
+                child_message = await self.get_message_from_link(child_link)
+                label = child_message.channel.name
+                if (
+                    not child_message.author == self.user
+                    and not child_message.is_system()
+                ):
+                    description = self.message_preview_text(
+                        child_message, max_length=80, styled=False, include_sender=False
+                    )
+            child_options.append(
+                discord.SelectOption(
+                    label=label, value=min_link(child_link), description=description
+                )
+            )
+        return child_options
+
+    def message_preview_text(
+        self,
+        message: discord.Message,
+        max_length: int = 80,
+        styled: bool = False,
+        anchor_at_end: bool = False,
+        include_sender: bool = True,
+    ):
+        if include_sender:
+            message_sender = (
+                f"**{message.author.name}:** " if styled else f"{message.author.name}: "
+            )
+        else:
+            message_sender = ""
+        parsed_content = parse_discord_content(
+            message, self.user.id, self.user.name
+        ).strip()
+        split_content = parsed_content.split("\n")
+        message_content_preview = (
+            split_content[-1][-max_length:]
+            if anchor_at_end
+            else split_content[0][:max_length]
+        )
+        if len(parsed_content) > max_length:
+            if anchor_at_end:
+                message_content_preview = "..." + message_content_preview
+            else:
+                message_content_preview += "..."
+        return message_sender + message_content_preview
 
 
-async def get_first_non_system_thread_message(thread):
-    try:
-        # Get messages and filter out system messages
-        messages = [
-            msg
-            async for msg in thread.history(after=thread.starter_message, limit=5)
-            if not msg.is_system()
-            and not msg.type == discord.MessageType.thread_starter_message
+def min_link(link: str):
+    return link.split("channels/")[1]
+
+
+def reconstruct_link(link: str):
+    return f"https://discord.com/channels/{link}"
+
+
+def get_select(message: discord.Message) -> Optional[discord.SelectMenu]:
+    for row in message.components:
+        for component in row.children:
+            if isinstance(component, discord.SelectMenu):
+                return component
+    return None
+
+
+def parse_index_message(message: discord.Message):
+    select = get_select(message)
+    if select is not None:
+        root_link = reconstruct_link(select.custom_id.split("|")[1])
+        children = [
+            {"link": reconstruct_link(option.value), "description": option.description}
+            for option in select.options
         ]
+        return root_link, children
+    if not message.content.startswith(InfraInterface.FUTURES_PREFIX):
+        return None, None
+    parts = message.content.split("of")
+    if len(parts) < 2:
+        return None, None
+    tree_text = parts[1].strip()
+    if not tree_text == "":
+        tree = yaml.safe_load(tree_text)
+        try:
+            root_link, children = next(iter(tree.items()))
+        except StopIteration:
+            pass
+        return root_link, children
+    return None, None
 
-        # Return the first non-system message if there is one
-        if messages:
-            return messages[0]
-        return None
 
-    except Exception as e:
-        print(f"Error getting thread message: {e}")
-        return None
+def format_ancestry_chain(
+    ancestry: list[discord.Message],
+    ancestor_index_messages: dict | None = None,
+    current_message: discord.Message | None = None,
+):
+    ancestry_string = ""
+    indent = ""
+
+    for message in ancestry:
+        ancestry_string += f"\n{indent}- "
+        if current_message is not None and message.jump_url == current_message.jump_url:
+            ancestry_string += f"**⌥**{message.jump_url}"
+        else:
+            ancestry_string += "-# "
+            ancestry_string += f"⌥{message.jump_url}"
+        if (
+            ancestor_index_messages is not None
+            and message.jump_url in ancestor_index_messages
+        ):
+            ancestry_string += f"[⌥]({ancestor_index_messages[message.jump_url]})"
+        indent += "  "
+    return ancestry_string
 
 
 def embed_from_message(message: discord.Message, timestamp: bool = False):
     embed = discord.Embed(description=message.content)
     embed.set_author(
-        name=message.author.display_name,
+        name=message.author.name,
         icon_url=message.author.display_avatar.url,
         url=message.jump_url,
     )
     if timestamp:
         embed.set_footer(text=message.created_at.strftime("%Y-%m-%d %H:%M:%S"))
     return embed
-
-
-async def search_for_message_in_channels(
-    message_id: int, channels: list[discord.TextChannel | None]
-):
-    for channel in channels:
-        if channel is None:
-            continue
-        try:
-            return await channel.fetch_message(message_id)
-        except discord.NotFound:
-            pass
-    return None
 
 
 async def last_message(
