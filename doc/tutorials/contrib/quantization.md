@@ -25,7 +25,7 @@ As of January 2025, this method only works for smaller models. It will fail for
 ### Step 2: Sign in with huggingface on [gguf-my-repo](https://huggingface.co/spaces/ggml-org/gguf-my-repo)
 ### Step 3: Paste the model ID into the "Hub Model ID" field
 ### Step 4: Check "Use Imatrix Quantization"
-4### Step 5: Upload a [calibration file](#imatrix-calibration-file)
+### Step 5: Upload a [calibration file](#imatrix-calibration-file)
 ### Step 6: Press "submit"
 ## Method 2: llama.cpp
 > **Note for Elysium users:** This has already been set up on Elysium.
