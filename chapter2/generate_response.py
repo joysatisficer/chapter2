@@ -5,13 +5,14 @@ from functools import partial
 from typing import TypeVar, Iterable
 
 import asyncstdlib
+import nltk
 from aioitertools.more_itertools import take as async_take
 from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
 
 from declarations import ActionHistory, Author, Ensemble, Action
 from faculties import FACULTY_NAME_TO_FUNCTION
-from mufflers import mufflers
+from mufflers import mufflers, divide_sentences
 from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
 from trace import trace, log_trace_id_to_console
 
@@ -159,21 +160,20 @@ async def get_replies(
     print(prompt, flush=True)
     if em.continuation_model_local_tokenization:
         prompt = callgpt.tokenize(em.continuation_model, prompt)
-    completion = (
-        await callgpt.complete(
-            prompt=trace.prompt(prompt, attr=True),
-            temperature=em.temperature,
-            max_tokens=em.continuation_max_tokens,
-            frequency_penalty=em.frequency_penalty,
-            presence_penalty=em.presence_penalty,
-            model=em.continuation_model,
-            stop=stop_sequences[:3] if stop_sequences is not None else None,
-            vendor_config=em.vendors.get_secret_value(),
-            logit_bias=logit_bias,
-            best_of=em.best_of,
-            **em.continuation_options,
-        )
-    )["completions"][0]["text"]
+    response = await callgpt.complete(
+        prompt=trace.prompt(prompt, attr=True),
+        temperature=em.temperature,
+        max_tokens=em.continuation_max_tokens,
+        frequency_penalty=em.frequency_penalty,
+        presence_penalty=em.presence_penalty,
+        model=em.continuation_model,
+        stop=stop_sequences[:3] if stop_sequences is not None else None,
+        vendor_config=em.vendors.get_secret_value(),
+        logit_bias=logit_bias,
+        best_of=em.best_of,
+        **em.continuation_options,
+    )
+    completion = response["completions"][0]["text"]
     if (
         callgpt.pick_vendor(em.continuation_model, em.vendors.get_secret_value())
         == "fake-local"
@@ -198,6 +198,18 @@ async def get_replies(
         )
     log_trace_id_to_console()
     # Todo: Client-side stop sequences
+    if em.trim_final_incomplete_sentence:
+        if response["completions"][0]["stop_reason"] == "length":
+            sentences = divide_sentences(completion)
+            tokenizer: nltk.PunktSentenceTokenizer = nltk.data.load(
+                f"tokenizers/punkt/english.pickle"
+            )
+            if not tokenizer.text_contains_sentbreak(sentences[-1]):
+                completion = "".join(
+                    tokenizer.sentences_from_text(completion, realign_boundaries=True)[
+                        :-1
+                    ]
+                )
     messages = []
     for message in em.message_history_format.parse(completion_prefix + completion):
         # accept messages from myself or without prefixes

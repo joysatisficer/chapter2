@@ -217,6 +217,7 @@ class EmConfig(BaseModel):
         "has_pump_fun_ca",
         "has_img_url_token",
     ]  # "context_sentence_repetition"
+    trim_final_incomplete_sentence: bool = False
 
     temperature: Annotated[float, Ge(0)] = 0.95  # todo: vary on model
     top_p: Annotated[float, Interval(gt=0, le=1)] = 0.995  # ditto
