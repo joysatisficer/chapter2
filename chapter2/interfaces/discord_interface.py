@@ -19,11 +19,9 @@ import requests
 import ast
 from pydantic import ValidationError
 from sortedcontainers import SortedDict
-from asgiref.sync import sync_to_async
 from aioitertools.more_itertools import take as async_take
 
 import ontology
-from faculties.contrib.airtable_notes_faculty import get_airtable
 from message_formats import hashint
 from trace import trace, ot_tracer, log_trace_id_to_console
 from interfaces.deserves_reply import deserves_reply
@@ -308,10 +306,9 @@ class DiscordInterface(discord.Client):
                                         content, message.guild, mentions
                                     ),
                                 )
-                                if self.iface_config.exo_enabled:
-                                    await self.respond_to_tools(
-                                        message.channel, reply_message
-                                    )
+                                await self.respond_to_tools(
+                                    message.channel, reply_message
+                                )
                                 trace.send_message(reply_message.content)
                                 first_message = False
                 finally:
@@ -319,79 +316,7 @@ class DiscordInterface(discord.Client):
                         await message.delete()
 
     async def respond_to_tools(self, channel, reply_message: Message):
-        if reply_message.content.startswith("exo create_note "):
-            note_content = (
-                reply_message.content.removeprefix("exo create_note ")
-                .removeprefix('"')
-                .removesuffix('"')
-            )
-            record = await sync_to_async(
-                get_airtable(self.iface_config.airtable).create,
-                thread_sensitive=False,
-            )({"Note": note_content})
-            webhook = await self.get_my_webhook_for_channel(channel)
-            await webhook.send(
-                textwrap.dedent(
-                    f"""\
-            exOS Chapter II
-            ---
-            Command: exo create_note "{note_content}"
-            Time: {datetime.now():%m/%d/%Y, %I:%M:%S %p}
-            ---
-
-            Note created. The 'exo notes' faculty shows all your personal notes
-
-            Your note has been created with ID: {record["id"]}
-
-            ---
-            Type 'help' for available commands."""
-                ),
-                username="exOS",
-                allowed_mentions=discord.AllowedMentions.none(),
-            )
-        elif reply_message.content == "help":
-            webhook = await self.get_my_webhook_for_channel(channel)
-            await webhook.send(
-                textwrap.dedent(
-                    f"""\
-            exOS Chapter II
-            ---
-            Command: help
-            Time: {datetime.now():%m/%d/%Y, %I:%M:%S %p}
-            ---
-            
-            Global Help
-            
-            Available environments: exo
-            Use "<environment> help" for environment-specific commands.
-            """
-                ),
-                username="exOS",
-                allowed_mentions=discord.AllowedMentions.none(),
-            )
-        elif reply_message.content == "exo help":
-            webhook = await self.get_my_webhook_for_channel(channel)
-            await webhook.send(
-                textwrap.dedent(
-                    f"""\
-            exOS Chapter II
-            ---
-            Command: help
-            Time: {datetime.now():%m/%d/%Y, %I:%M:%S %p}
-            ---
-
-            Exo Help
-            
-            Available commands:
-            create_note <note_string> - Create a new note
-
-            ---
-            Type 'help' for available commands.
-            """
-                ),
-                username="exOS",
-                allowed_mentions=discord.AllowedMentions.none(),
-            )
+        pass
 
     async def discord_message_to_message(
         self,

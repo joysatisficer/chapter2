@@ -287,7 +287,6 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     may_speak: list[str] = []
     include_images: bool = True
     image_limits: ImageLimits = ImageLimits()
-    exo_enabled: bool = False
     airtable: AirtableConfig | None = None
 
 
