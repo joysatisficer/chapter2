@@ -185,9 +185,7 @@ class DiscordInterface(discord.Client):
                     yield msg
 
     async def on_message(self, message: discord.Message) -> None:
-
         self.cache(message.channel).update(message, True)
-
         if is_command := is_continue_command(message.content):
             if not self.user.mentioned_in(message):
                 return
