@@ -7,5 +7,7 @@ async def sim_faculty(
 ):
     from generate_response import generate_response
 
-    async for action in generate_response(faculty_config.em, history):
+    async for action in generate_response(
+        faculty_config.em.model_copy(update={"vendors": em.vendors}), history
+    ):
         yield action
