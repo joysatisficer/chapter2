@@ -199,7 +199,7 @@ async def get_replies(
     log_trace_id_to_console()
     # Todo: Client-side stop sequences
     if em.trim_final_incomplete_sentence:
-        if response["completions"][0]["stop_reason"] == "length":
+        if response["completions"][0]["finish_reason"] == "length":
             sentences = divide_sentences(completion)
             tokenizer: nltk.PunktSentenceTokenizer = nltk.data.load(
                 f"tokenizers/punkt/english.pickle"
