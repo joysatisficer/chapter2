@@ -611,6 +611,13 @@ class DiscordInterface(discord.Client):
     async def on_ready(self):
         print(f"Invite the bot: {self.get_invite_link()}")
         print("Discord interface ready")
+        try:
+            avatar_file = open(self.base_config.em.folder / "discord_avatar", "rb")
+        except FileNotFoundError:
+            pass
+        else:
+            await self.user.edit(avatar=avatar_file.read())
+            avatar_file.close()
         if self.iface_config.end_to_end_test:
             run_task(self.end_to_end_test())
 
