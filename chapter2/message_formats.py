@@ -67,9 +67,6 @@ class AbstractMessageFormat:
                     )
         yield merged_message
 
-    def api_name_prefix(self, name: str | None = None) -> str:
-        return self.name_prefix(name)
-
 
 class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["irc"] = "irc"
@@ -161,10 +158,13 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                     re.match(r"^\s*\d*\.", line)
                     or re.match(r"^-|•", line)
                     or re.match(r"^\*+$", raw_content)
+                    or name.count(" ") > 0
                 ):
                     author = None
                     raw_content = name + ": " + raw_content
                 else:
+                    # print('name:', name)
+                    # print('raw_content:', raw_content)
                     author = Author(name.strip())
                 content = raw_content.strip() if self.strip else raw_content
                 messages.append(Message(author, content))
@@ -193,6 +193,11 @@ class WebDocumentMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         )
 
 
+def create_message_pattern(name_template: str = "<{}>"):
+    name_pattern = re.escape(name_template).replace(r"\{\}", "([^\n]+)")
+    return re.compile(f"^(?:{name_pattern})?([\s\S]*)")
+
+
 class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["chat"] = "chat"
     assistant_name: str | None
@@ -202,7 +207,7 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     role_start: str = "<|im_start|>"
     role_end: str = "<|im_sep|>"
     turn_end: str = "<|im_end|>"
-    # api_accepts_name: bool = True
+    api_accepts_name: bool = True
 
     def render(self, message: Message) -> str:
         if message.author is not None and message.author.name != "":
@@ -279,7 +284,9 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
             #         j += 1
             #     i = j
             elif substring == self.turn_end:
-                messages.append({"content": cur_message_content, "role": role})
+                message = self.format_message(role, cur_message_content)
+                if message is not None:
+                    messages.append(message)
                 # if not sticky_name:
                 #     name = None
                 cur_message_content = ""
@@ -287,17 +294,28 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                 cur_message_content += substring
             i += 1
         if cur_message_content != "":
-            messages.append({"content": cur_message_content, "role": role})
+            message = self.format_message(role, cur_message_content)
+            if message is not None:
+                messages.append(message)
         return messages
 
-    # def format_message(self, role: str, content: str, name: str | None = None) -> dict:
-    #     message = {"content": content, "role": role}
-    #     if name is not None:
-    #         if self.api_accepts_name:
-    #             message["name"] = name
-    #         else:
-    #             message["content"] = self.api_name_prefix(name) + content
-    #     return message
+    def format_message(self, role: str, content: str) -> dict:
+        pattern = create_message_pattern(self.name_format)
+        match = pattern.match(content)
+        if match:
+            name = match.group(1)
+            content = match.group(2)
+        else:
+            name = None
+        message = {"content": content, "role": role}
+        if name is not None:
+            if self.api_accepts_name:
+                if content == "":
+                    return None
+                message["name"] = name
+            else:
+                message["content"] = self.name_format.format(name) + content
+        return message
 
     # def api_name_prefix(self, name: str | None = None) -> str:
     #     if self.api_accepts_name:
