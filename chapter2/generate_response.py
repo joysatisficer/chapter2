@@ -9,7 +9,7 @@ from aioitertools.more_itertools import take as async_take
 from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
 
-from declarations import ActionHistory, Author, Ensemble, Action
+from declarations import ActionHistory, Author, Ensemble, Action, Message
 from faculties import FACULTY_NAME_TO_FUNCTION
 from mufflers import mufflers
 from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
@@ -98,6 +98,11 @@ async def generate_response(em: EmConfig, history: ActionHistory):
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
     recent_messages = await async_take(em.recency_window, history)
+    stop_name_template = (
+        em.message_history_format.name_format.format
+        if em.message_history_format.name == "chat"
+        else em.message_history_format.name_prefix
+    )
     stop_sequences = unique(
         em.stop_sequences
         + [
@@ -106,7 +111,7 @@ async def generate_response(em: EmConfig, history: ActionHistory):
             # immediately. if that's the case, we don't want to
             # prepend a newline to author-based stop sequences
             ("" if completion_prefix == "" else "\n")
-            + em.message_history_format.api_name_prefix(message.author.name)
+            + stop_name_template(message.author.name)
             for message in recent_messages
             if (message.author is not None and message.author.name != em.name)
         ]
@@ -162,22 +167,37 @@ async def get_replies(
     kwargs = {
         "message_history_format": em.message_history_format,
         "continuation_options": em.continuation_options,
+        "name": em.name,
     }
-    completion = (
-        await callgpt.complete(
-            prompt=trace.prompt(prompt, attr=True),
-            temperature=em.temperature,
-            max_tokens=em.continuation_max_tokens,
-            frequency_penalty=em.frequency_penalty,
-            presence_penalty=em.presence_penalty,
-            model=em.continuation_model,
-            stop=stop_sequences[:3] if stop_sequences is not None else None,
-            vendor_config=em.vendors.get_secret_value(),
-            logit_bias=logit_bias,
-            best_of=em.best_of,
-            **kwargs,
+    response = await callgpt.complete(
+        prompt=trace.prompt(prompt, attr=True),
+        temperature=em.temperature,
+        max_tokens=em.continuation_max_tokens,
+        frequency_penalty=em.frequency_penalty,
+        presence_penalty=em.presence_penalty,
+        model=em.continuation_model,
+        stop=stop_sequences[:3] if stop_sequences is not None else None,
+        vendor_config=em.vendors.get_secret_value(),
+        logit_bias=logit_bias,
+        best_of=em.best_of,
+        **kwargs,
+    )
+    completion = response["completions"][0]["text"]
+    reasoning_content = response["completions"][0].get("reasoning_content", None)
+    if completion is None and reasoning_content is not None:
+        if len(reasoning_content.split("</think>")) > 1:
+            completion = "</think>".join(reasoning_content.split("</think>")[1:])
+            reasoning_content = reasoning_content.split("</think>")[0]
+
+    if reasoning_content is not None:
+        print(
+            "Reasoning>>",
+            completion,
+            # completion.replace("\n", r"\n"),
+            "<<Reasoning",
+            sep="",
+            flush=True,
         )
-    )["completions"][0]["text"]
     if (
         callgpt.pick_vendor(em.continuation_model, em.vendors.get_secret_value())
         == "fake-local"
@@ -195,33 +215,40 @@ async def get_replies(
         trace.continuation(completion, attr=True)
         print(
             "Continues>>",
-            completion.replace("\n", r"\n"),
+            completion,
+            # completion.replace("\n", r"\n"),
             "<<Continues",
             sep="",
             flush=True,
         )
+
     log_trace_id_to_console()
     # Todo: Client-side stop sequences
-    messages = []
-    for message in em.message_history_format.parse(completion_prefix + completion):
-        # accept messages from myself or without prefixes
-        if (
-            em.prevent_gpt_topic_change
-            and message.content.strip() == em.scene_break.strip()
-        ):
-            break
-        elif em.name_prefix_optional or (
-            message.author is None or message.author.name == my_name
-        ):
-            if em.split_message:
-                yield dataclasses.replace(message, author=author)
+
+    if reasoning_content is not None:
+        reasoning_message = Message(Author("reasoning_content"), reasoning_content)
+        yield reasoning_message
+    if completion:
+        messages = []
+        for message in em.message_history_format.parse(completion_prefix + completion):
+            # accept messages from myself or without prefixes
+            if (
+                em.prevent_gpt_topic_change
+                and message.content.strip() == em.scene_break.strip()
+            ):
+                break
+            elif em.name_prefix_optional or (
+                message.author is None or message.author.name == my_name
+            ):
+                if em.split_message:
+                    yield dataclasses.replace(message, author=author)
+                else:
+                    messages.append(message)
             else:
-                messages.append(message)
-        else:
-            break
-    if not em.split_message:
-        for message in em.message_history_format.merge(messages):
-            yield dataclasses.replace(message, author=author)
+                break
+        if not em.split_message:
+            for message in em.message_history_format.merge(messages):
+                yield dataclasses.replace(message, author=author)
 
 
 async def format_ensemble(
