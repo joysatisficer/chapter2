@@ -192,7 +192,7 @@ async def get_replies(
     if reasoning_content is not None:
         print(
             "Reasoning>>",
-            completion,
+            reasoning_content,
             # completion.replace("\n", r"\n"),
             "<<Reasoning",
             sep="",
