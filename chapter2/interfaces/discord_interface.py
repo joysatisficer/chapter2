@@ -22,6 +22,8 @@ from pydantic import ValidationError
 from sortedcontainers import SortedDict
 from asgiref.sync import sync_to_async
 from aioitertools.more_itertools import take as async_take
+from io import StringIO
+
 
 import ontology
 from faculties.contrib.airtable_notes_faculty import get_airtable
@@ -178,23 +180,24 @@ class DiscordInterface(discord.Client):
         elif iface_config.threads_inherit_history and isinstance(
             message.channel, discord.threads.Thread
         ):
-            thread = message.channel
+            # thread = message.channel
             # starter message id is the same as the thread id if the
             # thread is attached to a message
-            if message.channel.name.startswith("new:"):
-                return
-            elif message.channel.name.startswith("past:"):
-                starter_message_id = message.channel.name.split("past:")[1]
-            elif thread.id is not None:
-                starter_message_id = thread.id
-            else:
-                return
-            try:
-                starter_message = await message.channel.parent.fetch_message(
-                    starter_message_id
-                )
-            except discord.errors.NotFound:
-                starter_message = None
+            starter_message = await self.get_starter_message(message)
+            # if message.channel.name.startswith("new:"):
+            #     return
+            # elif message.channel.name.startswith("past:"):
+            #     starter_message_id = message.channel.name.split("past:")[1]
+            # elif thread.id is not None:
+            #     starter_message_id = thread.id
+            # else:
+            #     return
+            # try:
+            #     starter_message = await message.channel.parent.fetch_message(
+            #         starter_message_id
+            #     )
+            # except discord.errors.NotFound:
+            #     starter_message = None
             if starter_message is not None:
                 async for msg in self.message_history(
                     starter_message,
@@ -204,6 +207,28 @@ class DiscordInterface(discord.Client):
                     pov_user=pov_user,
                 ):
                     yield msg
+
+    async def get_starter_message(self, message: discord.Message):
+        if not isinstance(message.channel, discord.threads.Thread):
+            return None
+        thread = message.channel
+        # starter message id is the same as the thread id if the
+        # thread is attached to a message
+        if message.channel.name.startswith("new:"):
+            return None
+        elif message.channel.name.startswith("past:"):
+            starter_message_id = message.channel.name.split("past:")[1]
+        elif thread.id is not None:
+            starter_message_id = thread.id
+        else:
+            return None
+        try:
+            starter_message = await message.channel.parent.fetch_message(
+                starter_message_id
+            )
+        except discord.errors.NotFound:
+            starter_message = None
+        return starter_message
 
     async def on_message(self, message: discord.Message) -> None:
 
@@ -305,6 +330,25 @@ class DiscordInterface(discord.Client):
                     ):
                         first_message = True
                         async for reply_message in response_messages:
+                            if (
+                                reply_message.author.name == "reasoning_content"
+                                and not isempty(reply_message.content)
+                            ):
+                                prefix = ".:thought_balloon:"
+                                inner_content = f"{reply_message.content}"
+                                if len(reply_message.content) > 1900:
+                                    attachment = discord.File(
+                                        StringIO(inner_content),
+                                        filename="reasoning.txt",
+                                    )
+                                    await message.channel.send(
+                                        content=prefix, file=attachment
+                                    )
+                                else:
+                                    await message.channel.send(
+                                        content=prefix + f"\n```{inner_content}```"
+                                    )
+                                first_message = False
                             if (
                                 reply_message.author.name == config.em.name
                                 and not isempty(reply_message.content)
