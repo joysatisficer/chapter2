@@ -109,7 +109,7 @@ class InfraInterface(DiscordInterface):
     async def update_index_pointer(self, message: discord.Message):
         parent_node = await self.get_parent_node(message)
         if parent_node is not None:
-            _, index_msg, _, _, _ = await self.get_loom_index(parent_node)
+            _, index_msg, _, _, _, _ = await self.get_loom_index(parent_node)
             if index_msg is not None:
                 _, children_links = parse_index_message(index_msg)
                 if children_links is not None:
@@ -392,6 +392,27 @@ class InfraInterface(DiscordInterface):
                     func=self.fork_command,
                     interaction=interaction,
                     message_link=message_link,
+                    public=public,
+                    title=title,
+                )
+
+            @self.tree.command(
+                name="new",
+                description="create a new context with no history",
+            )
+            @app_commands.describe(
+                public="(TRUE by default) create a public thread. If FALSE, create a private thread.",
+                title="optional title for the new thread",
+            )
+            async def new(
+                interaction: discord.Interaction,
+                public: bool = True,
+                title: Optional[str] = None,
+            ):
+                await self.interaction_wrapper(
+                    command_name="/new",
+                    func=self.new_thread_command,
+                    interaction=interaction,
                     public=public,
                     title=title,
                 )
@@ -1106,6 +1127,26 @@ class InfraInterface(DiscordInterface):
             title=title,
         )
 
+    async def new_thread_command(self, **kwargs):
+        interaction = kwargs["interaction"]
+        title = kwargs["title"]
+        # reason = kwargs["reason"]
+        public = kwargs["public"]
+        reason = f"Created by {interaction.user}" + (
+            f" through {interaction.command.name}"
+            if interaction.command
+            else " through button click"
+        )
+        new_thread, index_msg = await self.new_thread(
+            interaction, title, reason, public
+        )
+        emoji = "✓" if public else "✓ :lock:"
+        fork_message = f".{emoji} **created new context:** {new_thread.jump_url}"
+        if index_msg is not None:
+            fork_message += f"\n[(see in loom index)]({index_msg.jump_url})"
+        await interaction.followup.send(fork_message)
+        return new_thread
+
     async def mu_command(self, **kwargs):
         message = kwargs["message"]
         parent_message = await last_normal_message(message.channel, before=message)
@@ -1136,7 +1177,7 @@ class InfraInterface(DiscordInterface):
             else " through button click"
         )
 
-        new_thread, ancestry_message, index_message = await self.fork_to_thread(
+        new_thread, index_message = await self.fork_to_thread(
             message=message,
             reason=reason,
             public=public,
@@ -1144,7 +1185,9 @@ class InfraInterface(DiscordInterface):
             interaction=interaction,
         )
         emoji = "✓" if public else "✓ :lock:"
-        fork_message = f".{emoji} **created fork:** {message.jump_url} ⌥ {ancestry_message.jump_url}"
+        fork_message = (
+            f".{emoji} **created fork:** {message.jump_url} ⌥ {new_thread.jump_url}"
+        )
         interaction_in_index = (
             index_message is not None
             and interaction.channel.id == index_message.channel.id
@@ -1173,6 +1216,72 @@ class InfraInterface(DiscordInterface):
             )
         return new_thread
 
+    async def new_thread(
+        self,
+        interaction: discord.Interaction,
+        title: Optional[str] = None,
+        reason: str = "Created by infra",
+        public: bool = False,
+    ):
+        # creates a new thread in the channel of the interaction (or parent if it's a thread)
+        # which doesn't inherit history, but if public is True, all downstream forks
+        # will be indexed in a thread in the channel of the interaction
+
+        if isinstance(interaction.channel, discord.threads.Thread):
+            channel = interaction.channel.parent
+        else:
+            channel = interaction.channel
+
+        if title is None:
+            title = "Untitled"
+
+        history_config = {}
+
+        index_msg = None
+
+        if public:
+            # create a message so that the thread is public
+            new_thread_message = await channel.send(
+                content=f".new context: {title}",
+            )
+            new_thread = await new_thread_message.create_thread(
+                name=title, reason=reason
+            )
+            index_anchor_message = await channel.send(
+                content=f".index anchor for {new_thread.jump_url}",
+            )
+
+            history_config["root"] = index_anchor_message.jump_url
+
+            index_thread_name = "[LOOM INDEX] " + title + "⌥*"
+            index_thread = await index_anchor_message.create_thread(
+                name=index_thread_name,
+                reason=reason,
+            )
+
+            view, index_msg_content = await self.futures_message(
+                new_thread_message, [new_thread.jump_url], public
+            )
+            index_msg = await index_thread.send(
+                content=index_msg_content,
+                view=view,
+            )
+
+        else:
+            new_thread = await channel.create_thread(name=title, reason=reason)
+
+        new_history_message = await new_thread.send(
+            content=compile_config_message(
+                command_prefix="history",
+                config_dict=history_config,
+            ),
+        )
+
+        if not public:
+            await new_thread.send(f".{interaction.user.mention}")
+
+        return new_thread, index_msg
+
     async def fork_to_thread(
         self,
         interaction: discord.Interaction,
@@ -1189,29 +1298,38 @@ class InfraInterface(DiscordInterface):
                 + "⌥"
             )
 
-        index_thread, index_msg, thread_channel, ancestors, ancestor_index_messages = (
-            await self.get_loom_index(message)
-        )
+        (
+            index_thread,
+            index_msg,
+            thread_channel,
+            ancestors,
+            ancestor_index_messages,
+            index_anchor_message,
+        ) = await self.get_loom_index(message)
 
-        if thread_channel and index_thread is None and public:
+        # TODO optionally? keep index of messages that already have threads
+        # if index_anchor_message is None and public:
+        #     index_anchor_message = await thread_channel.send(
+        #         content="anchor message for loom index of " + message.jump_url,
+        #     )
+
+        if index_anchor_message is not None and index_thread is None and public:
             # if index thread does not exist, create it
             index_thread_name = (
                 "[LOOM INDEX] "
                 + self.message_preview_text(
-                    ancestors[-1],
+                    index_anchor_message,
                     max_length=20,
                     anchor_at_end=True,
                     include_sender=False,
                 )
                 + "⌥*"
             )
-            index_thread = await ancestors[-1].create_thread(
+            index_thread = await index_anchor_message.create_thread(
                 name=index_thread_name,
                 reason=reason,
             )
 
-        new_thread = await thread_channel.create_thread(name=title, reason=reason)
-        embed = embed_from_message(message)
         ancestry_message_content = (
             self.ANCESTRY_PREFIX
             + format_ancestry_chain(
@@ -1220,10 +1338,24 @@ class InfraInterface(DiscordInterface):
             + "**⌥** ((:eye:))"
         )
 
-        reference = None
-        if len(ancestors) > 1 and ancestors[1].jump_url in ancestor_index_messages:
-            reference = await self.get_message_from_link(
-                ancestor_index_messages[ancestors[1].jump_url]
+        if public:
+            # create a message so that the thread is public
+            new_thread_message = await thread_channel.send(
+                # content=f".fork from {message.jump_url}",
+                content=ancestry_message_content
+            )
+            new_thread = await new_thread_message.create_thread(
+                name=title, reason=reason
+            )
+
+        else:
+            new_thread = await thread_channel.create_thread(name=title, reason=reason)
+
+        embed = embed_from_message(message)
+
+        if not public:
+            new_ancestry_message = await new_thread.send(
+                content=ancestry_message_content,
             )
 
         new_history_message = await new_thread.send(
@@ -1231,10 +1363,6 @@ class InfraInterface(DiscordInterface):
                 command_prefix="history",
                 config_dict={"last": message.jump_url},
             ),
-        )
-
-        new_ancestry_message = await new_thread.send(
-            content=ancestry_message_content,
             embed=embed,
         )
 
@@ -1243,6 +1371,15 @@ class InfraInterface(DiscordInterface):
             await new_thread.send(f".{interaction.user.mention}")
         elif index_thread is not None:
             if index_msg is None:
+
+                reference = None
+                if (
+                    len(ancestors) > 1
+                    and ancestors[1].jump_url in ancestor_index_messages
+                ):
+                    reference = await self.get_message_from_link(
+                        ancestor_index_messages[ancestors[1].jump_url]
+                    )
 
                 index_ancestry_message = await index_thread.send(
                     content=ancestry_message_content,
@@ -1290,9 +1427,9 @@ class InfraInterface(DiscordInterface):
                 message.content
                 + f"\n\n-# [:twisted_rightwards_arrows: alt futures]({index_msg.jump_url})"
             )
-            await new_ancestry_message.edit(embed=embed)
+            await new_history_message.edit(embed=embed)
 
-        return new_thread, new_ancestry_message, index_msg
+        return new_thread, index_msg
 
     async def futures_message(
         self,
@@ -1334,15 +1471,22 @@ class InfraInterface(DiscordInterface):
         thread_channel = None
         index_thread = None
         index_msg = None
+        index_anchor_message = None
         ancestor_index_messages = {}
 
         if not isinstance(ancestors[-1].channel, discord.threads.Thread):
+
             thread_channel = ancestors[-1].channel
             index_thread = await self.get_thread_from_message(ancestors[-1])
+            index_anchor_message = ancestors[-1]
             if index_thread is not None:
-                index_msg, ancestor_index_messages = await self.get_index_message(
-                    message, index_thread, ancestors
-                )
+                if index_thread.name.endswith("*"):
+                    index_msg, ancestor_index_messages = await self.get_index_message(
+                        message, index_thread, ancestors
+                    )
+                else:
+                    index_anchor_message = None
+                    index_thread = None
         else:
             thread_channel = message.channel.parent
 
@@ -1352,6 +1496,7 @@ class InfraInterface(DiscordInterface):
             thread_channel,
             ancestors,
             ancestor_index_messages,
+            index_anchor_message,
         )
 
     async def get_index_message(
@@ -1395,11 +1540,17 @@ class InfraInterface(DiscordInterface):
             if msg is not None and msg.content.startswith(".history"):
                 history_config = self.parse_dot_command(msg)
                 if history_config and history_config["yaml"]:
-                    parent_message = await self.get_message_from_link(
-                        history_config["yaml"]["last"]
-                    )
+                    if "root" in history_config["yaml"]:
+                        parent_link = history_config["yaml"]["root"]
+                    elif "last" in history_config["yaml"]:
+                        parent_link = history_config["yaml"]["last"]
+                    else:
+                        return None
+                    parent_message = await self.get_message_from_link(parent_link)
                     return parent_message
-        return None
+        parent_message = await self.get_starter_message(message)
+        return parent_message
+        # return None
 
     async def get_node_ancestry(self, message: discord.Message):
         ancestry = []
