@@ -1540,10 +1540,13 @@ class InfraInterface(DiscordInterface):
             if msg is not None and msg.content.startswith(".history"):
                 history_config = self.parse_dot_command(msg)
                 if history_config and history_config["yaml"]:
-                    if "root" in history_config["yaml"]:
-                        parent_link = history_config["yaml"]["root"]
-                    elif "last" in history_config["yaml"]:
-                        parent_link = history_config["yaml"]["last"]
+                    _, last_link, root_link, _ = self.parse_history_config(
+                        history_config["yaml"]
+                    )
+                    if root_link is not None:
+                        parent_link = root_link
+                    elif last_link is not None:
+                        parent_link = last_link
                     else:
                         return None
                     parent_message = await self.get_message_from_link(parent_link)

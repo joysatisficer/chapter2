@@ -125,24 +125,15 @@ class DiscordInterface(discord.Client):
                 )
             config_message = self.parse_dot_command(this_message)
             if config_message and config_message["command"] == "history":
-                if (
-                    len(config_message["args"]) == 0
-                    or self.name_in_list(
-                        name_list=config_message["args"],
-                        config=config,
-                        user=pov_user,
+                if self.config_applies_to_user(this_message, config, pov_user):
+                    first_link, last_link, _, passthrough = self.parse_history_config(
+                        config_message["yaml"]
                     )
-                    or pov_user.mentioned_in(this_message)
-                ):
-                    if "last" in config_message["yaml"]:
-                        last = await self.get_message_from_link(
-                            config_message["yaml"]["last"]
-                        )
+                    if last_link is not None:
+                        last = await self.get_message_from_link(last_link)
                         first = None
-                        if "first" in config_message["yaml"]:
-                            first = await self.get_message_from_link(
-                                config_message["yaml"]["first"]
-                            )
+                        if first_link is not None:
+                            first = await self.get_message_from_link(first_link)
                         if last is not None:
                             if first is None:
                                 first = first_message
@@ -152,7 +143,6 @@ class DiscordInterface(discord.Client):
                                 yield msg
                     for attachment in this_message.attachments:
                         att_data = await self.parse_attachment(attachment)
-
                         if att_data and att_data["type"] == "text":
                             transcript = att_data["content"]
                             if transcript:
@@ -161,17 +151,13 @@ class DiscordInterface(discord.Client):
                                     for k, v in config_message["yaml"].items()
                                     if k in ["nickname", "nicknames", "input_format"]
                                 }
-
                                 async for msg in transcript_to_messages(
                                     transcript,
                                     HistoryFacultyConfig(**config_params),
                                     config.em,
                                 ):
                                     yield (msg, frozenset())
-                    if (
-                        "passthrough" not in config_message["yaml"]
-                        or config_message["yaml"]["passthrough"] is False
-                    ):
+                    if not passthrough:
                         return
         if first_message is not None:
             yield await self.discord_message_to_message(
@@ -180,24 +166,7 @@ class DiscordInterface(discord.Client):
         elif iface_config.threads_inherit_history and isinstance(
             message.channel, discord.threads.Thread
         ):
-            # thread = message.channel
-            # starter message id is the same as the thread id if the
-            # thread is attached to a message
             starter_message = await self.get_starter_message(message)
-            # if message.channel.name.startswith("new:"):
-            #     return
-            # elif message.channel.name.startswith("past:"):
-            #     starter_message_id = message.channel.name.split("past:")[1]
-            # elif thread.id is not None:
-            #     starter_message_id = thread.id
-            # else:
-            #     return
-            # try:
-            #     starter_message = await message.channel.parent.fetch_message(
-            #         starter_message_id
-            #     )
-            # except discord.errors.NotFound:
-            #     starter_message = None
             if starter_message is not None:
                 async for msg in self.message_history(
                     starter_message,
@@ -936,6 +905,14 @@ class DiscordInterface(discord.Client):
             return None
 
     @staticmethod
+    def parse_history_config(config: dict):
+        first_link = config.get("first_link", None)
+        last_link = config.get("last_link", None)
+        root_link = config.get("root_link", None)
+        passthrough = config.get("passthrough", False)
+        return first_link, last_link, root_link, passthrough
+
+    @staticmethod
     async def parse_attachment(attachment: discord.Attachment):
         att_info = {"command": None, "args": [], "type": attachment.content_type}
         if (
@@ -1008,14 +985,32 @@ class DiscordInterface(discord.Client):
             return True
         elif is_mu_command(message.content):
             return True
-        elif iface_config.ignore_dotted_messages and (
-            re.match(DiscordInterface.DOTTED_MESSAGE_RE, message.content)
-            or message.type == discord.MessageType.thread_starter_message
-            or message.type == discord.MessageType.thread_created
-            or message.type == discord.MessageType.pins_add
-            or message.type == discord.MessageType.channel_name_change
+        elif iface_config.ignore_system_messages and (
+            message.type == discord.MessageType.system
         ):
             return True
+        elif iface_config.ignore_dotted_messages and (
+            re.match(DiscordInterface.DOTTED_MESSAGE_RE, message.content)
+        ):
+            return True
+        return False
+
+    @staticmethod
+    def config_applies_to_user(
+        message: discord.Message,
+        pov_config: Optional[Config] = None,
+        pov_user: Optional[discord.User] = None,
+    ):
+        dot_command = DiscordInterface.parse_dot_command(message)
+        if dot_command:
+            if (
+                len(dot_command["args"]) == 0
+                or DiscordInterface.name_in_list(
+                    dot_command["args"], config=pov_config, user=pov_user
+                )
+                or pov_user.mentioned_in(message)
+            ):
+                return True
         return False
 
     @staticmethod
@@ -1029,22 +1024,14 @@ class DiscordInterface(discord.Client):
         dot_command = DiscordInterface.parse_dot_command(message)
         if dot_command:
             if dot_command["command"] == "config" and (
-                len(dot_command["args"]) == 0
-                or DiscordInterface.name_in_list(
-                    dot_command["args"], config=pov_config, user=pov_user
-                )
-                or pov_user.mentioned_in(message)
+                DiscordInterface.config_applies_to_user(message, pov_config, pov_user)
             ):
                 config = dot_command["yaml"]
                 is_config_message = True
         for attachment in message.attachments:
             att_data = await DiscordInterface.parse_attachment(attachment)
             if att_data["type"] == "text" and (
-                len(att_data["args"]) == 0
-                or DiscordInterface.name_in_list(
-                    att_data["args"], config=pov_config, user=pov_user
-                )
-                or pov_user.mentioned_in(message)
+                DiscordInterface.config_applies_to_user(message, pov_config, pov_user)
             ):
                 if att_data["command"] == "config":
                     config.update(att_data["yaml"])

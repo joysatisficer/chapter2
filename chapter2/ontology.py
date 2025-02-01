@@ -211,7 +211,7 @@ class EmConfig(BaseModel):
     prevent_gpt_topic_change: bool = True
     total_max_tokens: int | float = 31_900
     name_prefix: bool = True
-    name_prefix_optional: bool = True
+    name_prefix_optional: bool = False
     split_message: bool = True
     mufflers: list[str] = [
         "has_url",
@@ -229,6 +229,7 @@ class EmConfig(BaseModel):
     best_of: int | None = None
     continuation_model_local_tokenization: bool = False
     continuation_options: dict = {}
+    cot_prefill: str | None = None
 
     # API keys
     vendors: Secret[dict[str, SingleVendorConfig]] = {}
@@ -263,6 +264,7 @@ class SharedInterfaceConfig(BaseModel):
     reply_on_sim: ReplyOnSimConfig | Literal[False] = False
     reply_on_regex: str | None = None
     ignore_dotted_messages: bool = True
+    ignore_system_messages: bool = True
     end_to_end_test: bool = False
 
 

@@ -148,7 +148,7 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     def parse(self, continuation):
         messages = []
         for line in continuation.splitlines():
-            match = re.match(r"^(?:(?:([^\n]+?):)? ?)?([^:].*)$", line)
+            match = re.match(r"^(?:(?:([^\n]+?):)? )?([^:].*)$", line)
             if match is not None:
                 groups = match.groups()
                 name, raw_content = groups
@@ -157,14 +157,11 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                 elif (
                     re.match(r"^\s*\d*\.", line)
                     or re.match(r"^-|•", line)
-                    or re.match(r"^\*+$", raw_content)
                     or name.count(" ") > 0
                 ):
                     author = None
                     raw_content = name + ": " + raw_content
                 else:
-                    # print('name:', name)
-                    # print('raw_content:', raw_content)
                     author = Author(name.strip())
                 content = raw_content.strip() if self.strip else raw_content
                 messages.append(Message(author, content))

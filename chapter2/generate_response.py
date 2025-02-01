@@ -193,7 +193,6 @@ async def get_replies(
         print(
             "Reasoning>>",
             reasoning_content,
-            # completion.replace("\n", r"\n"),
             "<<Reasoning",
             sep="",
             flush=True,

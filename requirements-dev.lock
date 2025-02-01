@@ -209,7 +209,7 @@ iniconfig==2.0.0
     # via pytest
 installer==0.7.0
     # via poetry
-intermodel @ git+https://github.com/socketteer/intermodel@17995cfed8909fc7ed1171563feb6144cb685b5b
+intermodel @ git+https://github.com/socketteer/intermodel@365603c84484bd1c1f4f22afa2639d8daf1fbe15
     # via chapter2
 iso8601==2.1.0
     # via axiom-py
