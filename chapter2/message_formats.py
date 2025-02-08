@@ -27,7 +27,9 @@ class AbstractMessageFormat:
     def name_prefix(self, name: str) -> str:  # TODO: Refactor to Author
         pass
 
-    def parse(self, continuation: str) -> list[Message]:
+    def parse(
+        self, continuation: str, valid_authors: list[str] | None = None
+    ) -> list[Message]:
         pass
 
     def merge(
@@ -96,7 +98,7 @@ class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     def name_prefix(name):
         return f"<{name}>"
 
-    def parse(self, continuation):
+    def parse(self, continuation, valid_authors: list[str] | None = None):
         result = []
         pattern = r"^(?:<([^\n]+)> ?)?([^<].*?)\s?(?:\[id:[0-9a-f]+])?$"
         for match in re.finditer(pattern, continuation, re.MULTILINE):
@@ -145,7 +147,7 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     def name_prefix(name):
         return f"{name}:"
 
-    def parse(self, continuation):
+    def parse(self, continuation, valid_authors: list[str] | None = None):
         messages = []
         for line in continuation.splitlines():
             match = re.match(r"^(?:(?:([^\n]+?):)? )?([^:].*)$", line)
@@ -154,17 +156,28 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                 name, raw_content = groups
                 if name is None or name.strip() == "":
                     author = None
-                elif (
-                    re.match(r"^\s*\d*\.", line)
-                    or re.match(r"^-|•", line)
-                    or name.count(" ") > 0
-                ):
-                    author = None
-                    raw_content = name + ": " + raw_content
+                elif valid_authors is not None:
+                    if name.strip() not in valid_authors:
+                        author = None
+                        raw_content = name + ": " + raw_content
+                    else:
+                        author = Author(name.strip())
                 else:
-                    author = Author(name.strip())
+                    if (
+                        re.match(r"^\s*\d*\.", line)
+                        or re.match(r"^-|•", line)
+                        or re.match(r"\*(.*?)\*", name)
+                        or name.count(" ") > 2
+                    ):
+                        author = None
+                        raw_content = name + ": " + raw_content
+                    else:
+                        author = Author(name.strip())
                 content = raw_content.strip() if self.strip else raw_content
                 messages.append(Message(author, content))
+            else:
+                if not self.strip:
+                    messages.append(Message(None, line))
 
         return messages
 
@@ -226,7 +239,9 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         part_role = self.role_start + role + self.role_end
         return part_role + part_change_name
 
-    def parse(self, continuation: str) -> list[Message]:
+    def parse(
+        self, continuation: str, valid_authors: list[str] | None = None
+    ) -> list[Message]:
         # todo: fix for open-source models
         a = continuation.removeprefix(self.name_prefix(self.assistant_name))
         return [
@@ -268,18 +283,6 @@ class ChatMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                         sofar += substrings[j]
                     j += 1
                 i = j
-            # elif substring == self.name_start:
-            #     sofar = ""
-            #     j = i + 1
-            #     while j < len(substrings):
-            #         search = substrings[j]
-            #         if search == self.name_end:
-            #             name = sofar
-            #             break
-            #         else:
-            #             sofar += substrings[j]
-            #         j += 1
-            #     i = j
             elif substring == self.turn_end:
                 message = self.format_message(role, cur_message_content)
                 if message is not None:
