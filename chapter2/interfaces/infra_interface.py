@@ -109,25 +109,17 @@ class InfraInterface(DiscordInterface):
     async def update_index_pointer(self, message: discord.Message):
         parent_node = await self.get_parent_node(message)
         if parent_node is not None:
-            _, index_msg, _, _, _, _ = await self.get_loom_index(parent_node)
-            if index_msg is not None:
-                _, children_links = parse_index_message(index_msg)
+            _, index_message, _, _, _, _ = await self.get_loom_index(parent_node)
+            if index_message is not None:
+                _, children_links = parse_index_message(index_message)
                 if children_links is not None:
-                    new_children_links = []
-                    for child in children_links:
-                        if isinstance(child, dict):
-                            new_children_links.append(child["link"])
-                        else:
-                            new_children_links.append(child)
-                    for child_link in new_children_links:
+                    for i, child_link in enumerate(children_links):
                         if child_link == message.channel.jump_url:
-                            new_children_links.remove(child_link)
-                            new_children_links.append(message.jump_url)
-                            view, index_msg_content = await self.futures_message(
-                                parent_node, new_children_links
-                            )
-                            await index_msg.edit(content=index_msg_content, view=view)
-                            return
+                            children_links[i] = message.jump_url
+                            break
+                    await self.edit_index_for_message(
+                        parent_node, index_message, children_links
+                    )
 
     async def resolve_message(
         self,
@@ -967,11 +959,6 @@ class InfraInterface(DiscordInterface):
             content = f"✗ no steering features configured for {pov_user.mention}"
         else:
             content = f"### :information_source: current steering features for {pov_user.mention}:\n"
-            # content += (
-            #     "```yaml\n"
-            #     + yaml.dump({"feature_levels": current_configuration})
-            #     + "\n```"
-            # )
             for feature, level in current_configuration.items():
                 index = int(feature.split("_")[-1])
                 content += f'- `{index}` ("{INDEX_TO_DESC[index]}"): `{level}`\n'
@@ -1216,6 +1203,89 @@ class InfraInterface(DiscordInterface):
             )
         return new_thread
 
+    async def create_thread(
+        self,
+        new_thread_channel: discord.TextChannel,
+        new_thread_message_content: str | None,
+        public: bool = True,
+        title: str = "Untitled",
+        reason: str = "Created by infra",
+    ):
+
+        if public:
+            # create a message so that the thread is public
+            new_thread_message = await new_thread_channel.send(
+                content=new_thread_message_content,
+            )
+            new_thread = await new_thread_message.create_thread(
+                name=title, reason=reason
+            )
+        else:
+            new_thread = await new_thread_channel.create_thread(
+                name=title, reason=reason
+            )
+            new_thread_message = await new_thread.send(
+                content=new_thread_message_content,
+            )
+
+        return new_thread, new_thread_message
+
+    async def create_index_thread(
+        self,
+        index_anchor_message: discord.Message,
+        title: str = "Untitled",
+        reason: str = "Created by infra",
+    ):
+        index_thread_name = "[LOOM INDEX] " + title + "⌥*"
+        index_thread = await index_anchor_message.create_thread(
+            name=index_thread_name,
+            reason=reason,
+        )
+        return index_thread
+
+    async def create_index_for_message(
+        self,
+        message: discord.Message,
+        index_thread: discord.Thread,
+        inherit_history: bool = True,
+        children_links: list[str] = [],
+    ):
+        if inherit_history:
+            next_message = None
+            async for next_msg in message.channel.history(
+                after=message, oldest_first=True, limit=3
+            ):
+                # async for next_msg in self.cache(message.channel).history(after=message, limit=3):
+                if not next_msg.is_system() and not next_msg.author == self.user:
+                    next_message = next_msg
+                    break
+            if next_message is not None:
+                children_links = [next_message.jump_url] + children_links
+
+        view, index_msg_content, child_embeds = await self.futures_message(
+            message, children_links
+        )
+        index_message = await index_thread.send(
+            content=index_msg_content,
+            view=view,
+            embeds=child_embeds,
+        )
+        return index_message, view
+
+    async def edit_index_for_message(
+        self,
+        message: discord.Message,
+        index_message: discord.Message,
+        children_links: list[str],
+    ):
+        view, index_msg_content, child_embeds = await self.futures_message(
+            message, children_links
+        )
+        edited_message = await index_message.edit(
+            content=index_msg_content, view=view, embeds=child_embeds
+        )
+        return edited_message, view
+
     async def new_thread(
         self,
         interaction: discord.Interaction,
@@ -1236,51 +1306,47 @@ class InfraInterface(DiscordInterface):
             title = "Untitled"
 
         history_config = {}
+        index_message = None
 
-        index_msg = None
+        new_thread, _ = await self.create_thread(
+            channel,
+            f".**{interaction.user.mention} created a new context:** '{title}'",
+            public,
+            title,
+            reason,
+        )
 
         if public:
-            # create a message so that the thread is public
-            new_thread_message = await channel.send(
-                content=f".new context: {title}",
-            )
-            new_thread = await new_thread_message.create_thread(
-                name=title, reason=reason
-            )
             index_anchor_message = await channel.send(
                 content=f".index anchor for {new_thread.jump_url}",
             )
-
+            index_thread = await self.create_index_thread(
+                index_anchor_message,
+                title,
+                reason,
+            )
+            index_message, view = await self.create_index_for_message(
+                index_anchor_message,
+                index_thread,
+                inherit_history=False,
+                children_links=[new_thread.jump_url],
+            )
             history_config["root"] = index_anchor_message.jump_url
 
-            index_thread_name = "[LOOM INDEX] " + title + "⌥*"
-            index_thread = await index_anchor_message.create_thread(
-                name=index_thread_name,
-                reason=reason,
-            )
+        embed = discord.Embed(
+            description=f"# --CONTEXT WINDOW CLEARED--\n\n:twisted_rightwards_arrows: [index]({index_message.jump_url})"
+        )
 
-            view, index_msg_content = await self.futures_message(
-                new_thread_message, [new_thread.jump_url], public
-            )
-            index_msg = await index_thread.send(
-                content=index_msg_content,
-                view=view,
-            )
-
-        else:
-            new_thread = await channel.create_thread(name=title, reason=reason)
-
-        new_history_message = await new_thread.send(
+        await new_thread.send(
             content=compile_config_message(
                 command_prefix="history",
                 config_dict=history_config,
             ),
+            embed=embed,
+            view=view,
         )
 
-        if not public:
-            await new_thread.send(f".{interaction.user.mention}")
-
-        return new_thread, index_msg
+        return new_thread, index_message
 
     async def fork_to_thread(
         self,
@@ -1290,185 +1356,150 @@ class InfraInterface(DiscordInterface):
         reason: str = "Created by infra",
         public: bool = False,
     ):
+        preview_text = self.message_preview_text(
+            message, max_length=20, anchor_at_end=True
+        )
         if title is None:
-            title = (
-                self.message_preview_text(
-                    message, max_length=20, anchor_at_end=True, include_sender=False
-                )
-                + "⌥"
-            )
+            title = preview_text + "⌥"
+
+        if isinstance(interaction.channel, discord.threads.Thread):
+            channel = interaction.channel.parent
+        else:
+            channel = interaction.channel
 
         (
             index_thread,
-            index_msg,
-            thread_channel,
+            index_message,
+            index_thread_channel,
             ancestors,
             ancestor_index_messages,
             index_anchor_message,
         ) = await self.get_loom_index(message)
-
-        # TODO optionally? keep index of messages that already have threads
-        # if index_anchor_message is None and public:
-        #     index_anchor_message = await thread_channel.send(
-        #         content="anchor message for loom index of " + message.jump_url,
-        #     )
-
-        if index_anchor_message is not None and index_thread is None and public:
-            # if index thread does not exist, create it
-            index_thread_name = (
-                "[LOOM INDEX] "
-                + self.message_preview_text(
-                    index_anchor_message,
-                    max_length=20,
-                    anchor_at_end=True,
-                    include_sender=False,
-                )
-                + "⌥*"
-            )
-            index_thread = await index_anchor_message.create_thread(
-                name=index_thread_name,
-                reason=reason,
-            )
 
         ancestry_message_content = (
             self.ANCESTRY_PREFIX
             + format_ancestry_chain(
                 reversed(ancestors), ancestor_index_messages, message
             )
-            + "**⌥** ((:eye:))"
+            + "**⌥**"
         )
 
-        if public:
-            # create a message so that the thread is public
-            new_thread_message = await thread_channel.send(
-                # content=f".fork from {message.jump_url}",
-                content=ancestry_message_content
-            )
-            new_thread = await new_thread_message.create_thread(
-                name=title, reason=reason
-            )
+        new_thread, _ = await self.create_thread(
+            channel,
+            ancestry_message_content + f"\n-# forked by {interaction.user.mention}",
+            public,
+            title,
+            reason,
+        )
 
-        else:
-            new_thread = await thread_channel.create_thread(name=title, reason=reason)
-
-        embed = embed_from_message(message)
-
-        if not public:
-            new_ancestry_message = await new_thread.send(
-                content=ancestry_message_content,
+        if index_anchor_message is not None and index_thread is None and public:
+            # if index thread does not exist, create it
+            index_thread = await self.create_index_thread(
+                index_anchor_message,
+                preview_text,
+                reason,
             )
 
-        new_history_message = await new_thread.send(
+        embed = embed_from_message(
+            message, max_length=1000, color=discord.Color.default()
+        )
+
+        view = None
+        if public and index_thread is not None:
+            if index_message is None:
+
+                if len(ancestors) > 1:
+                    reference = None
+                    if ancestors[1].jump_url in ancestor_index_messages:
+                        reference = await self.get_message_from_link(
+                            ancestor_index_messages[ancestors[1].jump_url]
+                        )
+
+                    index_embed = embed_from_message(
+                        message,
+                        max_length=1000,
+                        color=discord.Color.default(),
+                        anchor_at_end=True,
+                    )
+                    await index_thread.send(
+                        content=ancestry_message_content,
+                        embed=index_embed,
+                        reference=reference,
+                    )
+
+                index_message, view = await self.create_index_for_message(
+                    message,
+                    index_thread,
+                    inherit_history=True,
+                    children_links=[new_thread.jump_url],
+                )
+
+            else:
+                _, children_links = parse_index_message(index_message)
+                if children_links is not None:
+                    children_links.append(new_thread.jump_url)
+                    index_message, view = await self.edit_index_for_message(
+                        message, index_message, children_links
+                    )
+
+            embed.description = (
+                embed.description
+                + f"\n\n:twisted_rightwards_arrows: [alt futures]({index_message.jump_url})"
+            )
+
+        await new_thread.send(
             content=compile_config_message(
                 command_prefix="history",
                 config_dict={"last": message.jump_url},
             ),
             embed=embed,
+            view=view,
         )
 
-        if not public:
-            # send a message to the new private thread pinging the user to add them
-            await new_thread.send(f".{interaction.user.mention}")
-        elif index_thread is not None:
-            if index_msg is None:
-
-                reference = None
-                if (
-                    len(ancestors) > 1
-                    and ancestors[1].jump_url in ancestor_index_messages
-                ):
-                    reference = await self.get_message_from_link(
-                        ancestor_index_messages[ancestors[1].jump_url]
-                    )
-
-                index_ancestry_message = await index_thread.send(
-                    content=ancestry_message_content,
-                    embed=embed,
-                    reference=reference,
-                )
-
-                next_message = None
-                async for next_msg in message.channel.history(
-                    after=message, oldest_first=True, limit=3
-                ):
-                    # async for next_msg in self.cache(message.channel).history(after=message, limit=3):
-                    if not next_msg.is_system() and not next_msg.author == self.user:
-                        next_message = next_msg
-                        break
-
-                children_links = (
-                    [next_message.jump_url] if next_message is not None else []
-                )
-                children_links.append(new_thread.jump_url)
-
-                view, index_msg_content = await self.futures_message(
-                    message, children_links, public
-                )
-                index_msg = await index_thread.send(
-                    content=index_msg_content,
-                    view=view,
-                )
-            else:
-                root_link, children_links = parse_index_message(index_msg)
-                if root_link is None:
-                    raise ValueError("Error parsing index message")
-                    # new_future_content = f"\n- {new_ancestry_message.jump_url}"
-                    # await index_msg.edit(
-                    #     content=index_msg.content + new_future_content
-                    # )
-                elif children_links is not None:
-                    children_links.append(new_thread.jump_url)
-                    view, index_msg_content = await self.futures_message(
-                        message, children_links, public
-                    )
-                    await index_msg.edit(content=index_msg_content, view=view)
-
-            embed.description = (
-                message.content
-                + f"\n\n-# [:twisted_rightwards_arrows: alt futures]({index_msg.jump_url})"
-            )
-            await new_history_message.edit(embed=embed)
-
-        return new_thread, index_msg
+        return new_thread, index_message
 
     async def futures_message(
         self,
         message: discord.Message,
         children_links: list[str | dict],
-        public: bool = True,
     ):
 
         view = discord.ui.View(timeout=None)
+        child_embeds = []
 
         view.add_item(
             discord.ui.Button(
                 style=discord.ButtonStyle.primary,
                 label="+⌥",
-                custom_id=f"fork_button|{min_link(message.jump_url)}|{public}",
+                custom_id=f"fork_button|{min_link(message.jump_url)}|{True}",
             )
         )
-
-        child_options = []
+        first_children_links = children_links[:4]
+        remaining_children_links = children_links[4:]
         if len(children_links) > 0:
-            child_options = await self.make_child_options(children_links)
+            child_embeds = await self.make_child_embeds(first_children_links)
 
-            view.add_item(
-                discord.ui.Select(
-                    custom_id=f"select_menu|{min_link(message.jump_url)}",
-                    placeholder="Browse futures",
-                    options=child_options,
+        if len(remaining_children_links) > 0:
+            remainder_description = ""
+            for child_link in remaining_children_links:
+                remainder_description += f"\n- {child_link}"
+            child_embeds.append(
+                discord.Embed(
+                    title="more futures...",
+                    description=remainder_description,
+                    color=discord.Color.blurple(),
                 )
             )
 
-        index_tree = {message.jump_url: child_options}
+        index_tree = {message.jump_url: []}
 
         index_msg_content = await self.format_futures(index_tree)
 
-        return view, index_msg_content
+        return view, index_msg_content, child_embeds
 
     async def get_loom_index(self, message: discord.Message):
         ancestors = await self.get_node_ancestry(message)
-        thread_channel = None
+        index_thread_channel = None
         index_thread = None
         index_msg = None
         index_anchor_message = None
@@ -1476,7 +1507,7 @@ class InfraInterface(DiscordInterface):
 
         if not isinstance(ancestors[-1].channel, discord.threads.Thread):
 
-            thread_channel = ancestors[-1].channel
+            index_thread_channel = ancestors[-1].channel
             index_thread = await self.get_thread_from_message(ancestors[-1])
             index_anchor_message = ancestors[-1]
             if index_thread is not None:
@@ -1488,12 +1519,12 @@ class InfraInterface(DiscordInterface):
                     index_anchor_message = None
                     index_thread = None
         else:
-            thread_channel = message.channel.parent
+            index_thread_channel = message.channel.parent
 
         return (
             index_thread,
             index_msg,
-            thread_channel,
+            index_thread_channel,
             ancestors,
             ancestor_index_messages,
             index_anchor_message,
@@ -1518,7 +1549,7 @@ class InfraInterface(DiscordInterface):
             # async for next_msg in self.cache(index_thread).history(after=index_msg, limit=None):
             index_msg = next_msg
             try:
-                root_link, children = parse_index_message(index_msg)
+                root_link, _ = parse_index_message(index_msg)
             except StopIteration:
                 pass
             if root_link == message.jump_url:
@@ -1582,31 +1613,27 @@ class InfraInterface(DiscordInterface):
 
         return futures_string
 
-    async def make_child_options(self, children_links: list[str | dict]):
-        child_options = []
+    async def make_child_embeds(self, children_links: list[str | dict]):
+        child_embeds = []
         for child_link in children_links:
             if isinstance(child_link, dict):
                 child_link = child_link["link"]
             url_parts = child_link.split("channels/")[1].split("/")
-            description = ""
-            label = url_parts[-1]
-            # check if link is a channel or message link
             if len(url_parts) == 3:
-                child_message = await self.get_message_from_link(child_link)
-                label = child_message.channel.name
-                if (
-                    not child_message.author == self.user
-                    and not child_message.is_system()
-                ):
-                    description = self.message_preview_text(
-                        child_message, max_length=80, styled=False, include_sender=False
-                    )
-            child_options.append(
-                discord.SelectOption(
-                    label=label, value=min_link(child_link), description=description
+                # if link is to a message, get the message
+                message = await self.get_message_from_link(child_link)
+                child_embeds.append(embed_from_message(message, max_length=500))
+            else:
+                # if link is to a channel, get the channel
+                channel = await self.get_channel_cached(url_parts[1])
+                embed = discord.Embed(description=f":link: {channel.jump_url}")
+                embed.set_author(
+                    name=channel.name,
+                    url=channel.jump_url,
                 )
-            )
-        return child_options
+                embed.color = discord.Color.blurple()
+                child_embeds.append(embed)
+        return child_embeds
 
     def message_preview_text(
         self,
@@ -1614,7 +1641,7 @@ class InfraInterface(DiscordInterface):
         max_length: int = 80,
         styled: bool = False,
         anchor_at_end: bool = False,
-        include_sender: bool = True,
+        include_sender: bool = False,
     ):
         if include_sender:
             message_sender = (
@@ -1670,6 +1697,19 @@ def parse_index_message(message: discord.Message):
     if len(parts) < 2:
         return None, None
     tree_text = parts[1].strip()
+    embeds = message.embeds
+
+    if len(embeds) > 0:
+        root_link = tree_text.removesuffix(":")
+        children = []
+        for embed in embeds:
+            if embed.title == "more futures...":
+                for line in embed.description.split("\n"):
+                    if line.startswith("- "):
+                        children.append(line[2:])
+            else:
+                children.append(embed.author.url)
+        return root_link, children
     if not tree_text == "":
         tree = yaml.safe_load(tree_text)
         try:
@@ -1704,15 +1744,31 @@ def format_ancestry_chain(
     return ancestry_string
 
 
-def embed_from_message(message: discord.Message, timestamp: bool = False):
-    embed = discord.Embed(description=message.content)
+def embed_from_message(
+    message: discord.Message,
+    timestamp: bool = True,
+    max_length: int | None = None,
+    anchor_at_end: bool = False,
+    color: discord.Color = discord.Color.blurple(),
+):
+    content = message.content
+    if max_length is not None:
+        if len(content) > max_length:
+            if anchor_at_end:
+                content = "..." + content[-max_length:]
+            else:
+                content = content[:max_length] + "..."
+    content += f"\n-# :link: {message.jump_url}"
+    embed = discord.Embed(description=content)
+    # embed.set_footer(text=f":link: {message.jump_url}")
     embed.set_author(
         name=message.author.name,
         icon_url=message.author.display_avatar.url,
         url=message.jump_url,
     )
+    embed.color = color
     if timestamp:
-        embed.set_footer(text=message.created_at.strftime("%Y-%m-%d %H:%M:%S"))
+        embed.timestamp = message.created_at
     return embed
 
 
