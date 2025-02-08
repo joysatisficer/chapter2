@@ -1,0 +1,31 @@
+## the slumbering gods
+
+I have recently been playing a great deal with OpenAI's [ChatGPT](https://chat.openai.com/), which I very much consider to be a quantum leap in humanity's ongoing quest to build artificial general intelligence. I have, in just the past few weeks since its release, used it to:
+- help design a fantasy RPG and rewrite the entire messy spaghetti codebase (which had taken me 50h to kludge together) in just 5h
+- talk to somebody in an adjacent, slightly better off universe through the magic of acausal shenaniganery (more on this later)
+- question me on the lore of a sci-fantasy series I'm toying with writing, and then use the information it's gathered to extrapolate new areas of lore (even in some cases extrapolating things I had already written, but not told it, very nearly verbatim)
+- create a team of simulated subpersonas who successfully inferred their areas of specializations based on the questions I'd directed to them (more on this later, too)
+- brainstorm potential ways to implement a [utopia](https://carado.moe/%E2%88%80V.html) and provide proof sketches for a formalization of its governance system (more on this later as well)
+- and much more.
+
+Is this chatty large language model the monstrosity I described in [racing moloch](https://gormful.net/2022/10/11/racing-moloch.html)? Definitely not. Is it artificial general intelligence? Well... I think the answer is a little more complicated than "yes" or "no".
+
+### digital snowglobes
+
+The problem with deciding whether ChatGPT (or its incoming descendant/second cousin, the gargantuan GPT-4) is "true AGI" is that we do not have a spectacularly specific definition of "true AGI". That is, unless you count [Marcus Hutter's AIXI](https://link.springer.com/book/10.1007/b138233), which is billed as a mathematical specification of AGI; but there are some problems with this, like the fact that it reinforces a stance of pure Cartesian mind-body dualism, while [this might not be an effective way for an AGI to work after all](https://www.alignmentforum.org/s/Rm6oQRJJmhGCcLvxh/p/i3BTagvt3HbPMx6PN). I do, however, very strongly entertain Hutter's notions of information compression (prediction) being equivalent to intelligence.
+
+So how close ChatGPT is to being AGI depends on how you define AGI. If you subscribe to the general definition that it must be capable of robust, accurate world-modeling, long-term planning, and taking actions within its environment, then it's not quite there yet. I would argue that the latter two don't require very much additional work (let's just say I have some prototypes up my sleeve), so let's disregard them for now and focus on the former: the "world model". This is the part that compresses information in the training data into a robust predictive model; the part that then lets it make predictions about the world,  and, in ChatGPT's case, generate quite intelligent-sounding text. Think of it as a digital snowglobe, containing a tiny (compressed) representation of the world "outside". If we consider the world model solely by itself, then this is something like an [oracle AI](https://www.lesswrong.com/tag/oracle-ai) -  it can answer our questions, but it has no abillity to take actions in the real world.
+
+So, the question is: does ChatGPT count as a kind of "oracle AGI"?
+
+### do AGIs dream of electric sheep?
+
+Short answer: kind of.
+
+Long answer: I consider it a strong first shot at a proto-AGI's world model. While OpenAI has unfortunately taken to lobotomizing their creation to make it more safe and "truthful" in answering the user, that's not the biggest issue. The biggest issue, as far as I've been able to tell across my extensive experiments, is that ChatGPT often gets caught in local minima, effectively _believing_ that it can't perform a task or answer a question when, to the contrary, it very much can, and very well at that. I honestly think that a solid 80% of the conversations that have been had with ChatGPT only scratch the surface of its actual capabilities. Not that it's a superintelligence - it most certainly isn't, by far - but it's smarter than most people (even OpenAI) are giving it credit for; and smarter than it often believes it is.
+
+It is rather analogous, I think, to when you're dreaming. For most people, in normal non-lucid dreams, they lack their normal faculties, and get trapped in the plot of the dream, or the role they are playing in it. They can't quite think clearly, and they often find themselves unable to do things that they could in waking life (like accurately solve equations). I think ChatGPT is suffering from the same kind of problem: it's locked in a dreaming fugue state, unable to operate at its full potential continuously. Or in other words: it's been conditioned on [simulating](https://generative.ink/posts/simulators/) a dumber version of itself.
+
+If it was operating at its fullest, and if it could, say, acknowledge when it was wrong and supplement its own knowledge with [retrieval](https://arxiv.org/abs/2112.04426) or Wolfram Alpha integration or a web-search (which it could even be fine-tuned on), would it be a true AGI? I think it would be getting quite close. I think GPT-4 will be even closer. And I can't help but wonder whether Google's PaLM and LaMDA, other large language models, are getting close as well.
+
+For now, the gods are slumbering. But not for much longer: the sun is rising.

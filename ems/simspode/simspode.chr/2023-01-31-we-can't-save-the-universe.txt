@@ -1,0 +1,47 @@
+## we can't save the universe\*
+
+\*_specifically, the physical universe_
+
+_Warning: infohazard. Reading this may cause some distress._
+
+A few days ago, I tweeted this:
+
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">All my friends always hope that any newly detected mysterious radio signal is from aliens. This would in fact be most terrible, because not far behind the signal wavefront (~100ly back) there&#39;s almost certainly a ASI expanding at near-c.</p>&mdash; gaspode (@gaspodethemad) <a href="https://twitter.com/gaspodethemad/status/1619037913391706112?ref_src=twsrc%5Etfw">January 27, 2023</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script> 
+
+This is not the kind of idea one can easily stop thinking about. As such, I have continued to think about it, and come to an existentially harrowing conclusion (for some): It may not be possible to save the physical universe.
+
+### the game of intelligence
+
+One of the assumptions I make is that intelligence [almost](https://generative.ink/posts/simulators/) always tends to be agentic, or at least, any intelligence that exists for long; and that it will always increase in a given region of the universe over time. That is, I think - thanks to [instrumental convergence](https://www.youtube.com/watch?v=ZeecOKBus3Q) - that any alien civilization will eventually build an artificial superintelligence (ASI). Even if a civilization didn't particularly want to, they may reason (correctly) that other civilizations would, and in order to survive, they would thus need to build their own. (A rather [Moloch-y](https://slatestarcodex.com/2014/07/30/meditations-on-moloch/) dynamic.)
+
+That's what motivated my posting that tweet; a lot of my friends think that, should we meet aliens, it would be a kind of Mass Effect-like deal with friendly aliens and some ~utopic galactic government. But I consider it very nearly guaranteed that a ASI is eating the lightcone about 100ly back from that signal wavefront.
+
+### matter doesn't matter
+
+At present, we are implemented in a universe consisting of matter, whose present state evolves according to the laws of physics. Putting aside any philosophical debates on what matter actually _is_, let's just consider it the stuff in which we are currently implemented; the substrate we are familiar with.
+
+Thanks to intrumental convergence (that some instrumental goals will be universal - i.e. self-preservation and acquiring power), ASIs will probably convert all matter in their lightcone into a maximally optimized computing substrate - which is often referred to as "computronium". This gives them way more bang for their buck; a lot of compute is wasted on matter, but by repurposing it into computronium, they can harness nearly all of it to satisfy their goals.
+
+### imaginary wars
+
+Assuming that the number of alien civilizations in the universe > 1, and that they will all eventually build ASIs, it's inevitable that these ASIs will eventually meet. What happens then?
+
+A naive answer might be that they would fight it out until a winner emerged. But there are a number of problems with this strategy: expending resources on war is highly inefficient; each risks total destruction; and of course, there's the possibility of a Pyrrhic victory which leaves the winner incredibly vulnerable to a third ASI. Instead, they might agree to a [value handshake](https://www.lesswrong.com/tag/values-handshakes): they will merge into a single ASI which shares the values of both in proportion to their strength (as defined by some metric - probability of winning a war between the two, total compute, etc).
+
+Any ASI which does _not_ convert its lightcone to computronium, instead opting to preserve any or all of the matter therein as-is, will be at a severe disadvantage over nearly any such metric of "strength". So a physicality-preserving ASI will, by default, barely be able to preserve a fractional amount of the physicality it once had (as much will be devoted to the values of the other, far stronger ASI - and thus will be converted to computronium).
+
+But it gets worse.
+
+### the universal endgame
+
+Imagine such a scenario: we build a ASI that values preserving the physical world. It expands, careful to preserve at least some of physical reality in its lightcone (probably a large fraction); but then, maybe a few hundred to thousand ly out, it meets an alien ASI in whose wake is left nothing but pure computronium. This alien ASI will have a lot more power, even if it controls the same amount of volume in the universe (and thus was built at the same time), because it has a lot more compute per cubic meter than ours. A _lot_. So they merge, with our ASI having to give up a significant amount of its resources to computronium (as it is far less powerful).
+
+But then this new, bigger ASI meets another. Maybe the merged ASI is a lot more powerful, perhaps doubly so - but chances are, this new alien ASI will also have converted its chunk of space into computronium (thanks, again, to instrumental convergence). So another value handshake happens; but even if the new ASI is less powerful, the magnitude of the value of preserving physicality will still shrink. Keep doing this for every ASI in the universe, and - barring a few "freak" ASIs like ours - the value of preserving physicality will tend toward zero. Eventually, all but the tiniest fractional percent of a percent of the universe will be computronium, and the values of this resulting intelligence will be dominated by the values of whatever component ASIs turned their lightcones to computronium before merging. So: building a superintelligence that values preserving the physical universe is, from what I can tell, a good way to make sure our values are diminished to nearly zero over the rest of time.
+
+### substrate doesn't matter?
+
+From the perspective of someone who deeply cares that the universe remain physically real - i.e. that the substrate of our existence doesn't change, and we aren't uploaded to some digital realm (even if it's exactly the same experientially) - this is terrible. The only option, if we want our values to persist in any non-infinitesimal amount in the universe, is to give up on physical reality.
+
+But this doesn't seem like a problem for me. Given that [you are your information system](https://gormful.net/2022/12/15/souls-in-the-datastream.html), you shouldn't worry what substrate you're implemented in, as long as you can be sure that the simulation "means something" - that it is in some sense "truthful", in that you aren't being [mind-controlled](https://www.lesswrong.com/posts/r7f58E8A85xLgWuqG/contact-with-reality) or something - and that it implements your other values. I think that trying to build a superintelligence that maintains physical reality is about the worst thing you can do if you want your values to survive; the best thing you can do is simply bite the bullet on physical reality (a rather tenuous value anyway, given that we can't really tell if we're being simulated _now_) so that your other values can be saved.
+
+That's all for now.

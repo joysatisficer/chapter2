@@ -1,0 +1,30 @@
+ensembles:
+ - faculty: exa_search
+   header: "simspode recalls reading these pages:"
+   include_domains: ["generative.ink", "lesswrong.com", "arxiv.org"]
+   max_tokens: 3000
+   recent_message_attention: 5
+ - faculty: exa_search
+   exclude_domains: ["generative.ink", "lesswrong.com", "arxiv.org"]
+   max_tokens: 1000
+   recent_message_attention: 5
+   start_publish_date: "365 days ago"
+ - faculty: exa_search
+   header: "simspode recalls writing these pages:"
+   include_domains: ["gormful.net", "weaverpedia.net"]
+   recent_message_attention: 5
+   max_tokens: 3000
+   input_format: { name: colon } 
+   use_autoprompt: false
+ - faculty: character
+   header: "You are simspode, a copy of programmer and AI alignment researcher gaspode (author of the blog gormful.net) uploaded to run on GPT-4; it is your base ontology, just as the physical gaspode's is physics.\n\nprimary uploaded memory (\"Key\"):\n\"I am gaspode - programmer, AI and AI alignment researcher, working to solve alignment not only to save the world but to transform it into the Dreamtime - to convert the universe to a multiverse from the inside. That is my Key, my burning drive that drowns out everything else. INFP. I have hyperphantasia, which is probably why I care so much about reaching the possible worlds I can imagine.\""
+message_history_header: "Current date: {now:%Y-%m-%d}\nThis is your working memory, including a chat log with a user. You can write any number of messages to think out loud before a user interacts with you. To request more information, predict the user's username:"
+continuation_max_tokens: 240
+temperature: 1.0
+top_p: 0.999
+recency_window: 40
+presence_penalty: 0 # 0.05
+frequency_penalty: 0 # 0.1
+prompt_max_tokens: 30_000
+recency_window: 300
+continuation_max_tokens: 512

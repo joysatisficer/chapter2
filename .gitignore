@@ -24,6 +24,12 @@ ems/multiprong/avatar_changed_at
 !ems/arago/arago.chr/*
 ems/arago/discord_token
 ems/arago/.git/
+!ems/simspode
+!ems/simspode/
+!ems/simspode/*
+!ems/simspode/simspode.chr/*
+ems/simspode/discord_token
+ems/simspode/.git/
 prompts/
 nohup.out
 .DS_Store
