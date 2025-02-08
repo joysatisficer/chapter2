@@ -229,7 +229,11 @@ class EmConfig(BaseModel):
     best_of: int | None = None
     continuation_model_local_tokenization: bool = False
     continuation_options: dict = {}
-    cot_prefill: str | None = None
+    reasoning: dict = {
+        "start_token": "<think>",
+        "end_token": "</think>",
+        "hidden": True,
+    }
 
     # API keys
     vendors: Secret[dict[str, SingleVendorConfig]] = {}
@@ -264,7 +268,6 @@ class SharedInterfaceConfig(BaseModel):
     reply_on_sim: ReplyOnSimConfig | Literal[False] = False
     reply_on_regex: str | None = None
     ignore_dotted_messages: bool = True
-    ignore_system_messages: bool = True
     end_to_end_test: bool = False
 
 
@@ -291,6 +294,8 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     image_limits: ImageLimits = ImageLimits()
     exo_enabled: bool = False
     airtable: AirtableConfig | None = None
+    ignore_system_messages: bool = True
+    ignore_react_enabled: bool = True
 
 
 class RPCInterfaceConfig(SharedInterfaceConfig):

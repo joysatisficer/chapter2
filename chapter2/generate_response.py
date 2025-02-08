@@ -1,5 +1,6 @@
 import platform
 import dataclasses
+import re
 from datetime import datetime
 from functools import partial
 from typing import TypeVar, Iterable
@@ -141,7 +142,7 @@ async def get_replies(
     completion_prefix: str,
     my_name: str,
     author: Author,
-    stop_sequences: list[str] = None,
+    stop_sequences: list[str] | None = None,
 ):
     logit_bias = {}
     for logit, bias in em.logit_bias.items():
@@ -184,10 +185,23 @@ async def get_replies(
     )
     completion = response["completions"][0]["text"]
     reasoning_content = response["completions"][0].get("reasoning_content", None)
+    if reasoning_content is None and completion is not None:
+        # extract reasoning content from completion
+        start_pattern = re.escape(em.reasoning["start_token"])
+        end_pattern = re.escape(em.reasoning["end_token"])
+        match = re.match(
+            rf"^.*?{start_pattern}(.*?){end_pattern}",
+            completion,
+            re.DOTALL,
+        )
+        if match is not None:
+            reasoning_content = match.group(1)
+            completion = completion[match.end() :]
     if completion is None and reasoning_content is not None:
-        if len(reasoning_content.split("</think>")) > 1:
-            completion = "</think>".join(reasoning_content.split("</think>")[1:])
-            reasoning_content = reasoning_content.split("</think>")[0]
+        reasoning_parts = reasoning_content.split(em.reasoning["end_token"])
+        if len(reasoning_parts) > 1:
+            completion = em.reasoning["end_token"].join(reasoning_parts[1:])
+            reasoning_content = reasoning_parts[0]
 
     if reasoning_content is not None:
         print(
@@ -229,7 +243,15 @@ async def get_replies(
         yield reasoning_message
     if completion:
         messages = []
-        for message in em.message_history_format.parse(completion_prefix + completion):
+        if stop_sequences is not None:
+            valid_authors = [
+                stop_sequence.split(":")[0].strip() for stop_sequence in stop_sequences
+            ]
+            valid_authors.append(my_name)
+        else:
+            valid_authors = None
+
+        for message in em.message_history_format.parse(completion, valid_authors):
             # accept messages from myself or without prefixes
             if (
                 em.prevent_gpt_topic_change

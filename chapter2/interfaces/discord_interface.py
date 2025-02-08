@@ -303,12 +303,18 @@ class DiscordInterface(discord.Client):
                                 reply_message.author.name == "reasoning_content"
                                 and not isempty(reply_message.content)
                             ):
-                                prefix = ".:thought_balloon:"
-                                inner_content = f"{reply_message.content}"
+                                prefix = (
+                                    ".:thought_balloon:"
+                                    if config.em.reasoning["hidden"]
+                                    else ""
+                                )
+                                start_token = config.em.reasoning["start_token"]
+                                end_token = config.em.reasoning["end_token"]
+                                inner_content = f"{start_token}\n{reply_message.content.strip()}\n{end_token}"
                                 if len(reply_message.content) > 1900:
                                     attachment = discord.File(
                                         StringIO(inner_content),
-                                        filename="reasoning.txt",
+                                        filename=f"reasoning.txt",
                                     )
                                     await message.channel.send(
                                         content=prefix, file=attachment
@@ -473,8 +479,14 @@ class DiscordInterface(discord.Client):
             ):
                 continue
             if att_data["type"] == "text":
-                # don't strip leading whitespace; might be ASCII art
-                content += f"\n<|begin_of_attachment|>{(await self.get_attachment_content(attachment)).rstrip()}<|end_of_attachment|>"
+                if attachment.filename == "reasoning.txt":
+                    att_begin_token = ""
+                    att_end_token = ""
+                else:
+                    att_begin_token = f"<attachment filename={attachment.filename}>\n"
+                    att_end_token = "\n</attachment>"
+                att_content = (await self.get_attachment_content(attachment)).rstrip()
+                content += f"\n{att_begin_token}{att_content}{att_end_token}"
             elif iface_config.include_images and att_data["type"] == "image":
                 if (
                     attachment.width > iface_config.image_limits.max_width
@@ -906,9 +918,9 @@ class DiscordInterface(discord.Client):
 
     @staticmethod
     def parse_history_config(config: dict):
-        first_link = config.get("first_link", None)
-        last_link = config.get("last_link", None)
-        root_link = config.get("root_link", None)
+        first_link = config.get("first", None)
+        last_link = config.get("last", None)
+        root_link = config.get("root", None)
         passthrough = config.get("passthrough", False)
         return first_link, last_link, root_link, passthrough
 
@@ -985,14 +997,16 @@ class DiscordInterface(discord.Client):
             return True
         elif is_mu_command(message.content):
             return True
-        elif iface_config.ignore_system_messages and (
-            message.type == discord.MessageType.system
-        ):
+        elif iface_config.ignore_system_messages and (message.is_system()):
             return True
         elif iface_config.ignore_dotted_messages and (
             re.match(DiscordInterface.DOTTED_MESSAGE_RE, message.content)
         ):
             return True
+        if iface_config.ignore_react_enabled:
+            for reaction in message.reactions:
+                if reaction.emoji == "🫥":
+                    return True
         return False
 
     @staticmethod
