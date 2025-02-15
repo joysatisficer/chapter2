@@ -35,7 +35,6 @@ from util.discord_improved import ScheduleTyping, parse_discord_content, resolve
 from declarations import GenerateResponse, Message, Author, JSON, ActionHistory
 from ontology import Config, DiscordInterfaceConfig, HistoryFacultyConfig
 
-
 class DiscordInterface(discord.Client):
     """Stability: Gold"""
 
@@ -102,14 +101,16 @@ class DiscordInterface(discord.Client):
         first_message: Optional[discord.Message] = None,
         config: Optional[Config] = None,
         iface_config: Optional[DiscordInterfaceConfig] = None,
-        pov_user: Optional[discord.User] = None,
+        # pov_user: Optional[discord.User] = None,
+        pov_user_id: Optional[int] = None,
         inclusive: bool = True,
     ):
-        if pov_user is None:
-            pov_user = self.user
+        # if pov_user is None:
+        #     pov_user = self.user
+        # pov_user_id = pov_user.id if pov_user else None
         if inclusive and message and not self.message_invisible(message, iface_config):
             yield await self.discord_message_to_message(
-                config, iface_config, message, pov_user
+                config, iface_config, message, pov_user_id
             )
 
         async for this_message in self.cache(message.channel).history(
@@ -121,11 +122,11 @@ class DiscordInterface(discord.Client):
                 pass
             else:
                 yield await self.discord_message_to_message(
-                    config, iface_config, this_message, pov_user
+                    config, iface_config, this_message, pov_user_id
                 )
             config_message = self.parse_dot_command(this_message)
             if config_message and config_message["command"] == "history":
-                if self.config_applies_to_user(this_message, config, pov_user):
+                if self.config_applies_to_user(this_message, config, pov_user_id):
                     first_link, last_link, _, passthrough = self.parse_history_config(
                         config_message["yaml"]
                     )
@@ -138,7 +139,7 @@ class DiscordInterface(discord.Client):
                             if first is None:
                                 first = first_message
                             async for msg in self.message_history(
-                                last, first, config, iface_config, pov_user
+                                last, first, config, iface_config, pov_user_id
                             ):
                                 yield msg
                     for attachment in this_message.attachments:
@@ -161,7 +162,7 @@ class DiscordInterface(discord.Client):
                         return
         if first_message is not None:
             yield await self.discord_message_to_message(
-                config, iface_config, first_message, pov_user
+                config, iface_config, first_message, pov_user_id
             )
         elif iface_config.threads_inherit_history and isinstance(
             message.channel, discord.threads.Thread
@@ -173,7 +174,7 @@ class DiscordInterface(discord.Client):
                     first_message=None,
                     config=config,
                     iface_config=iface_config,
-                    pov_user=pov_user,
+                    pov_user_id=pov_user_id,
                 ):
                     yield msg
 
@@ -218,8 +219,6 @@ class DiscordInterface(discord.Client):
                     pass
                 else:
                     break
-        # elif message_invisible(message, self.iface_config):
-        #     return
 
         async with self.handle_exceptions(
             (
@@ -247,112 +246,120 @@ class DiscordInterface(discord.Client):
                 return
             async with self.per_interlocutor_semaphore[message.author.id]:
                 try:
-
-                    # message_history = lambda message, first_message=None, config=config, iface_config=iface_config: self.message_history(
-                    #     message, first_message, config, iface_config
-                    # )
-
-                    @trace
-                    def message_history(
-                        message,
-                        first_message=None,
-                        config=config,
-                        iface_config=iface_config,
-                    ):
-                        return self.message_history(
-                            message, first_message, config, iface_config
-                        )
-
-                    if not await self.should_reply(
-                        message,
-                        config,
-                        iface_config,
-                        async_generator_to_reusable_async_iterable(
-                            lambda: (
-                                message async for message, _ in message_history(message)
-                            )
-                        ),
-                    ):
-                        return
-
-                    history, raw_mentions = zip(
-                        *(
-                            await async_take(
-                                config.em.recency_window,
-                                async_generator_to_reusable_async_iterable(
-                                    message_history, message
-                                ),
-                            )
-                        )
-                    )
-
-                    mentions = set()
-                    for these_mentions in raw_mentions:
-                        mentions.update(these_mentions)
-
-                    response_messages = self.generate_response(
-                        config.em,
-                        history,
-                    )
-                    async with ScheduleTyping(
-                        message.channel, typing=iface_config.send_typing
-                    ):
-                        first_message = True
-                        async for reply_message in response_messages:
-                            if (
-                                reply_message.author.name == "reasoning_content"
-                                and not isempty(reply_message.content)
-                            ):
-                                prefix = (
-                                    ".:thought_balloon:"
-                                    if config.em.reasoning["hidden"]
-                                    else ""
-                                )
-                                start_token = config.em.reasoning["start_token"]
-                                end_token = config.em.reasoning["end_token"]
-                                inner_content = f"{start_token}\n{reply_message.content.strip()}\n{end_token}"
-                                if len(reply_message.content) > 1900:
-                                    attachment = discord.File(
-                                        StringIO(inner_content),
-                                        filename=f"reasoning.txt",
-                                    )
-                                    await message.channel.send(
-                                        content=prefix, file=attachment
-                                    )
-                                else:
-                                    await message.channel.send(
-                                        content=prefix + f"\n```{inner_content}```"
-                                    )
-                                first_message = False
-                            if (
-                                reply_message.author.name == config.em.name
-                                and not isempty(reply_message.content)
-                            ):
-                                # send a new typing event if it's not the first message
-                                if not first_message:
-                                    run_task(
-                                        message._state.http.send_typing(
-                                            message.channel.id
-                                        )
-                                    )
-                                await wait_until_timestamp(
-                                    reply_message.timestamp, message.channel.typing
-                                )
-                                if reply_message.content.isspace():
-                                    continue
-                                content = reply_message.content
-                                await message.channel.send(
-                                    self.realize_pings(content, mentions),
-                                )
-                                if self.iface_config.exo_enabled:
-                                    await self.respond_to_tools(
-                                        message.channel, reply_message
-                                    )
-                                trace.send_message(reply_message.content)
-                                first_message = False
+                    await self.handle_reply(message, config, iface_config)
                 finally:
                     if is_command:
                         await message.delete()
+
+    async def handle_reply(self, message: discord.Message, config: Config, iface_config: DiscordInterfaceConfig, webhook: Optional[discord.Webhook] = None, pov_user_id: Optional[int] = None):
+        @trace
+        def message_history(
+            message,
+            first_message=None,
+            config=config,
+            iface_config=iface_config,
+            pov_user_id=pov_user_id if pov_user_id is not None else self.user.id,
+        ):
+            return self.message_history(
+                message, 
+                first_message, 
+                config, 
+                iface_config, 
+                pov_user_id,
+            )
+
+        if not await self.should_reply(
+            self.user,
+            message,
+            config,
+            iface_config,
+            async_generator_to_reusable_async_iterable(
+                lambda: (
+                    message async for message, _ in message_history(message)
+                )
+            ),
+        ):
+            return
+
+        history, raw_mentions = zip(
+            *(
+                await async_take(
+                    config.em.recency_window,
+                    async_generator_to_reusable_async_iterable(
+                        message_history, message
+                    ),
+                )
+            )
+        )
+
+        mentions = set()
+        for these_mentions in raw_mentions:
+            mentions.update(these_mentions)
+
+        response_messages = self.generate_response(
+            config.em,
+            history,
+        )
+
+        async def send_to_channel(**kwargs):
+            if webhook is not None:
+                return await webhook.send(
+                    username=config.em.name,
+                    thread=message.channel if isinstance(message.channel, discord.Thread) else None,
+                    **kwargs)
+            else:
+                return await message.channel.send(**kwargs)
+
+        async with ScheduleTyping(
+            message.channel, typing=iface_config.send_typing
+        ):
+            first_message = True
+            async for reply_message in response_messages:
+                if (
+                    reply_message.author.name == "reasoning_content"
+                    and not isempty(reply_message.content)
+                ):
+                    prefix = (
+                        ".:thought_balloon:"
+                        if config.em.reasoning["hidden"]
+                        else ""
+                    )
+                    start_token = config.em.reasoning["start_token"]
+                    end_token = config.em.reasoning["end_token"]
+                    inner_content = f"{start_token}\n{reply_message.content.strip()}\n{end_token}"
+                    if len(reply_message.content) > 1900:
+                        attachment = discord.File(
+                            StringIO(inner_content),
+                            filename=f"reasoning.txt",
+                        )
+                        await send_to_channel(content=prefix, file=attachment)
+                    else:
+                        await send_to_channel(content=prefix + f"\n```{inner_content}```")
+                    first_message = False
+                elif (
+                    reply_message.author.name == config.em.name
+                    and not isempty(reply_message.content)
+                ):
+                    # send a new typing event if it's not the first message
+                    if not first_message:
+                        run_task(
+                            message._state.http.send_typing(
+                                message.channel.id
+                            )
+                        )
+                    await wait_until_timestamp(
+                        reply_message.timestamp, message.channel.typing
+                    )
+                    if reply_message.content.isspace():
+                        continue
+                    content = reply_message.content
+                    await send_to_channel(content=self.realize_pings(content, mentions))
+                    if iface_config.exo_enabled:
+                        await self.respond_to_tools(
+                            message.channel, reply_message
+                        )
+                    trace.send_message(reply_message.content)
+                    first_message = False
 
     async def respond_to_tools(self, channel, reply_message: Message):
         if reply_message.content.startswith("exo create_note "):
@@ -434,16 +441,18 @@ class DiscordInterface(discord.Client):
         config,
         iface_config: DiscordInterfaceConfig,
         message: discord.Message,
-        pov_user: Optional[discord.User] = None,
+        # pov_user: Optional[discord.User] = None,
+        pov_user_id: Optional[int] = None,
     ) -> Tuple[Message, frozenset[Union[discord.User, discord.Member]]]:
-        if pov_user is None:
-            pov_user = self.user
+        # if pov_user is None:
+        #     pov_user = self.user
 
-        if message.author.id == pov_user.id:
+        # use self id parameter instead of pov_user
+        if message.author.id == pov_user_id:
             author_name = config.em.name
         else:
             author_name = message.author.name
-        content = parse_discord_content(message, pov_user.id, config.em.name)
+        content = parse_discord_content(message, pov_user_id, config.em.name)
         if message.reference is not None and not message.is_system():  # is it a reply?
             if message.reference.resolved is not None:
                 referenced_message = message.reference.resolved
@@ -465,7 +474,7 @@ class DiscordInterface(discord.Client):
                     resolve_member(
                         message,
                         referenced_message.author.id,
-                        self.user.id,
+                        pov_user_id,
                         config.em.name,
                     )
                     + " "
@@ -519,7 +528,7 @@ class DiscordInterface(discord.Client):
                     message.reference.message_id
                 )
                 if forwarded_message:
-                    content = f"<|begin_of_fwd|>{parse_discord_content(forwarded_message, pov_user.id, config.em.name)}<|end_of_fwd|>"
+                    content = f"<|begin_of_fwd|>{parse_discord_content(forwarded_message, pov_user_id, config.em.name)}<|end_of_fwd|>"
         return Message(
             Author(author_name),
             content.strip(),
@@ -534,82 +543,82 @@ class DiscordInterface(discord.Client):
             else (message.mentions + [message.author])
         )
 
-    @trace
-    async def should_reply(
-        self,
-        message: discord.Message,
-        config: Config,
-        iface_config: DiscordInterfaceConfig,
-        message_history: ActionHistory,
-    ) -> bool:
-        return (
-            message.author != self.user
-            and (
-                not isinstance(message.channel, discord.abc.GuildChannel)
-                or message.channel.permissions_for(message.guild.me).send_messages
-            )
-            and not (
-                iface_config.ignore_dotted_messages
-                and re.match(self.DOTTED_MESSAGE_RE, message.content)
-            )
-            and not (
-                iface_config.mute is True
-                or self.name_in_list(iface_config.mute, config, self.user)
-            )
-            and not (
-                iface_config.thread_mute
-                and message.channel.type == discord.ChannelType.public_thread
-            )
-            and (
-                len(iface_config.discord_user_whitelist) == 0
-                or message.author.id in iface_config.discord_user_whitelist
-            )
-            and (
-                len(iface_config.may_speak) == 0
-                or self.name_in_list(iface_config.may_speak, config, self.user)
-            )
-            and (
-                (iface_config.reply_on_ping and self.user.mentioned_in(message))
-                or (
-                    iface_config.reply_on_random
-                    and random.random() < (1 / iface_config.reply_on_random)
-                )
-                or (
-                    # first or last four names
-                    iface_config.reply_on_name
-                    and any(
-                        re.match(
-                            r"^([^\s]+\b){0,3}" + re.escape(name),
-                            message.content,
-                            re.IGNORECASE,
-                        )
-                        or re.search(
-                            re.escape(name) + r"([^\s]+\b){0,3}$",
-                            message.content,
-                            re.IGNORECASE,
-                        )
-                        for name in (
-                            config.em.name,
-                            self.user.name,
-                            *iface_config.nicknames,
-                        )
-                    )
-                )
-                or (
-                    iface_config.reply_on_sim
-                    and await deserves_reply(
-                        self.generate_response,
-                        config,
-                        message_history,
-                        iface_config.reply_on_sim,
-                    )
-                )
-                or (
-                    iface_config.reply_on_regex
-                    and re.fullmatch(iface_config.reply_on_regex, message.content)
-                )
-            )
-        )
+    # @trace
+    # async def should_reply(
+    #     self,
+    #     message: discord.Message,
+    #     config: Config,
+    #     iface_config: DiscordInterfaceConfig,
+    #     message_history: ActionHistory,
+    # ) -> bool:
+    #     return (
+    #         message.author != self.user
+    #         and (
+    #             not isinstance(message.channel, discord.abc.GuildChannel)
+    #             or message.channel.permissions_for(message.guild.me).send_messages
+    #         )
+    #         and not (
+    #             iface_config.ignore_dotted_messages
+    #             and re.match(self.DOTTED_MESSAGE_RE, message.content)
+    #         )
+    #         and not (
+    #             iface_config.mute is True
+    #             or self.name_in_list(iface_config.mute, config, self.user)
+    #         )
+    #         and not (
+    #             iface_config.thread_mute
+    #             and message.channel.type == discord.ChannelType.public_thread
+    #         )
+    #         and (
+    #             len(iface_config.discord_user_whitelist) == 0
+    #             or message.author.id in iface_config.discord_user_whitelist
+    #         )
+    #         and (
+    #             len(iface_config.may_speak) == 0
+    #             or self.name_in_list(iface_config.may_speak, config, self.user)
+    #         )
+    #         and (
+    #             (iface_config.reply_on_ping and self.user.mentioned_in(message))
+    #             or (
+    #                 iface_config.reply_on_random
+    #                 and random.random() < (1 / iface_config.reply_on_random)
+    #             )
+    #             or (
+    #                 # first or last four names
+    #                 iface_config.reply_on_name
+    #                 and any(
+    #                     re.match(
+    #                         r"^([^\s]+\b){0,3}" + re.escape(name),
+    #                         message.content,
+    #                         re.IGNORECASE,
+    #                     )
+    #                     or re.search(
+    #                         re.escape(name) + r"([^\s]+\b){0,3}$",
+    #                         message.content,
+    #                         re.IGNORECASE,
+    #                     )
+    #                     for name in (
+    #                         config.em.name,
+    #                         self.user.name,
+    #                         *iface_config.nicknames,
+    #                     )
+    #                 )
+    #             )
+    #             or (
+    #                 iface_config.reply_on_sim
+    #                 and await deserves_reply(
+    #                     self.generate_response,
+    #                     config,
+    #                     message_history,
+    #                     iface_config.reply_on_sim,
+    #                 )
+    #             )
+    #             or (
+    #                 iface_config.reply_on_regex
+    #                 and re.fullmatch(iface_config.reply_on_regex, message.content)
+    #             )
+    #         )
+    #     )
 
     @trace
     async def get_config(
@@ -637,7 +646,7 @@ class DiscordInterface(discord.Client):
                 for message in reversed(self.pins[channel.id]):
                     pinned_config.update(
                         await self.get_config_from_message(
-                            message, base_config, pov_user
+                            message, base_config, pov_user.id
                         )
                     )
                 kv = self.get_yaml_from_channel(channel) | pinned_config
@@ -802,7 +811,7 @@ class DiscordInterface(discord.Client):
         # pins() is newest first; new pins should be last and override older ones
         for message in reversed(pins):
             config.update(
-                await self.get_config_from_message(message, self.base_config, self.user)
+                await self.get_config_from_message(message, self.base_config, self.user.id)
             )
         self.pinned_yaml[channel.id] = config
 
@@ -851,6 +860,90 @@ class DiscordInterface(discord.Client):
                 return None
         except Exception as e:
             return None
+
+
+
+    @staticmethod
+    async def should_reply(
+        user: discord.User,
+        message: discord.Message,
+        config: Config,
+        iface_config: DiscordInterfaceConfig,
+        message_history: ActionHistory,
+    ) -> bool:
+        if message.guild:  # If in a server
+            user = message.guild.get_member(user.id)
+            
+        return (
+            message.author != user
+            and (
+                not isinstance(message.channel, discord.abc.GuildChannel)
+                or message.channel.permissions_for(message.guild.me).send_messages
+            )
+            and not (
+                iface_config.ignore_dotted_messages
+                and re.match(DiscordInterface.DOTTED_MESSAGE_RE, message.content)
+            )
+            and not (
+                iface_config.mute is True
+                or DiscordInterface.name_in_list(iface_config.mute, config, user)
+            )
+            and not (
+                iface_config.thread_mute
+                and message.channel.type == discord.ChannelType.public_thread
+            )
+            and (
+                len(iface_config.discord_user_whitelist) == 0
+                or message.author.id in iface_config.discord_user_whitelist
+            )
+            and (
+                len(iface_config.may_speak) == 0
+                or DiscordInterface.name_in_list(iface_config.may_speak, config, user)
+            )
+            and (
+                (iface_config.reply_on_ping and user.mentioned_in(message))
+                or (
+                    iface_config.reply_on_random
+                    and random.random() < (1 / iface_config.reply_on_random)
+                )
+                or (
+                    # first or last four names
+                    iface_config.reply_on_name
+                    and any(
+                        re.match(
+                            r"^([^\s]+\b){0,3}" + re.escape(name),
+                            message.content,
+                            re.IGNORECASE,
+                        )
+                        or re.search(
+                            re.escape(name) + r"([^\s]+\b){0,3}$",
+                            message.content,
+                            re.IGNORECASE,
+                        )
+                        for name in (
+                            config.em.name,
+                            user.name,
+                            *iface_config.nicknames,
+                        )
+                    )
+                )
+                # TODO
+                # or (
+                #     iface_config.reply_on_sim
+                #     and await deserves_reply(
+                #         self.generate_response,
+                #         config,
+                #         message_history,
+                #         iface_config.reply_on_sim,
+                #     )
+                # )
+                or (
+                    iface_config.reply_on_regex
+                    and re.fullmatch(iface_config.reply_on_regex, message.content)
+                )
+            )
+        )
+
 
     @staticmethod
     def embed_from_message(message: discord.Message, timestamp: bool = False):
@@ -1013,16 +1106,16 @@ class DiscordInterface(discord.Client):
     def config_applies_to_user(
         message: discord.Message,
         pov_config: Optional[Config] = None,
-        pov_user: Optional[discord.User] = None,
+        pov_user_id: Optional[int] = None,
     ):
         dot_command = DiscordInterface.parse_dot_command(message)
         if dot_command:
             if (
                 len(dot_command["args"]) == 0
                 or DiscordInterface.name_in_list(
-                    dot_command["args"], config=pov_config, user=pov_user
+                    dot_command["args"], config=pov_config
                 )
-                or pov_user.mentioned_in(message)
+                or pov_user_id in message.raw_mentions
             ):
                 return True
         return False
@@ -1031,21 +1124,21 @@ class DiscordInterface(discord.Client):
     async def get_config_from_message(
         message: discord.Message,
         pov_config: Optional[Config] = None,
-        pov_user: Optional[discord.User] = None,
+        pov_user_id: Optional[int] = None,
     ):
         config = {}
         is_config_message = False
         dot_command = DiscordInterface.parse_dot_command(message)
         if dot_command:
             if dot_command["command"] == "config" and (
-                DiscordInterface.config_applies_to_user(message, pov_config, pov_user)
+                DiscordInterface.config_applies_to_user(message, pov_config, pov_user_id)
             ):
                 config = dot_command["yaml"]
                 is_config_message = True
         for attachment in message.attachments:
             att_data = await DiscordInterface.parse_attachment(attachment)
             if att_data["type"] == "text" and (
-                DiscordInterface.config_applies_to_user(message, pov_config, pov_user)
+                DiscordInterface.config_applies_to_user(message, pov_config, pov_user_id)
             ):
                 if att_data["command"] == "config":
                     config.update(att_data["yaml"])
@@ -1065,13 +1158,14 @@ class DiscordInterface(discord.Client):
             name_list = [name_list]
         elif not isinstance(name_list, list):
             return False
+        
+        username = user.name if user else None
 
         return any(
             # name in name_list for name in (self.user.name, self.sysname, *nicknames)
             name in name_list
-            for name in (user.name, config.em.emname, *nicknames)
+            for name in (username, config.em.emname, *nicknames)
         )
-
 
 def is_continue_command(message_content: str):
     return message_content.strip() == "/continue" or message_content.startswith(
