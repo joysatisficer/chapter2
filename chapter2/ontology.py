@@ -298,6 +298,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     ignore_react_enabled: bool = True
     avatar_url: str | None = None
 
+
 class RPCInterfaceConfig(SharedInterfaceConfig):
     name: Literal["rpc"] = "rpc"
 

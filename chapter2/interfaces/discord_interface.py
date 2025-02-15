@@ -35,6 +35,7 @@ from util.discord_improved import ScheduleTyping, parse_discord_content, resolve
 from declarations import GenerateResponse, Message, Author, JSON, ActionHistory
 from ontology import Config, DiscordInterfaceConfig, HistoryFacultyConfig
 
+
 class DiscordInterface(discord.Client):
     """Stability: Gold"""
 
@@ -247,7 +248,14 @@ class DiscordInterface(discord.Client):
                     if is_command:
                         await message.delete()
 
-    async def handle_reply(self, message: discord.Message, config: Config, iface_config: DiscordInterfaceConfig, webhook: Optional[discord.Webhook] = None, pov_user_id: Optional[int] = None):
+    async def handle_reply(
+        self,
+        message: discord.Message,
+        config: Config,
+        iface_config: DiscordInterfaceConfig,
+        webhook: Optional[discord.Webhook] = None,
+        pov_user_id: Optional[int] = None,
+    ):
         @trace
         def message_history(
             message,
@@ -257,10 +265,10 @@ class DiscordInterface(discord.Client):
             pov_user_id=pov_user_id if pov_user_id is not None else self.user.id,
         ):
             return self.message_history(
-                message, 
-                first_message, 
-                config, 
-                iface_config, 
+                message,
+                first_message,
+                config,
+                iface_config,
                 pov_user_id,
             )
 
@@ -270,9 +278,7 @@ class DiscordInterface(discord.Client):
             config,
             iface_config,
             async_generator_to_reusable_async_iterable(
-                lambda: (
-                    message async for message, _ in message_history(message)
-                )
+                lambda: (message async for message, _ in message_history(message))
             ),
         ):
             return
@@ -302,28 +308,30 @@ class DiscordInterface(discord.Client):
                 return await webhook.send(
                     username=config.em.name,
                     avatar_url=iface_config.avatar_url,
-                    thread=message.channel if isinstance(message.channel, discord.Thread) else None,
-                    **kwargs)
+                    thread=(
+                        message.channel
+                        if isinstance(message.channel, discord.Thread)
+                        else None
+                    ),
+                    **kwargs,
+                )
             else:
                 return await message.channel.send(**kwargs)
 
-        async with ScheduleTyping(
-            message.channel, typing=iface_config.send_typing
-        ):
+        async with ScheduleTyping(message.channel, typing=iface_config.send_typing):
             first_message = True
             async for reply_message in response_messages:
-                if (
-                    reply_message.author.name == "reasoning_content"
-                    and not isempty(reply_message.content)
+                if reply_message.author.name == "reasoning_content" and not isempty(
+                    reply_message.content
                 ):
                     prefix = (
-                        ".:thought_balloon:"
-                        if config.em.reasoning["hidden"]
-                        else ""
+                        ".:thought_balloon:" if config.em.reasoning["hidden"] else ""
                     )
                     start_token = config.em.reasoning["start_token"]
                     end_token = config.em.reasoning["end_token"]
-                    inner_content = f"{start_token}\n{reply_message.content.strip()}\n{end_token}"
+                    inner_content = (
+                        f"{start_token}\n{reply_message.content.strip()}\n{end_token}"
+                    )
                     if len(reply_message.content) > 1900:
                         attachment = discord.File(
                             StringIO(inner_content),
@@ -331,19 +339,16 @@ class DiscordInterface(discord.Client):
                         )
                         await send_to_channel(content=prefix, file=attachment)
                     else:
-                        await send_to_channel(content=prefix + f"\n```{inner_content}```")
+                        await send_to_channel(
+                            content=prefix + f"\n```{inner_content}```"
+                        )
                     first_message = False
-                elif (
-                    reply_message.author.name == config.em.name
-                    and not isempty(reply_message.content)
+                elif reply_message.author.name == config.em.name and not isempty(
+                    reply_message.content
                 ):
                     # send a new typing event if it's not the first message
                     if not first_message:
-                        run_task(
-                            message._state.http.send_typing(
-                                message.channel.id
-                            )
-                        )
+                        run_task(message._state.http.send_typing(message.channel.id))
                     await wait_until_timestamp(
                         reply_message.timestamp, message.channel.typing
                     )
@@ -352,9 +357,7 @@ class DiscordInterface(discord.Client):
                     content = reply_message.content
                     await send_to_channel(content=self.realize_pings(content, mentions))
                     if iface_config.exo_enabled:
-                        await self.respond_to_tools(
-                            message.channel, reply_message
-                        )
+                        await self.respond_to_tools(message.channel, reply_message)
                     trace.send_message(reply_message.content)
                     first_message = False
 
@@ -539,7 +542,6 @@ class DiscordInterface(discord.Client):
             if isinstance(channel, discord.DMChannel)
             else (message.mentions + [message.author])
         )
-    
 
     @trace
     async def get_config(
@@ -732,7 +734,9 @@ class DiscordInterface(discord.Client):
         # pins() is newest first; new pins should be last and override older ones
         for message in reversed(pins):
             config.update(
-                await self.get_config_from_message(message, self.base_config, self.user.id)
+                await self.get_config_from_message(
+                    message, self.base_config, self.user.id
+                )
             )
         self.pinned_yaml[channel.id] = config
 
@@ -782,8 +786,6 @@ class DiscordInterface(discord.Client):
         except Exception as e:
             return None
 
-
-
     @staticmethod
     async def should_reply(
         user: discord.User,
@@ -794,7 +796,7 @@ class DiscordInterface(discord.Client):
     ) -> bool:
         if message.guild:  # If in a server
             user = message.guild.get_member(user.id)
-            
+
         return (
             message.author != user
             and (
@@ -864,7 +866,6 @@ class DiscordInterface(discord.Client):
                 )
             )
         )
-
 
     @staticmethod
     def embed_from_message(message: discord.Message, timestamp: bool = False):
@@ -1033,9 +1034,7 @@ class DiscordInterface(discord.Client):
         if dot_command:
             if (
                 len(dot_command["args"]) == 0
-                or DiscordInterface.name_in_list(
-                    dot_command["args"], config=pov_config
-                )
+                or DiscordInterface.name_in_list(dot_command["args"], config=pov_config)
                 or pov_user_id in message.raw_mentions
             ):
                 return True
@@ -1052,14 +1051,18 @@ class DiscordInterface(discord.Client):
         dot_command = DiscordInterface.parse_dot_command(message)
         if dot_command:
             if dot_command["command"] == "config" and (
-                DiscordInterface.config_applies_to_user(message, pov_config, pov_user_id)
+                DiscordInterface.config_applies_to_user(
+                    message, pov_config, pov_user_id
+                )
             ):
                 config = dot_command["yaml"]
                 is_config_message = True
         for attachment in message.attachments:
             att_data = await DiscordInterface.parse_attachment(attachment)
             if att_data["type"] == "text" and (
-                DiscordInterface.config_applies_to_user(message, pov_config, pov_user_id)
+                DiscordInterface.config_applies_to_user(
+                    message, pov_config, pov_user_id
+                )
             ):
                 if att_data["command"] == "config":
                     config.update(att_data["yaml"])
@@ -1079,7 +1082,7 @@ class DiscordInterface(discord.Client):
             name_list = [name_list]
         elif not isinstance(name_list, list):
             return False
-        
+
         username = user.name if user else None
 
         return any(
@@ -1087,6 +1090,7 @@ class DiscordInterface(discord.Client):
             name in name_list
             for name in (username, config.em.emname, *nicknames)
         )
+
 
 def is_continue_command(message_content: str):
     return message_content.strip() == "/continue" or message_content.startswith(

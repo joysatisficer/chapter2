@@ -119,16 +119,20 @@ class InfraInterface(DiscordInterface):
             async def process_role(role):
                 try:
                     config, iface_config, _ = await self.load_pov(role.name, message)
-                    await self.handle_reply(message, config, iface_config, webhook, role.id)
+                    await self.handle_reply(
+                        message, config, iface_config, webhook, role.id
+                    )
                 except Exception as e:
-                    print('error loading pov:', e)
+                    print("error loading pov:", e)
                     return
 
-            await asyncio.gather(*(
-                process_role(role) 
-                for role in message.role_mentions 
-                if role.name in self.masks
-            ))
+            await asyncio.gather(
+                *(
+                    process_role(role)
+                    for role in message.role_mentions
+                    if role.name in self.masks
+                )
+            )
         return
 
     async def update_index_pointer(self, message: discord.Message):
@@ -379,7 +383,10 @@ class InfraInterface(DiscordInterface):
 
         try:
 
-            @self.tree.command(name="send", description="sends a message to the channel from a given user")
+            @self.tree.command(
+                name="send",
+                description="sends a message to the channel from a given user",
+            )
             @app_commands.describe(
                 user="user to send the message from",
                 content="content of message to send",
@@ -388,8 +395,8 @@ class InfraInterface(DiscordInterface):
                 interaction: discord.Interaction,
                 user: Optional[discord.Member],
                 username: Optional[str],
-                content: str
-                ):
+                content: str,
+            ):
                 await self.interaction_wrapper(
                     command_name="/send",
                     func=self.send_command,
@@ -1141,7 +1148,7 @@ class InfraInterface(DiscordInterface):
         username = kwargs.get("username", None)
         if username is None:
             username = user.name
-        
+
         webhook = await self.get_webhook_for_channel(interaction.channel)
         await webhook.send(content, username=username, avatar_url=user.avatar.url)
         await interaction.followup.send(".✓ send command executed", ephemeral=True)
@@ -1153,10 +1160,9 @@ class InfraInterface(DiscordInterface):
         for webhook in await channel.webhooks():
             if webhook.user == self.user:  # Check if we created this webhook
                 return webhook
-        
+
         # Create new webhook if none exists
         return await channel.create_webhook(name="MultiPersonaBot")
-
 
     async def fork_command(self, **kwargs):
         interaction = kwargs["interaction"]

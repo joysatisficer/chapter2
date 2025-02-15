@@ -28,7 +28,10 @@ class ScheduleTyping(discord.context_managers.Typing):
 
 
 def resolve_member(
-    message: discord.Message, id: int, my_user_id: int | None = None, my_name: str | None = None
+    message: discord.Message,
+    id: int,
+    my_user_id: int | None = None,
+    my_name: str | None = None,
 ) -> str:
     if my_user_id is not None and id == my_user_id:
         return "@" + my_name
