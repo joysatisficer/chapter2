@@ -150,7 +150,7 @@ class ColonMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     def parse(self, continuation, valid_authors: list[str] | None = None):
         messages = []
         for line in continuation.splitlines():
-            match = re.match(r"^(?:(?:([^\n]+?):)? )?([^:].*)$", line)
+            match = re.match(r"^(?:(?:([^\n]+?):)? ?)?([^:].*)$", line)
             if match is not None:
                 groups = match.groups()
                 name, raw_content = groups
