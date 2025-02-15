@@ -251,6 +251,8 @@ async def get_replies(
         else:
             valid_authors = None
 
+        completion = completion_prefix + completion.removeprefix(completion_prefix)
+
         for message in em.message_history_format.parse(completion, valid_authors):
             # accept messages from myself or without prefixes
             if (
