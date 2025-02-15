@@ -296,7 +296,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     airtable: AirtableConfig | None = None
     ignore_system_messages: bool = True
     ignore_react_enabled: bool = True
-
+    avatar_url: str | None = None
 
 class RPCInterfaceConfig(SharedInterfaceConfig):
     name: Literal["rpc"] = "rpc"

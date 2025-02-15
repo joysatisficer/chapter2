@@ -101,13 +101,9 @@ class DiscordInterface(discord.Client):
         first_message: Optional[discord.Message] = None,
         config: Optional[Config] = None,
         iface_config: Optional[DiscordInterfaceConfig] = None,
-        # pov_user: Optional[discord.User] = None,
         pov_user_id: Optional[int] = None,
         inclusive: bool = True,
     ):
-        # if pov_user is None:
-        #     pov_user = self.user
-        # pov_user_id = pov_user.id if pov_user else None
         if inclusive and message and not self.message_invisible(message, iface_config):
             yield await self.discord_message_to_message(
                 config, iface_config, message, pov_user_id
@@ -305,6 +301,7 @@ class DiscordInterface(discord.Client):
             if webhook is not None:
                 return await webhook.send(
                     username=config.em.name,
+                    avatar_url=iface_config.avatar_url,
                     thread=message.channel if isinstance(message.channel, discord.Thread) else None,
                     **kwargs)
             else:
@@ -542,83 +539,7 @@ class DiscordInterface(discord.Client):
             if isinstance(channel, discord.DMChannel)
             else (message.mentions + [message.author])
         )
-
-    # @trace
-    # async def should_reply(
-    #     self,
-    #     message: discord.Message,
-    #     config: Config,
-    #     iface_config: DiscordInterfaceConfig,
-    #     message_history: ActionHistory,
-    # ) -> bool:
-    #     return (
-    #         message.author != self.user
-    #         and (
-    #             not isinstance(message.channel, discord.abc.GuildChannel)
-    #             or message.channel.permissions_for(message.guild.me).send_messages
-    #         )
-    #         and not (
-    #             iface_config.ignore_dotted_messages
-    #             and re.match(self.DOTTED_MESSAGE_RE, message.content)
-    #         )
-    #         and not (
-    #             iface_config.mute is True
-    #             or self.name_in_list(iface_config.mute, config, self.user)
-    #         )
-    #         and not (
-    #             iface_config.thread_mute
-    #             and message.channel.type == discord.ChannelType.public_thread
-    #         )
-    #         and (
-    #             len(iface_config.discord_user_whitelist) == 0
-    #             or message.author.id in iface_config.discord_user_whitelist
-    #         )
-    #         and (
-    #             len(iface_config.may_speak) == 0
-    #             or self.name_in_list(iface_config.may_speak, config, self.user)
-    #         )
-    #         and (
-    #             (iface_config.reply_on_ping and self.user.mentioned_in(message))
-    #             or (
-    #                 iface_config.reply_on_random
-    #                 and random.random() < (1 / iface_config.reply_on_random)
-    #             )
-    #             or (
-    #                 # first or last four names
-    #                 iface_config.reply_on_name
-    #                 and any(
-    #                     re.match(
-    #                         r"^([^\s]+\b){0,3}" + re.escape(name),
-    #                         message.content,
-    #                         re.IGNORECASE,
-    #                     )
-    #                     or re.search(
-    #                         re.escape(name) + r"([^\s]+\b){0,3}$",
-    #                         message.content,
-    #                         re.IGNORECASE,
-    #                     )
-    #                     for name in (
-    #                         config.em.name,
-    #                         self.user.name,
-    #                         *iface_config.nicknames,
-    #                     )
-    #                 )
-    #             )
-    #             or (
-    #                 iface_config.reply_on_sim
-    #                 and await deserves_reply(
-    #                     self.generate_response,
-    #                     config,
-    #                     message_history,
-    #                     iface_config.reply_on_sim,
-    #                 )
-    #             )
-    #             or (
-    #                 iface_config.reply_on_regex
-    #                 and re.fullmatch(iface_config.reply_on_regex, message.content)
-    #             )
-    #         )
-    #     )
+    
 
     @trace
     async def get_config(
