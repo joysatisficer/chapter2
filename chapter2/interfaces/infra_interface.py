@@ -16,6 +16,7 @@ from load import load_em_kv
 from util.steering_api import INDEX_TO_DESC, USABLE_FEATURES
 from util.app_info import get_emname_id_map, get_steerable_ems
 from generate_response import get_prompt
+import asyncio
 
 
 def clean_config_dict(config_dict: dict | list, blacklisted_keys: list[str] = []):
@@ -60,6 +61,7 @@ class InfraInterface(DiscordInterface):
         self.tree = app_commands.CommandTree(self)
         self.emname_to_id = get_emname_id_map()
         self.id_to_emname = {v: k for k, v in self.emname_to_id.items()}
+        self.masks = []
         self.steerable_ems = get_steerable_ems()
         self.discord_iface_config = DiscordInterfaceConfig(
             **{
@@ -71,6 +73,11 @@ class InfraInterface(DiscordInterface):
     def get_invite_link(self):
         if self.user.id is None:
             raise ValueError("Tried to get invite link before bot user ID is known")
+        self.masks = [
+            emname
+            for emname in self.emname_to_id.keys()
+            if int(self.emname_to_id[emname]) == self.user.id and emname != self.sysname
+        ]
         return discord.utils.oauth_url(
             self.user.id,
             scopes=["bot"],
@@ -83,6 +90,8 @@ class InfraInterface(DiscordInterface):
         )
 
     async def on_message(self, message: discord.Message) -> None:
+        self.cache(message.channel).update(message, True)
+
         if message.author == self.user:
             return
         elif self.message_invisible(message, self.discord_iface_config):
@@ -104,6 +113,22 @@ class InfraInterface(DiscordInterface):
             await message.channel.edit(name=name)
             await self.update_index_pointer(message)
 
+        if len(message.role_mentions) > 0:
+            webhook = await self.get_webhook_for_channel(message.channel)
+
+            async def process_role(role):
+                try:
+                    config, iface_config, _ = await self.load_pov(role.name, message)
+                    await self.handle_reply(message, config, iface_config, webhook, role.id)
+                except Exception as e:
+                    print('error loading pov:', e)
+                    return
+
+            await asyncio.gather(*(
+                process_role(role) 
+                for role in message.role_mentions 
+                if role.name in self.masks
+            ))
         return
 
     async def update_index_pointer(self, message: discord.Message):
@@ -189,12 +214,12 @@ class InfraInterface(DiscordInterface):
             await func(**kwargs)
             if not interaction.response.is_done():
                 await interaction.followup.send(
-                    f"✓ **{command_name}** executed successfully",
+                    f".✓ **{command_name}** executed successfully",
                 )
         except Exception as e:
             print(f'Error handling "{command_name}" command: {e}')
             await interaction.followup.send(
-                f"**⚠ ERROR** handling **{command_name}** command",
+                f".**⚠ ERROR** handling **{command_name}** command",
             )
 
     async def setup_hook(self):
@@ -230,19 +255,6 @@ class InfraInterface(DiscordInterface):
                         ephemeral=not is_public,
                         public=is_public,
                     )
-                # elif custom_id.startswith("select_menu|"):
-                # values = interaction.data.get("values", [])
-                # if not values:
-                #     return
-
-                # # Parse the custom_id to get message info
-                # _, message_url = custom_id.split("|")
-
-                # Handle the selection
-                # await interaction.response.send_message(
-                #     f"You selected option: {values[0]}",
-                #     ephemeral=True
-                # )
 
                 else:
                     return
@@ -366,6 +378,26 @@ class InfraInterface(DiscordInterface):
         ]
 
         try:
+
+            @self.tree.command(name="send", description="sends a message to the channel from a given user")
+            @app_commands.describe(
+                user="user to send the message from",
+                content="content of message to send",
+            )
+            async def send(
+                interaction: discord.Interaction,
+                user: Optional[discord.Member],
+                username: Optional[str],
+                content: str
+                ):
+                await self.interaction_wrapper(
+                    command_name="/send",
+                    func=self.send_command,
+                    interaction=interaction,
+                    user=user,
+                    username=username,
+                    content=content,
+                )
 
             @self.tree.command(name="fork", description="forks a thread")
             @app_commands.describe(
@@ -1019,8 +1051,8 @@ class InfraInterface(DiscordInterface):
         # pov = kwargs["pov"]
         pov_user = kwargs["pov_user"]
         inclusive = kwargs.get("inclusive", True)
-        message_history = lambda message, first_message=None, config=config, iface_config=iface_config, pov_user=pov_user, inclusive=inclusive: self.message_history(
-            message, first_message, config, iface_config, pov_user, inclusive
+        message_history = lambda message, first_message=None, config=config, iface_config=iface_config, pov_user_id=pov_user.id, inclusive=inclusive: self.message_history(
+            message, first_message, config, iface_config, pov_user_id, inclusive
         )
 
         history, _ = zip(
@@ -1072,8 +1104,8 @@ class InfraInterface(DiscordInterface):
         iface_config = self.discord_iface_config
         pov_user = self.user
 
-        message_history = lambda message, first_message=first_message, config=config, iface_config=iface_config, pov_user=pov_user, inclusive=True: self.message_history(
-            message, first_message, config, iface_config, pov_user, inclusive
+        message_history = lambda message, first_message=first_message, config=config, iface_config=iface_config, pov_user_id=pov_user.id, inclusive=True: self.message_history(
+            message, first_message, config, iface_config, pov_user_id, inclusive
         )
 
         message_history_format = config.em.message_history_format
@@ -1099,6 +1131,32 @@ class InfraInterface(DiscordInterface):
             message_content,
             file=file,
         )
+
+    async def send_command(self, **kwargs):
+        interaction = kwargs["interaction"]
+        user = kwargs["user"]
+        if user is None:
+            user = interaction.user
+        content = kwargs["content"]
+        username = kwargs.get("username", None)
+        if username is None:
+            username = user.name
+        
+        webhook = await self.get_webhook_for_channel(interaction.channel)
+        await webhook.send(content, username=username, avatar_url=user.avatar.url)
+        await interaction.followup.send(".✓ send command executed", ephemeral=True)
+
+    async def get_webhook_for_channel(self, channel):
+        if isinstance(channel, discord.Thread):
+            channel = channel.parent
+        # Reuse existing webhook or create new one
+        for webhook in await channel.webhooks():
+            if webhook.user == self.user:  # Check if we created this webhook
+                return webhook
+        
+        # Create new webhook if none exists
+        return await channel.create_webhook(name="MultiPersonaBot")
+
 
     async def fork_command(self, **kwargs):
         interaction = kwargs["interaction"]
