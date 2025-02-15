@@ -28,9 +28,9 @@ class ScheduleTyping(discord.context_managers.Typing):
 
 
 def resolve_member(
-    message: discord.Message, id: int, my_user_id: int, my_name: str
+    message: discord.Message, id: int, my_user_id: int | None = None, my_name: str | None = None
 ) -> str:
-    if id == my_user_id:
+    if my_user_id is not None and id == my_user_id:
         return "@" + my_name
     if message.guild:
         m = message.guild.get_member(id) or discord.utils.get(message.mentions, id=id)
@@ -55,7 +55,7 @@ def resolve_channel(message: discord.Message, id: int, _, __) -> str:
     return "#deleted-channel"
 
 
-def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) -> str:
+def parse_discord_content(self: discord.Message, my_user_id, my_name) -> str:
     """discord.Message.clean_content() where "name" is used in place of display_name"""
     transforms = {
         "@": resolve_member,
@@ -70,10 +70,12 @@ def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) 
         transformed = transforms[type](self, id, my_user_id, my_name)
         return transformed
 
+    result = self.system_content if self.is_system() else self.content
+    # if my_user_id is not None and my_name is not None:
     result = re.sub(
         r"<(@[!&]?|#)([0-9]{15,20})>",
         repl,
-        self.system_content if self.is_system() else self.content,
+        result,
     )
 
     return discord.utils.escape_mentions(result)
