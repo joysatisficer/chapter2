@@ -294,15 +294,6 @@ class RPCInterfaceConfig(SharedInterfaceConfig):
     name: Literal["rpc"] = "rpc"
 
 
-class MikotoInterfaceConfig(SharedInterfaceConfig):
-    name: Literal["mikoto"] = "mikoto"
-    mikoto_token: str
-    # todo: high-level API for customizing if a message should be engaged with
-    allowed_users: list[str] | None = None
-    # todo: config loaders and interfaces as separate things
-    custom_config: dict = {}
-
-
 class CompletionsInterfaceConfig(SharedInterfaceConfig):
     name: Literal["completions"] = "completions"
     default_name: str = "user"
@@ -322,7 +313,6 @@ class InfraInterfaceConfig(DiscordInterfaceConfig):
 InterfaceConfig = Annotated[
     DiscordInterfaceConfig
     | RPCInterfaceConfig
-    | MikotoInterfaceConfig
     | CompletionsInterfaceConfig
     | ChatCompletionsInterfaceConfig
     | InfraInterfaceConfig,
