@@ -305,16 +305,23 @@ class DiscordInterface(discord.Client):
 
         async def send_to_channel(**kwargs):
             if webhook is not None:
-                return await webhook.send(
+                return await self.webhook_send(
+                    webhook,
+                    message.channel,
                     username=config.em.name,
                     avatar_url=iface_config.avatar_url,
-                    thread=(
-                        message.channel
-                        if isinstance(message.channel, discord.Thread)
-                        else None
-                    ),
                     **kwargs,
                 )
+                # return await webhook.send(
+                #     username=config.em.name,
+                #     avatar_url=iface_config.avatar_url,
+                #     thread=(
+                #         message.channel
+                #         if isinstance(message.channel, discord.Thread)
+                #         else None
+                #     ),
+                #     **kwargs,
+                # )
             else:
                 return await message.channel.send(**kwargs)
 
@@ -1090,6 +1097,15 @@ class DiscordInterface(discord.Client):
             name in name_list
             for name in (username, config.em.emname, *nicknames)
         )
+
+    @staticmethod
+    async def webhook_send(
+        webhook: discord.Webhook, channel: discord.abc.Messageable, **kwargs
+    ):
+        if isinstance(channel, discord.Thread):
+            return await webhook.send(**kwargs, thread=channel, wait=True)
+        else:
+            return await webhook.send(**kwargs, wait=True)
 
 
 def is_continue_command(message_content: str):

@@ -5,6 +5,9 @@ from typing import Optional
 from pydantic import ValidationError
 from io import StringIO
 import yaml
+import typing
+import traceback
+
 from aioitertools.more_itertools import take as async_take
 
 from interfaces.discord_interface import DiscordInterface, ConfigError
@@ -17,7 +20,6 @@ from util.steering_api import INDEX_TO_DESC, USABLE_FEATURES
 from util.app_info import get_emname_id_map, get_steerable_ems
 from generate_response import get_prompt
 import asyncio
-
 
 def clean_config_dict(config_dict: dict | list, blacklisted_keys: list[str] = []):
     # recursively remove any keys that are in the blacklisted_keys list
@@ -199,29 +201,32 @@ class InfraInterface(DiscordInterface):
         self,
         command_name: str,
         func,
+        ephemeral: bool = True,
         **kwargs,
     ):
         interaction = kwargs["interaction"]
-        ephemeral = not kwargs.get("public", True)
         await interaction.response.defer(ephemeral=ephemeral)
         try:
             if "message_link" in kwargs and kwargs.get("message", None) is None:
-                kwargs["message"] = await self.resolve_message(
-                    interaction,
-                    kwargs["message_link"],
-                    kwargs.get("require_regular_msg", False),
-                )
+                    kwargs["message"] = await self.resolve_message(
+                        interaction,
+                        kwargs["message_link"],
+                        kwargs.get("require_regular_msg", False),
+                    )
+            kwargs.pop("message_link", None)
+            kwargs.pop("require_regular_msg", None)
+            if "channel" in kwargs and kwargs.get("channel", None) is None:
+                kwargs["channel"] = interaction.channel
             if "pov" in kwargs:
                 kwargs["config"], kwargs["iface_config"], kwargs["pov_user"] = (
                     await self.load_pov(kwargs["pov"], kwargs["message"])
                 )
+            kwargs.pop("pov", None)
             await func(**kwargs)
-            if not interaction.response.is_done():
-                await interaction.followup.send(
-                    f".✓ **{command_name}** executed successfully",
-                )
+
         except Exception as e:
-            print(f'Error handling "{command_name}" command: {e}')
+            # print(f'Error handling "{command_name}" command: {e}')
+            print(traceback.format_exc())
             await interaction.followup.send(
                 f".**⚠ ERROR** handling **{command_name}** command",
             )
@@ -253,7 +258,7 @@ class InfraInterface(DiscordInterface):
                     )
                     is_public = is_public.lower() == "true"
                     # Handle the button click
-                    await self.fork_to_thread_callback(
+                    await self.fork_command(
                         interaction=interaction,
                         message=message,
                         ephemeral=not is_public,
@@ -384,18 +389,48 @@ class InfraInterface(DiscordInterface):
         try:
 
             @self.tree.command(
-                name="send",
-                description="sends a message to the channel from a given user",
+                name="copy",
+                description="copies a message to a channel",
             )
             @app_commands.describe(
-                user="user to send the message from",
+                message_link="message to copy (defaults to last message in channel)",
+                channel="channel to send the message to (defaults to interaction channel)",
+            )
+            async def copy(
+                interaction: discord.Interaction,
+                channel: Optional[
+                    typing.Union[discord.TextChannel, discord.Thread]
+                ] = None,
+                message_link: Optional[str] = None,
+            ):
+                await self.interaction_wrapper(
+                    command_name="/copy",
+                    func=self.copy_command,
+                    interaction=interaction,
+                    message_link=message_link,
+                    channel=channel,
+                )
+
+            @self.tree.command(
+                name="send",
+                description="sends a message to a channel from a given user",
+            )
+            @app_commands.describe(
+                user="user to send the message from (defaults to interaction user)",
                 content="content of message to send",
+                username="username of the message sender (defaults to user's name)",
+                avatar_url="avatar url of the message sender (defaults to user's avatar)",
+                channel="channel to send the message to (defaults to interaction channel)",
             )
             async def send(
                 interaction: discord.Interaction,
+                content: str,
                 user: Optional[discord.Member],
                 username: Optional[str],
-                content: str,
+                avatar_url: Optional[str],
+                channel: Optional[
+                    typing.Union[discord.TextChannel, discord.Thread]
+                ] = None,
             ):
                 await self.interaction_wrapper(
                     command_name="/send",
@@ -404,6 +439,8 @@ class InfraInterface(DiscordInterface):
                     user=user,
                     username=username,
                     content=content,
+                    avatar_url=avatar_url,
+                    channel=channel,
                 )
 
             @self.tree.command(name="fork", description="forks a thread")
@@ -425,6 +462,7 @@ class InfraInterface(DiscordInterface):
                     message_link=message_link,
                     public=public,
                     title=title,
+                    ephemeral=not public,
                 )
 
             @self.tree.command(
@@ -471,6 +509,38 @@ class InfraInterface(DiscordInterface):
                     public=public,
                     title=title,
                     require_regular_msg=True,
+                    ephemeral=not public,
+                )
+
+            @self.tree.command(
+                name="stash",
+                description="deletes a message/messages from the current channel and moves them to a fork",
+            )
+            @app_commands.describe(
+                message_link="message to stash",
+                public="(TRUE by default) create a public thread. If FALSE, create a private thread.",
+                title="optional title for the forked thread",
+                max_messages="maximum number of messages to stash. defaults to 10",
+                stop_at_author_change="(TRUE by default) stop stashing at the first message from a different author",
+            )
+            async def stash(
+                interaction: discord.Interaction,
+                message_link: Optional[str] = None,
+                public: bool = True,
+                title: Optional[str] = None,
+                max_messages: Optional[int] = 10,
+                stop_at_author_change: bool = True,
+            ):
+                await self.interaction_wrapper(
+                    command_name="/stash",
+                    func=self.stash_command,
+                    interaction=interaction,
+                    message_link=message_link,
+                    public=public,
+                    title=title,
+                    require_regular_msg=True,
+                    max_messages=max_messages,
+                    stop_at_author_change=stop_at_author_change,
                 )
 
             @self.tree.command(
@@ -502,7 +572,7 @@ class InfraInterface(DiscordInterface):
                     message=message,
                     pov=pov,
                     inclusive=(message_link is None),
-                    public=public,
+                    ephemeral=not public,
                 )
 
             @self.tree.command(
@@ -537,6 +607,7 @@ class InfraInterface(DiscordInterface):
                     command_prefix="history",
                     config_dict=config_dict,
                     targets=targets,
+                    ephemeral=False,
                 )
 
             @self.tree.command(
@@ -563,7 +634,7 @@ class InfraInterface(DiscordInterface):
                     first_link=first_link,
                     last_link=last_link,
                     transcript_format=transcript_format,
-                    public=public,
+                    ephemeral=not public,
                 )
 
             @self.tree.command(
@@ -591,6 +662,7 @@ class InfraInterface(DiscordInterface):
                         "may_speak": may_speak,
                     },
                     targets=None,
+                    ephemeral=False,
                 )
 
             @self.tree.command(
@@ -637,6 +709,7 @@ class InfraInterface(DiscordInterface):
                     command_prefix="config",
                     config_dict=config_dict,
                     targets=targets,
+                    ephemeral=False,
                 )
 
             @self.tree.command(
@@ -650,6 +723,7 @@ class InfraInterface(DiscordInterface):
                     command_name="/unset_config",
                     func=self.reset_config_command,
                     interaction=interaction,
+                    ephemeral=False,
                 )
 
             @self.tree.command(
@@ -678,7 +752,8 @@ class InfraInterface(DiscordInterface):
                     pov=pov,
                     property=property,
                     message_link=None,
-                    public=public,
+                    # public=public,
+                    ephemeral=not public,
                 )
 
             @self.tree.command(
@@ -695,7 +770,8 @@ class InfraInterface(DiscordInterface):
                     func=self.get_ancestry_command,
                     interaction=interaction,
                     message_link=message_link,
-                    public=public,
+                    # public=public,
+                    ephemeral=not public,
                 )
 
             if len(self.steerable_ems) > 0:
@@ -731,6 +807,7 @@ class InfraInterface(DiscordInterface):
                         reset=reset,
                         targets=[target],
                         message_link=None,
+                        ephemeral=False,
                     )
 
                 @self.tree.command(
@@ -759,6 +836,7 @@ class InfraInterface(DiscordInterface):
                         reset=False,
                         message_link=None,
                         targets=[target],
+                        ephemeral=False,
                     )
 
                 @self.tree.command(
@@ -783,6 +861,7 @@ class InfraInterface(DiscordInterface):
                         command_prefix="config",
                         config_dict=config_dict,
                         targets=[target],
+                        ephemeral=False,
                     )
 
                 @self.tree.command(
@@ -807,7 +886,8 @@ class InfraInterface(DiscordInterface):
                         interaction=interaction,
                         pov=pov,
                         message_link=None,
-                        public=public,
+                        # public=public,
+                        ephemeral=not public,
                     )
 
         except Exception as e:
@@ -816,81 +896,41 @@ class InfraInterface(DiscordInterface):
 
         try:
 
-            async def private_fork_menu_command(
-                interaction: discord.Interaction, message: discord.Message
-            ):
-                await self.interaction_wrapper(
-                    command_name="/fork",
-                    func=self.fork_command,
-                    interaction=interaction,
-                    message=message,
-                    public=False,
-                    title=None,
+            menu_commands = {
+                "fork": {
+                    "command_name": "/fork",
+                    "func": self.fork_command,
+                    "ephemeral": False,
+                },
+                "fork (private)": {
+                    "command_name": "/fork",
+                    "func": self.fork_command,
+                    "public": False,
+                },
+                "mu": {
+                    "command_name": "/mu",
+                    "func": self.mu_command,
+                    "ephemeral": False,
+                },
+                "stash": {
+                    "command_name": "/stash",
+                    "func": self.stash_command,
+                    "ephemeral": False,
+                },
+            }
+
+            def callback_factory(**kwargs):
+                async def callback(interaction: discord.Interaction, message: discord.Message):
+                    await self.interaction_wrapper(**kwargs, interaction=interaction, message=message)
+                return callback
+
+            for name, kwargs in menu_commands.items():
+                command = app_commands.ContextMenu(
+                    name=name,
+                    callback=callback_factory(**kwargs),
+                    type=discord.AppCommandType.message,
                 )
-
-            async def public_fork_menu_command(
-                interaction: discord.Interaction, message: discord.Message
-            ):
-                await self.interaction_wrapper(
-                    command_name="/fork",
-                    func=self.fork_command,
-                    interaction=interaction,
-                    message=message,
-                    public=True,
-                    title=None,
-                )
-
-            async def mu_menu_command(
-                interaction: discord.Interaction, message: discord.Message
-            ):
-                await self.interaction_wrapper(
-                    command_name="/mu",
-                    func=self.mu_command,
-                    interaction=interaction,
-                    message=message,
-                    public=True,
-                    title=None,
-                )
-
-            # async def get_history_context_command(
-            #     interaction: discord.Interaction, message: discord.Message
-            # ):
-            #     await self.interaction_wrapper(
-            #         command_name="/prompt",
-            #         func=self.get_context_command,
-            #         interaction=interaction,
-            #         message=message,
-            #         pov=None,
-            #     )
-
-            create_private_fork_command = app_commands.ContextMenu(
-                name="fork (private)",
-                callback=private_fork_menu_command,
-                type=discord.AppCommandType.message,
-            )
-
-            create_public_fork_command = app_commands.ContextMenu(
-                name="fork",
-                callback=public_fork_menu_command,
-                type=discord.AppCommandType.message,
-            )
-
-            mu_command = app_commands.ContextMenu(
-                name="mu",
-                callback=mu_menu_command,
-                type=discord.AppCommandType.message,
-            )
-
-            # get_history_command = app_commands.ContextMenu(
-            #     name="get context",
-            #     callback=get_history_context_command,
-            #     type=discord.AppCommandType.message,
-            # )
-
-            # self.tree.add_command(get_history_command)
-            self.tree.add_command(create_private_fork_command)
-            self.tree.add_command(create_public_fork_command)
-            self.tree.add_command(mu_command)
+                self.tree.add_command(command)
 
         except Exception as e:
             print(f"Error registering context menu command: {e}")
@@ -903,22 +943,16 @@ class InfraInterface(DiscordInterface):
         )
         await super().setup_hook()
 
-    async def send_config_command(self, **kwargs):
-        interaction = kwargs["interaction"]
-        command_prefix = kwargs.get("command_prefix", ".config")
-        config_dict = kwargs.get("config_dict", None)
-        targets = kwargs.get("targets", None)
+    async def send_config_command(self, interaction: discord.Interaction, command_prefix: str = "config", **kwargs):
         config_message = compile_config_message(
             command_prefix,
-            config_dict,
-            targets,
+            **kwargs,
         )
         sent_message = await interaction.followup.send(config_message)
-        if sent_message is not None:
+        if sent_message is not None and command_prefix == "config":
             await sent_message.pin()
 
-    async def reset_config_command(self, **kwargs):
-        interaction = kwargs["interaction"]
+    async def reset_config_command(self, interaction: discord.Interaction):
         pins = await interaction.channel.pins()
         unpinned_messages = []
         for pin in pins:
@@ -926,19 +960,16 @@ class InfraInterface(DiscordInterface):
                 await pin.unpin()
                 unpinned_messages.append(pin)
         if len(unpinned_messages) > 0:
-            content = f"✓ unpinned {len(unpinned_messages)} config messages"
+            content = f".✓ unpinned {len(unpinned_messages)} config messages"
             # for message in unpinned_messages:
             #     content += f"\n- {message.jump_url}"
         else:
-            content = "✗ no config messages to unpin"
+            content = ".✗ no config messages to unpin"
         await interaction.followup.send(content)
 
-    async def config_steering_feature_command(self, **kwargs):
-        config = kwargs["config"]
-        feature = kwargs["feature"]
-        level = kwargs["level"]
-        reset = kwargs["reset"]
-
+    async def config_steering_feature_command(
+        self, config, feature, level, reset, **kwargs
+    ):
         feature_key = f"feat_34M_20240604_{feature}"
 
         try:
@@ -981,11 +1012,9 @@ class InfraInterface(DiscordInterface):
         kwargs["config_dict"] = config_dict
         await self.send_config_command(**kwargs)
 
-    async def steering_state_command(self, **kwargs):
-        interaction = kwargs["interaction"]
-        pov = kwargs["pov"]
-        pov_user = kwargs["pov_user"]
-        config = kwargs["config"]
+    async def steering_state_command(
+        self, interaction: discord.Interaction, config, pov_user: discord.Member
+    ):
         try:
             config_dict = config.em.model_dump()
             current_configuration = config_dict["continuation_options"]["steering"][
@@ -1004,14 +1033,13 @@ class InfraInterface(DiscordInterface):
 
         await interaction.followup.send(content)
 
-    async def get_cleaned_config(self, **kwargs):
-        interaction = kwargs["interaction"]
-        # message = kwargs["message"]
-        config = kwargs["config"]
-        pov = kwargs["pov"]
-        pov_user = kwargs["pov_user"]
-
-        property = kwargs.get("property", None)
+    async def get_cleaned_config(
+        self,
+        interaction: discord.Interaction,
+        config,
+        pov_user: discord.Member,
+        property: str | None = None,
+    ):
         cleaned_config = clean_config_dict(
             config.model_dump(),
             list(self.BLACKLISTED_KEYS),
@@ -1030,16 +1058,16 @@ class InfraInterface(DiscordInterface):
         else:
             file = discord.File(
                 StringIO(yaml.dump(cleaned_config)),
-                filename=f"{pov}-config.yaml",
+                filename=f"{pov_user.name}-config.yaml",
             )
             await interaction.followup.send(
                 f"### :information_source: local config for {pov_user.mention}:",
                 file=file,
             )
 
-    async def get_ancestry_command(self, **kwargs):
-        interaction = kwargs["interaction"]
-        message = kwargs["message"]
+    async def get_ancestry_command(
+        self, interaction: discord.Interaction, message: discord.Message
+    ):
         ancestry = await self.get_node_ancestry(message)
         ancestry = reversed(ancestry)
         ancestry_string = self.ANCESTRY_PREFIX
@@ -1049,15 +1077,13 @@ class InfraInterface(DiscordInterface):
 
     async def get_context_command(
         self,
-        **kwargs,
+        interaction: discord.Interaction,
+        message: discord.Message,
+        config,
+        iface_config,
+        pov_user: discord.Member,
+        inclusive: bool = True,
     ):
-        interaction = kwargs["interaction"]
-        message = kwargs["message"]
-        config = kwargs["config"]
-        iface_config = kwargs["iface_config"]
-        # pov = kwargs["pov"]
-        pov_user = kwargs["pov_user"]
-        inclusive = kwargs.get("inclusive", True)
         message_history = lambda message, first_message=None, config=config, iface_config=iface_config, pov_user_id=pov_user.id, inclusive=inclusive: self.message_history(
             message, first_message, config, iface_config, pov_user_id, inclusive
         )
@@ -1088,11 +1114,13 @@ class InfraInterface(DiscordInterface):
             file=file,
         )
 
-    async def transcript_command(self, **kwargs):
-        interaction = kwargs["interaction"]
-        first_link = kwargs["first_link"]
-        last_link = kwargs["last_link"]
-        transcript_format = kwargs["transcript_format"]
+    async def transcript_command(
+        self,
+        interaction: discord.Interaction,
+        first_link: str | None,
+        last_link: str | None,
+        transcript_format: str | None,
+    ):
         if first_link is None:
             first_message = None
         else:
@@ -1133,25 +1161,65 @@ class InfraInterface(DiscordInterface):
             first_message.jump_url if first_message else "start of channel"
         )
 
-        message_content = f"### :page_with_curl: trancript between {first_message_url} and {last_message.jump_url}:"
+        message_content = f"### :page_with_curl: transcript between {first_message_url} and {last_message.jump_url}:"
         await interaction.followup.send(
             message_content,
             file=file,
         )
 
-    async def send_command(self, **kwargs):
-        interaction = kwargs["interaction"]
-        user = kwargs["user"]
-        if user is None:
-            user = interaction.user
-        content = kwargs["content"]
-        username = kwargs.get("username", None)
-        if username is None:
-            username = user.name
+    async def send_command(
+        self,
+        interaction: discord.Interaction,
+        content: str,
+        user: discord.Member | None,
+        username: str | None,
+        avatar_url: str | None,
+        channel: discord.abc.Messageable,
+    ):
+        username = (
+            user.name
+            if user is not None
+            else (username if username is not None else interaction.user.name)
+        )
+        avatar_url = (
+            user.avatar.url
+            if user is not None
+            else (
+                avatar_url
+                if avatar_url is not None
+                else interaction.user.avatar.url if interaction.user.avatar else None
+            )
+        )
+        webhook = await self.get_webhook_for_channel(channel)
+        message = await self.webhook_send(
+            webhook, channel, content=content, username=username, avatar_url=avatar_url
+        )
+        await interaction.followup.send(f".✓ sent message {message.jump_url}")
 
-        webhook = await self.get_webhook_for_channel(interaction.channel)
-        await webhook.send(content, username=username, avatar_url=user.avatar.url)
-        await interaction.followup.send(".✓ send command executed", ephemeral=True)
+    async def copy_command(
+        self,
+        interaction: discord.Interaction,
+        message: discord.Message,
+        channel: discord.abc.Messageable,
+    ):
+        copy = await self.copy_message(message, channel)
+        await interaction.followup.send(
+            f".✓ copied message {message.jump_url} to {copy.jump_url}"
+        )
+
+    async def copy_message(
+        self, message: discord.Message, destination: discord.abc.Messageable
+    ):
+        webhook = await self.get_webhook_for_channel(destination)
+        avatar_url = message.author.avatar.url if message.author.avatar else None
+        print(avatar_url)
+        return await self.webhook_send(
+            webhook,
+            destination,
+            content=message.content,
+            username=message.author.name,
+            avatar_url=avatar_url,
+        )
 
     async def get_webhook_for_channel(self, channel):
         if isinstance(channel, discord.Thread):
@@ -1162,27 +1230,9 @@ class InfraInterface(DiscordInterface):
                 return webhook
 
         # Create new webhook if none exists
-        return await channel.create_webhook(name="MultiPersonaBot")
+        return await channel.create_webhook(name="Emulator")
 
-    async def fork_command(self, **kwargs):
-        interaction = kwargs["interaction"]
-        message = kwargs["message"]
-        public = kwargs["public"]
-        title = kwargs["title"]
-
-        return await self.fork_to_thread_callback(
-            interaction=interaction,
-            message=message,
-            ephemeral=not public,
-            public=public,
-            title=title,
-        )
-
-    async def new_thread_command(self, **kwargs):
-        interaction = kwargs["interaction"]
-        title = kwargs["title"]
-        # reason = kwargs["reason"]
-        public = kwargs["public"]
+    async def new_thread_command(self, interaction: discord.Interaction, title: str | None = None, public: bool = True):
         reason = f"Created by {interaction.user}" + (
             f" through {interaction.command.name}"
             if interaction.command
@@ -1198,19 +1248,39 @@ class InfraInterface(DiscordInterface):
         await interaction.followup.send(fork_message)
         return new_thread
 
-    async def mu_command(self, **kwargs):
-        message = kwargs["message"]
+    async def mu_command(self, message: discord.Message, **kwargs):
         parent_message = await last_normal_message(message.channel, before=message)
         if parent_message is None:
             raise ValueError("No parent message found")
-        kwargs["message"] = parent_message
-        new_thread = await self.fork_command(**kwargs)
-        message_author = message.author
+        new_thread = await self.fork_command(message=parent_message, **kwargs)
+        await new_thread.send(f"m continue {message.author.mention}")
 
-        await new_thread.send(f"m continue {message_author.mention}")
-        # return
+    async def stash_command(self, message: discord.Message, max_messages: int = 10, stop_at_author_change: bool = True, **kwargs):
+        parent_message = await last_normal_message(message.channel, before=message)
+        if parent_message is None:
+            raise ValueError("No parent message found")
+        if message.thread:
+            raise ValueError("Message has thread attached and cannot be stashed")
 
-    async def fork_to_thread_callback(
+        new_thread = await self.fork_command(message=parent_message, **kwargs)
+
+        await self.copy_message(message, new_thread)
+        await message.delete()
+
+        if max_messages - 1 > 0:
+            async for next_msg in message.channel.history(
+                after=message, oldest_first=True, limit=max_messages - 1
+            ):
+                if (
+                    stop_at_author_change
+                    and next_msg.author.name != message.author.name
+                ) or next_msg.thread:
+                    break
+                await self.copy_message(next_msg, new_thread)
+                await next_msg.delete()
+        # await interaction.followup.send(f".✓ stashed message {message.jump_url} in {new_thread.jump_url}")
+
+    async def fork_command(
         self,
         interaction: discord.Interaction,
         message: discord.Message,
@@ -1374,11 +1444,13 @@ class InfraInterface(DiscordInterface):
 
         new_thread, _ = await self.create_thread(
             channel,
-            f".**{interaction.user.mention} created a new context:** '{title}'",
+            f".**{interaction.user.mention} created a tabula rasa context:** '{title}'",
             public,
             title,
             reason,
         )
+
+        embed_description = f"# --BEGIN CONTEXT WINDOW--"
 
         if public:
             index_anchor_message = await channel.send(
@@ -1397,17 +1469,17 @@ class InfraInterface(DiscordInterface):
             )
             history_config["root"] = index_anchor_message.jump_url
 
-        embed = discord.Embed(
-            description=f"# --CONTEXT WINDOW CLEARED--\n\n:twisted_rightwards_arrows: [index]({index_message.jump_url})"
-        )
+            embed_description = f"{embed_description}\n\n:twisted_rightwards_arrows: [index]({index_message.jump_url})"
+
 
         await new_thread.send(
             content=compile_config_message(
                 command_prefix="history",
                 config_dict=history_config,
             ),
-            embed=embed,
-            view=view,
+            embed=discord.Embed(
+                description=embed_description
+            ),
         )
 
         return new_thread, index_message
@@ -1465,7 +1537,10 @@ class InfraInterface(DiscordInterface):
             )
 
         embed = embed_from_message(
-            message, max_length=1000, color=discord.Color.default()
+            message,
+            max_length=1000,
+            color=discord.Color.default(),
+            anchor_at_end=True,
         )
 
         view = None
@@ -1479,15 +1554,9 @@ class InfraInterface(DiscordInterface):
                             ancestor_index_messages[ancestors[1].jump_url]
                         )
 
-                    index_embed = embed_from_message(
-                        message,
-                        max_length=1000,
-                        color=discord.Color.default(),
-                        anchor_at_end=True,
-                    )
                     await index_thread.send(
                         content=ancestry_message_content,
-                        embed=index_embed,
+                        embed=embed,
                         reference=reference,
                     )
 
