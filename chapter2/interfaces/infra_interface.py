@@ -21,6 +21,7 @@ from util.app_info import get_emname_id_map, get_steerable_ems
 from generate_response import get_prompt
 import asyncio
 
+
 def clean_config_dict(config_dict: dict | list, blacklisted_keys: list[str] = []):
     # recursively remove any keys that are in the blacklisted_keys list
     if isinstance(config_dict, list):
@@ -91,14 +92,50 @@ class InfraInterface(DiscordInterface):
             ),
         )
 
+    async def update_index_pointer(self, message: discord.Message):
+        parent_node = await self.get_parent_node(message)
+        if parent_node is not None:
+            _, index_message, _, _, _, _ = await self.get_loom_index(parent_node)
+            if index_message is not None:
+                _, children_links = parse_index_message(index_message)
+                if children_links is not None:
+                    for i, child_link in enumerate(children_links):
+                        if child_link == message.channel.jump_url:
+                            children_links[i] = message.jump_url
+                            break
+                    await self.edit_index_for_message(
+                        parent_node, index_message, children_links
+                    )
+
     async def on_message(self, message: discord.Message) -> None:
         self.cache(message.channel).update(message, True)
+
+        async def process_replier(name):
+            try:
+                config, iface_config, _ = await self.load_pov(name, message)
+                await self.handle_on_message(
+                    message, config=config, iface_config=iface_config
+                )
+            except Exception as e:
+                print(traceback.format_exc())
+                print("error emulating reply:", e)
+                return
+
+        mentioned = set()
+        if message.type == discord.MessageType.reply:
+            replied_message = message.reference.resolved
+            if replied_message.type == discord.MessageType.default:
+                mentioned.add(replied_message.author.name)
+        mentioned.update([role.name for role in message.role_mentions])
+        mentioned_masks = mentioned & set(self.masks)
+
+        await asyncio.gather(*(process_replier(name) for name in mentioned_masks))
 
         if message.author == self.user:
             return
         elif self.message_invisible(message, self.discord_iface_config):
             return
-        # if the message is in a thread and the name of the thread ends with "⌥"
+
         elif isinstance(
             message.channel, discord.threads.Thread
         ) and message.channel.name.endswith("⌥"):
@@ -115,42 +152,26 @@ class InfraInterface(DiscordInterface):
             await message.channel.edit(name=name)
             await self.update_index_pointer(message)
 
-        if len(message.role_mentions) > 0:
-            webhook = await self.get_webhook_for_channel(message.channel)
-
-            async def process_role(role):
-                try:
-                    config, iface_config, _ = await self.load_pov(role.name, message)
-                    await self.handle_reply(
-                        message, config, iface_config, webhook, role.id
-                    )
-                except Exception as e:
-                    print("error loading pov:", e)
-                    return
-
-            await asyncio.gather(
-                *(
-                    process_role(role)
-                    for role in message.role_mentions
-                    if role.name in self.masks
-                )
+    def send_to_channel(self, config, iface_config, **kwargs):
+        async def send(channel, **options):
+            webhook = await self.get_my_webhook_for_channel(channel)
+            await self.webhook_send(
+                webhook,
+                channel,
+                username=config.em.name,
+                avatar_url=iface_config.avatar_url,
+                **options,
             )
-        return
 
-    async def update_index_pointer(self, message: discord.Message):
-        parent_node = await self.get_parent_node(message)
-        if parent_node is not None:
-            _, index_message, _, _, _, _ = await self.get_loom_index(parent_node)
-            if index_message is not None:
-                _, children_links = parse_index_message(index_message)
-                if children_links is not None:
-                    for i, child_link in enumerate(children_links):
-                        if child_link == message.channel.jump_url:
-                            children_links[i] = message.jump_url
-                            break
-                    await self.edit_index_for_message(
-                        parent_node, index_message, children_links
-                    )
+        return send
+
+    def should_reply(self, message, iface_config, **kwargs):
+        return super().should_reply(message, iface_config=iface_config, **kwargs) or (
+            iface_config.reply_on_ping
+            and message.type == discord.MessageType.reply
+            and message.reference.resolved.type == discord.MessageType.default
+            and message.reference.resolved.author.name in self.masks
+        )
 
     async def resolve_message(
         self,
@@ -208,11 +229,11 @@ class InfraInterface(DiscordInterface):
         await interaction.response.defer(ephemeral=ephemeral)
         try:
             if "message_link" in kwargs and kwargs.get("message", None) is None:
-                    kwargs["message"] = await self.resolve_message(
-                        interaction,
-                        kwargs["message_link"],
-                        kwargs.get("require_regular_msg", False),
-                    )
+                kwargs["message"] = await self.resolve_message(
+                    interaction,
+                    kwargs["message_link"],
+                    kwargs.get("require_regular_msg", False),
+                )
             kwargs.pop("message_link", None)
             kwargs.pop("require_regular_msg", None)
             if "channel" in kwargs and kwargs.get("channel", None) is None:
@@ -277,21 +298,24 @@ class InfraInterface(DiscordInterface):
                 user for user in em_users if user["user"] in guild.members
             ]
             matches = [
-                user
+                app_commands.Choice(name=emname, value=emname)
+                for emname in self.masks
+                if current.lower() in emname.lower()
+            ]
+            matches += [
+                app_commands.Choice(
+                    name=user["user"].display_name, value=user["emname"]
+                )
                 for user in matching_em_members
                 if current.lower() in user["emname"].lower()
                 or current.lower() in user["user"].display_name.lower()
             ]
-            return [
-                app_commands.Choice(
-                    name=user["user"].display_name, value=user["emname"]
-                )
-                for user in matches[:25]
-            ]
+            return matches[:25]
 
         async def steerable_users_autocomplete(
             interaction: discord.Interaction, current: str
         ):
+            # TODO include emulated users
             guild = interaction.guild
             steerable_users = [
                 user
@@ -566,12 +590,11 @@ class InfraInterface(DiscordInterface):
                         pov = self.id_to_emname[str(message.author.id)]
                 await self.interaction_wrapper(
                     command_name="/get_prompt",
-                    func=self.get_context_command,
+                    func=self.get_prompt_command,
                     interaction=interaction,
                     message_link=message_link,
                     message=message,
                     pov=pov,
-                    inclusive=(message_link is None),
                     ephemeral=not public,
                 )
 
@@ -920,8 +943,13 @@ class InfraInterface(DiscordInterface):
             }
 
             def callback_factory(**kwargs):
-                async def callback(interaction: discord.Interaction, message: discord.Message):
-                    await self.interaction_wrapper(**kwargs, interaction=interaction, message=message)
+                async def callback(
+                    interaction: discord.Interaction, message: discord.Message
+                ):
+                    await self.interaction_wrapper(
+                        **kwargs, interaction=interaction, message=message
+                    )
+
                 return callback
 
             for name, kwargs in menu_commands.items():
@@ -943,7 +971,9 @@ class InfraInterface(DiscordInterface):
         )
         await super().setup_hook()
 
-    async def send_config_command(self, interaction: discord.Interaction, command_prefix: str = "config", **kwargs):
+    async def send_config_command(
+        self, interaction: discord.Interaction, command_prefix: str = "config", **kwargs
+    ):
         config_message = compile_config_message(
             command_prefix,
             **kwargs,
@@ -1075,17 +1105,20 @@ class InfraInterface(DiscordInterface):
         ancestry_string += f" :point_left:"
         await interaction.followup.send(ancestry_string)
 
-    async def get_context_command(
+    async def get_prompt_command(
         self,
         interaction: discord.Interaction,
         message: discord.Message,
         config,
         iface_config,
         pov_user: discord.Member,
-        inclusive: bool = True,
     ):
-        message_history = lambda message, first_message=None, config=config, iface_config=iface_config, pov_user_id=pov_user.id, inclusive=inclusive: self.message_history(
-            message, first_message, config, iface_config, pov_user_id, inclusive
+        message_history = lambda message, first_message=None, config=config, iface_config=iface_config, pov_user_id=pov_user.id: self.message_history(
+            message,
+            first_message,
+            config=config,
+            iface_config=iface_config,
+            pov_user_id=pov_user_id,
         )
 
         history, _ = zip(
@@ -1136,11 +1169,12 @@ class InfraInterface(DiscordInterface):
             config_update = {"message_history_format": {"name": transcript_format}}
             config = ontology.load_config_from_kv(config_update, config.model_dump())
 
-        iface_config = self.discord_iface_config
-        pov_user = self.user
-
-        message_history = lambda message, first_message=first_message, config=config, iface_config=iface_config, pov_user_id=pov_user.id, inclusive=True: self.message_history(
-            message, first_message, config, iface_config, pov_user_id, inclusive
+        message_history = lambda message, first_message=first_message, config=config, iface_config=self.discord_iface_config, pov_user_id=self.user.id: self.message_history(
+            message,
+            first_message,
+            config=config,
+            iface_config=iface_config,
+            pov_user_id=pov_user_id,
         )
 
         message_history_format = config.em.message_history_format
@@ -1190,7 +1224,7 @@ class InfraInterface(DiscordInterface):
                 else interaction.user.avatar.url if interaction.user.avatar else None
             )
         )
-        webhook = await self.get_webhook_for_channel(channel)
+        webhook = await self.get_my_webhook_for_channel(channel)
         message = await self.webhook_send(
             webhook, channel, content=content, username=username, avatar_url=avatar_url
         )
@@ -1210,9 +1244,8 @@ class InfraInterface(DiscordInterface):
     async def copy_message(
         self, message: discord.Message, destination: discord.abc.Messageable
     ):
-        webhook = await self.get_webhook_for_channel(destination)
+        webhook = await self.get_my_webhook_for_channel(destination)
         avatar_url = message.author.avatar.url if message.author.avatar else None
-        print(avatar_url)
         return await self.webhook_send(
             webhook,
             destination,
@@ -1221,18 +1254,12 @@ class InfraInterface(DiscordInterface):
             avatar_url=avatar_url,
         )
 
-    async def get_webhook_for_channel(self, channel):
-        if isinstance(channel, discord.Thread):
-            channel = channel.parent
-        # Reuse existing webhook or create new one
-        for webhook in await channel.webhooks():
-            if webhook.user == self.user:  # Check if we created this webhook
-                return webhook
-
-        # Create new webhook if none exists
-        return await channel.create_webhook(name="Emulator")
-
-    async def new_thread_command(self, interaction: discord.Interaction, title: str | None = None, public: bool = True):
+    async def new_thread_command(
+        self,
+        interaction: discord.Interaction,
+        title: str | None = None,
+        public: bool = True,
+    ):
         reason = f"Created by {interaction.user}" + (
             f" through {interaction.command.name}"
             if interaction.command
@@ -1255,7 +1282,13 @@ class InfraInterface(DiscordInterface):
         new_thread = await self.fork_command(message=parent_message, **kwargs)
         await new_thread.send(f"m continue {message.author.mention}")
 
-    async def stash_command(self, message: discord.Message, max_messages: int = 10, stop_at_author_change: bool = True, **kwargs):
+    async def stash_command(
+        self,
+        message: discord.Message,
+        max_messages: int = 10,
+        stop_at_author_change: bool = True,
+        **kwargs,
+    ):
         parent_message = await last_normal_message(message.channel, before=message)
         if parent_message is None:
             raise ValueError("No parent message found")
@@ -1471,15 +1504,12 @@ class InfraInterface(DiscordInterface):
 
             embed_description = f"{embed_description}\n\n:twisted_rightwards_arrows: [index]({index_message.jump_url})"
 
-
         await new_thread.send(
             content=compile_config_message(
                 command_prefix="history",
                 config_dict=history_config,
             ),
-            embed=discord.Embed(
-                description=embed_description
-            ),
+            embed=discord.Embed(description=embed_description),
         )
 
         return new_thread, index_message
@@ -1797,6 +1827,15 @@ class InfraInterface(DiscordInterface):
             else:
                 message_content_preview += "..."
         return message_sender + message_content_preview
+
+    @staticmethod
+    async def webhook_send(
+        webhook: discord.Webhook, channel: discord.abc.Messageable, **kwargs
+    ):
+        if isinstance(channel, discord.Thread):
+            return await webhook.send(**kwargs, thread=channel, wait=True)
+        else:
+            return await webhook.send(**kwargs, wait=True)
 
 
 def min_link(link: str):

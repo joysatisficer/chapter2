@@ -35,6 +35,10 @@ def resolve_member(
 ) -> str:
     if my_user_id is not None and id == my_user_id:
         return "@" + my_name
+    if message.type == discord.MessageType.reply:
+        replied_message = message.reference.resolved
+        if replied_message.type == discord.MessageType.default:
+            return "@" + replied_message.author.name
     if message.guild:
         m = message.guild.get_member(id) or discord.utils.get(message.mentions, id=id)
     else:

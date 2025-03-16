@@ -100,30 +100,28 @@ class DiscordInterface(discord.Client):
         self,
         message: discord.Message,
         first_message: Optional[discord.Message] = None,
-        config: Optional[Config] = None,
-        iface_config: Optional[DiscordInterfaceConfig] = None,
-        pov_user_id: Optional[int] = None,
-        inclusive: bool = True,
+        **kwargs,
     ):
-        if inclusive and message and not self.message_invisible(message, iface_config):
-            yield await self.discord_message_to_message(
-                config, iface_config, message, pov_user_id
-            )
+        if message and not self.message_invisible(message, kwargs["iface_config"]):
+            yield await self.discord_message_to_message(message, **kwargs)
 
         async for this_message in self.cache(message.channel).history(
             limit=None,
             before=message,
             after=first_message,
         ):
-            if not message or self.message_invisible(this_message, iface_config):
+            if not message or self.message_invisible(
+                this_message, kwargs["iface_config"]
+            ):
                 pass
             else:
                 yield await self.discord_message_to_message(
-                    config, iface_config, this_message, pov_user_id
+                    this_message,
+                    **kwargs,
                 )
             config_message = self.parse_dot_command(this_message)
             if config_message and config_message["command"] == "history":
-                if self.config_applies_to_user(this_message, config, pov_user_id):
+                if self.config_applies_to_user(this_message, **kwargs):
                     first_link, last_link, _, passthrough = self.parse_history_config(
                         config_message["yaml"]
                     )
@@ -136,7 +134,7 @@ class DiscordInterface(discord.Client):
                             if first is None:
                                 first = first_message
                             async for msg in self.message_history(
-                                last, first, config, iface_config, pov_user_id
+                                last, first, **kwargs
                             ):
                                 yield msg
                     for attachment in this_message.attachments:
@@ -152,16 +150,17 @@ class DiscordInterface(discord.Client):
                                 async for msg in transcript_to_messages(
                                     transcript,
                                     HistoryFacultyConfig(**config_params),
-                                    config.em,
+                                    kwargs["config"].em,
                                 ):
                                     yield (msg, frozenset())
                     if not passthrough:
                         return
         if first_message is not None:
             yield await self.discord_message_to_message(
-                config, iface_config, first_message, pov_user_id
+                first_message,
+                **kwargs,
             )
-        elif iface_config.threads_inherit_history and isinstance(
+        elif kwargs["iface_config"].threads_inherit_history and isinstance(
             message.channel, discord.threads.Thread
         ):
             starter_message = await self.get_starter_message(message)
@@ -169,9 +168,7 @@ class DiscordInterface(discord.Client):
                 async for msg in self.message_history(
                     starter_message,
                     first_message=None,
-                    config=config,
-                    iface_config=iface_config,
-                    pov_user_id=pov_user_id,
+                    **kwargs,
                 ):
                     yield msg
 
@@ -198,8 +195,11 @@ class DiscordInterface(discord.Client):
         return starter_message
 
     async def on_message(self, message: discord.Message) -> None:
-
         self.cache(message.channel).update(message, True)
+
+        await self.handle_on_message(message)
+
+    async def handle_on_message(self, message: discord.Message, **kwargs):
 
         if is_command := is_continue_command(message.content):
             if not self.user.mentioned_in(message):
@@ -228,7 +228,7 @@ class DiscordInterface(discord.Client):
             )
         ):
             try:
-                config, iface_config = await self.get_config(message.channel)
+                config, iface_config = await self.get_config(message.channel, **kwargs)
             except (ValueError, ValidationError) as exc:
                 if is_command:
                     await message.delete()
@@ -243,7 +243,18 @@ class DiscordInterface(discord.Client):
                 return
             async with self.per_interlocutor_semaphore[message.author.id]:
                 try:
-                    await self.handle_reply(message, config, iface_config)
+                    if not self.should_reply(
+                        message=message,
+                        config=config,
+                        iface_config=iface_config,
+                        # async_generator_to_reusable_async_iterable(
+                        #     lambda: (message async for message, _ in message_history(message))
+                        # ),
+                    ):
+                        return
+                    await self.handle_reply(
+                        message, config=config, iface_config=iface_config
+                    )
                 finally:
                     if is_command:
                         await message.delete()
@@ -251,42 +262,26 @@ class DiscordInterface(discord.Client):
     async def handle_reply(
         self,
         message: discord.Message,
-        config: Config,
-        iface_config: DiscordInterfaceConfig,
-        webhook: Optional[discord.Webhook] = None,
-        pov_user_id: Optional[int] = None,
+        **kwargs,
     ):
+
         @trace
         def message_history(
             message,
             first_message=None,
-            config=config,
-            iface_config=iface_config,
-            pov_user_id=pov_user_id if pov_user_id is not None else self.user.id,
         ):
             return self.message_history(
                 message,
                 first_message,
-                config,
-                iface_config,
-                pov_user_id,
+                **kwargs,
             )
 
-        if not await self.should_reply(
-            self.user,
-            message,
-            config,
-            iface_config,
-            async_generator_to_reusable_async_iterable(
-                lambda: (message async for message, _ in message_history(message))
-            ),
-        ):
-            return
+        em = kwargs["config"].em
 
         history, raw_mentions = zip(
             *(
                 await async_take(
-                    config.em.recency_window,
+                    em.recency_window,
                     async_generator_to_reusable_async_iterable(
                         message_history, message
                     ),
@@ -299,43 +294,21 @@ class DiscordInterface(discord.Client):
             mentions.update(these_mentions)
 
         response_messages = self.generate_response(
-            config.em,
+            em,
             history,
         )
 
-        async def send_to_channel(**kwargs):
-            if webhook is not None:
-                return await self.webhook_send(
-                    webhook,
-                    message.channel,
-                    username=config.em.name,
-                    avatar_url=iface_config.avatar_url,
-                    **kwargs,
-                )
-                # return await webhook.send(
-                #     username=config.em.name,
-                #     avatar_url=iface_config.avatar_url,
-                #     thread=(
-                #         message.channel
-                #         if isinstance(message.channel, discord.Thread)
-                #         else None
-                #     ),
-                #     **kwargs,
-                # )
-            else:
-                return await message.channel.send(**kwargs)
-
-        async with ScheduleTyping(message.channel, typing=iface_config.send_typing):
+        async with ScheduleTyping(
+            message.channel, typing=kwargs["iface_config"].send_typing
+        ):
             first_message = True
             async for reply_message in response_messages:
                 if reply_message.author.name == "reasoning_content" and not isempty(
                     reply_message.content
                 ):
-                    prefix = (
-                        ".:thought_balloon:" if config.em.reasoning["hidden"] else ""
-                    )
-                    start_token = config.em.reasoning["start_token"]
-                    end_token = config.em.reasoning["end_token"]
+                    prefix = ".:thought_balloon:" if em.reasoning["hidden"] else ""
+                    start_token = em.reasoning["start_token"]
+                    end_token = em.reasoning["end_token"]
                     inner_content = (
                         f"{start_token}\n{reply_message.content.strip()}\n{end_token}"
                     )
@@ -344,13 +317,15 @@ class DiscordInterface(discord.Client):
                             StringIO(inner_content),
                             filename=f"reasoning.txt",
                         )
-                        await send_to_channel(content=prefix, file=attachment)
+                        await self.send_to_channel(**kwargs)(
+                            message.channel, content=prefix, file=attachment
+                        )
                     else:
-                        await send_to_channel(
-                            content=prefix + f"\n```{inner_content}```"
+                        await self.send_to_channel(**kwargs)(
+                            message.channel, content=prefix + f"\n```{inner_content}```"
                         )
                     first_message = False
-                elif reply_message.author.name == config.em.name and not isempty(
+                elif reply_message.author.name == em.name and not isempty(
                     reply_message.content
                 ):
                     # send a new typing event if it's not the first message
@@ -362,11 +337,19 @@ class DiscordInterface(discord.Client):
                     if reply_message.content.isspace():
                         continue
                     content = reply_message.content
-                    await send_to_channel(content=self.realize_pings(content, mentions))
-                    if iface_config.exo_enabled:
+                    await self.send_to_channel(**kwargs)(
+                        message.channel, content=self.realize_pings(content, mentions)
+                    )
+                    if kwargs["iface_config"].exo_enabled:
                         await self.respond_to_tools(message.channel, reply_message)
                     trace.send_message(reply_message.content)
                     first_message = False
+
+    def send_to_channel(self, **kwargs):
+        async def send(channel, **options):
+            return await channel.send(**options)
+
+        return send
 
     async def respond_to_tools(self, channel, reply_message: Message):
         if reply_message.content.startswith("exo create_note "):
@@ -445,16 +428,15 @@ class DiscordInterface(discord.Client):
 
     async def discord_message_to_message(
         self,
-        config,
-        iface_config: DiscordInterfaceConfig,
         message: discord.Message,
-        # pov_user: Optional[discord.User] = None,
+        iface_config: DiscordInterfaceConfig,
+        config,
         pov_user_id: Optional[int] = None,
     ) -> Tuple[Message, frozenset[Union[discord.User, discord.Member]]]:
-        # if pov_user is None:
-        #     pov_user = self.user
 
-        # use self id parameter instead of pov_user
+        if not pov_user_id:
+            pov_user_id = self.user.id
+
         if message.author.id == pov_user_id:
             author_name = config.em.name
         else:
@@ -547,21 +529,21 @@ class DiscordInterface(discord.Client):
         ), frozenset(
             (channel.me, channel.recipient)
             if isinstance(channel, discord.DMChannel)
-            else (message.mentions + [message.author])
+            else (message.mentions + message.role_mentions + [message.author])
         )
 
     @trace
     async def get_config(
         self,
         channel: Optional["discord.abc.MessageableChannel"] = None,
-        base_config: Optional[Config] = None,
-        base_iface_config: Optional[DiscordInterfaceConfig] = None,
+        config: Optional[Config] = None,
+        iface_config: Optional[DiscordInterfaceConfig] = None,
         pov_user: Optional[discord.User] = None,
     ) -> Tuple[Config, DiscordInterfaceConfig]:
-        if base_config is None:
-            base_config = self.base_config
-        if base_iface_config is None:
-            base_iface_config = self.iface_config
+        if config is None:
+            config = self.base_config
+        if iface_config is None:
+            iface_config = self.iface_config
         if pov_user is None:
             pov_user = self.user
         if isinstance(channel, dict):
@@ -575,24 +557,23 @@ class DiscordInterface(discord.Client):
                 pinned_config = {}
                 for message in reversed(self.pins[channel.id]):
                     pinned_config.update(
-                        await self.get_config_from_message(
-                            message, base_config, pov_user.id
-                        )
+                        await self.get_config_from_message(message, config, pov_user.id)
                     )
                 kv = self.get_yaml_from_channel(channel) | pinned_config
         else:
             kv = {}
-        config = ontology.load_config_from_kv(kv, base_config.model_dump())
+        config = ontology.load_config_from_kv(kv, config.model_dump())
         iface_config = DiscordInterfaceConfig(
             **ontology.transpose_keys(
-                ontology.overlay(kv, {"interfaces": [base_iface_config.model_dump()]})
+                ontology.overlay(kv, {"interfaces": [iface_config.model_dump()]})
             )["interfaces"][0]
         )
         return config, iface_config
 
     @contextlib.asynccontextmanager
     async def handle_exceptions(self, message: discord.Message):
-        config, iface_config = await self.get_config(None)
+        # config, iface_config = await self.get_config(None)
+        iface_config = self.iface_config
         with ot_tracer.start_as_current_span(self.handle_exceptions.__qualname__):
             trace.message.id(message.id, attr=True)
             if isinstance(message.channel, discord.Thread):
@@ -658,17 +639,6 @@ class DiscordInterface(discord.Client):
                 name=self.user.name, avatar=await self.user.avatar.read()
             )
 
-    # async def get_my_webhook_for_channel(
-    #     self, channel: discord.TextChannel
-    # ) -> discord.Webhook:
-    #     for webhook in await channel.webhooks():  # perf: uncached
-    #         if webhook.user is not None and webhook.id == self.user.id:
-    #             return webhook
-    #     else:
-    #         return await channel.create_webhook(
-    #             name=self.user.name, avatar=await self.user.avatar.read()
-    #         )
-
     async def on_ready(self):
         print(f"Invite the bot: {self.get_invite_link()}")
         print("Discord interface ready")
@@ -704,7 +674,8 @@ class DiscordInterface(discord.Client):
         self.pending_shutdown = True
 
     async def end_to_end_test(self):
-        config, iface_config = await self.get_config(None)
+        # config, iface_config = await self.get_config(None)
+        iface_config = self.iface_config
         ch2_client = self
 
         class AutotesterClient(discord.Client):
@@ -793,16 +764,23 @@ class DiscordInterface(discord.Client):
         except Exception as e:
             return None
 
-    @staticmethod
-    async def should_reply(
-        user: discord.User,
+    def should_reply(
+        self,
         message: discord.Message,
         config: Config,
         iface_config: DiscordInterfaceConfig,
-        message_history: ActionHistory,
+        pov_user_id: Optional[int] = None,
+        # message_history: ActionHistory,
     ) -> bool:
-        if message.guild:  # If in a server
-            user = message.guild.get_member(user.id)
+        if pov_user_id is None:
+            pov_user_id = self.user.id
+
+        user = message.guild.get_member(pov_user_id)
+
+        if user is None:
+            raise ValueError(
+                f"User {pov_user_id} not found in guild {message.guild.name}"
+            )
 
         return (
             message.author != user
@@ -812,11 +790,11 @@ class DiscordInterface(discord.Client):
             )
             and not (
                 iface_config.ignore_dotted_messages
-                and re.match(DiscordInterface.DOTTED_MESSAGE_RE, message.content)
+                and re.match(self.DOTTED_MESSAGE_RE, message.content)
             )
             and not (
                 iface_config.mute is True
-                or DiscordInterface.name_in_list(iface_config.mute, config, user)
+                or self.name_in_list(iface_config.mute, config, user)
             )
             and not (
                 iface_config.thread_mute
@@ -828,7 +806,7 @@ class DiscordInterface(discord.Client):
             )
             and (
                 len(iface_config.may_speak) == 0
-                or DiscordInterface.name_in_list(iface_config.may_speak, config, user)
+                or self.name_in_list(iface_config.may_speak, config, user)
             )
             and (
                 (iface_config.reply_on_ping and user.mentioned_in(message))
@@ -889,12 +867,18 @@ class DiscordInterface(discord.Client):
     @staticmethod
     def realize_pings(
         message_content: str,
-        mentions: set[Union[discord.User, discord.Member]],
+        mentions: set[Union[discord.User, discord.Member, discord.Role]],
     ):
         for member in mentions:
             if "@" + member.name in message_content:
+                if isinstance(member, discord.Member):
+                    prefix = "!"
+                elif isinstance(member, discord.Role):
+                    prefix = "&"
+                else:
+                    continue
                 message_content = message_content.replace(
-                    "@" + member.name, f"<@!{member.id}>"
+                    "@" + member.name, f"<@{prefix}{member.id}>"
                 )
         return message_content
 
@@ -1031,17 +1015,21 @@ class DiscordInterface(discord.Client):
                     return True
         return False
 
-    @staticmethod
     def config_applies_to_user(
+        self,
         message: discord.Message,
-        pov_config: Optional[Config] = None,
+        config: Optional[Config],
         pov_user_id: Optional[int] = None,
+        **kwargs,
     ):
-        dot_command = DiscordInterface.parse_dot_command(message)
+        # TODO this whole function sucks
+        if not pov_user_id:
+            pov_user_id = self.user.id
+        dot_command = self.parse_dot_command(message)
         if dot_command:
             if (
                 len(dot_command["args"]) == 0
-                or DiscordInterface.name_in_list(dot_command["args"], config=pov_config)
+                or self.name_in_list(dot_command["args"], config=config)
                 or pov_user_id in message.raw_mentions
             ):
                 return True
@@ -1081,7 +1069,7 @@ class DiscordInterface(discord.Client):
     @staticmethod
     def name_in_list(
         name_list,
-        config: Optional[Config] = None,
+        config: Config,
         user: Optional[discord.User] = None,
         nicknames: list[str] = [],
     ):
@@ -1097,15 +1085,6 @@ class DiscordInterface(discord.Client):
             name in name_list
             for name in (username, config.em.emname, *nicknames)
         )
-
-    @staticmethod
-    async def webhook_send(
-        webhook: discord.Webhook, channel: discord.abc.Messageable, **kwargs
-    ):
-        if isinstance(channel, discord.Thread):
-            return await webhook.send(**kwargs, thread=channel, wait=True)
-        else:
-            return await webhook.send(**kwargs, wait=True)
 
 
 def is_continue_command(message_content: str):
