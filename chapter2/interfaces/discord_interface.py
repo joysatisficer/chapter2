@@ -22,6 +22,7 @@ from sortedcontainers import SortedDict
 from aioitertools.more_itertools import take as async_take
 
 import ontology
+from intermodel.callgpt import supports_images
 from message_formats import hashint
 from trace import trace, ot_tracer, log_trace_id_to_console
 from interfaces.deserves_reply import deserves_reply
@@ -365,25 +366,33 @@ class DiscordInterface(discord.Client):
             if att_data["type"] == "text":
                 # don't strip leading whitespace; might be ASCII art
                 content += f"\n<|begin_of_attachment|>{(await self.get_attachment_content(attachment)).rstrip()}<|end_of_attachment|>"
-            elif iface_config.include_images and att_data["type"] == "image":
-                if (
-                    attachment.width > iface_config.image_limits.max_width
-                    or attachment.height > iface_config.image_limits.max_height
+            elif att_data["type"] == "image":
+                if iface_config.include_images is True or (
+                    iface_config.include_images == "auto"
+                    and supports_images(self.base_config.em.continuation_model)
                 ):
-                    width_ratio = iface_config.image_limits.max_width / attachment.width
-                    height_ratio = (
-                        iface_config.image_limits.max_height / attachment.height
-                    )
-                    scale_factor = min(width_ratio, height_ratio)
-                    width = int(attachment.width * scale_factor)
-                    height = int(attachment.height * scale_factor)
-                    url = (
-                        attachment.proxy_url.rstrip("&")
-                        + f"&width={width}&height={height}"
-                    )
+                    if (
+                        attachment.width > iface_config.image_limits.max_width
+                        or attachment.height > iface_config.image_limits.max_height
+                    ):
+                        width_ratio = (
+                            iface_config.image_limits.max_width / attachment.width
+                        )
+                        height_ratio = (
+                            iface_config.image_limits.max_height / attachment.height
+                        )
+                        scale_factor = min(width_ratio, height_ratio)
+                        width = int(attachment.width * scale_factor)
+                        height = int(attachment.height * scale_factor)
+                        url = (
+                            attachment.proxy_url.rstrip("&")
+                            + f"&width={width}&height={height}"
+                        )
+                    else:
+                        url = attachment.proxy_url
+                    content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
                 else:
-                    url = attachment.proxy_url
-                content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
+                    content += "<|image|>"
         channel = message.channel
 
         if message.reference and content == "":
