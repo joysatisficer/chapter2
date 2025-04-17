@@ -282,9 +282,9 @@ class DiscordInterface(discord.Client):
                     ):
                         first_message = True
                         async for reply_message in response_messages:
-                            if (
-                                reply_message.author.name == config.em.name
-                                and not isempty(reply_message.content)
+                            if reply_message.author.name in (
+                                self.iface_config.thinking_user,
+                                config.em.name,
                             ):
                                 # send a new typing event if it's not the first message
                                 if not first_message:
@@ -298,16 +298,30 @@ class DiscordInterface(discord.Client):
                                 )
                                 if reply_message.content.isspace():
                                     continue
-                                content = reply_message.content
-                                await message.channel.send(
-                                    self.realize_discord_formatting(
-                                        content, message.guild, mentions
-                                    ),
-                                )
-                                await self.respond_to_tools(
-                                    message.channel, reply_message
-                                )
-                                trace.send_message(reply_message.content)
+                                if (
+                                    reply_message.author.name
+                                    == self.iface_config.thinking_user
+                                ):
+                                    content = "." + reply_message.content
+                                    webhook = await self.get_my_webhook_for_channel(
+                                        message.channel
+                                    )
+                                    await webhook.send(
+                                        content,
+                                        username=self.iface_config.thinking_user_display,
+                                    )
+                                    trace.send_message(content)
+                                else:
+                                    content = reply_message.content
+                                    await message.channel.send(
+                                        self.realize_discord_formatting(
+                                            content, message.guild, mentions
+                                        ),
+                                    )
+                                    await self.respond_to_tools(
+                                        message.channel, reply_message
+                                    )
+                                    trace.send_message(content)
                                 first_message = False
                 finally:
                     if is_command:
@@ -398,6 +412,10 @@ class DiscordInterface(discord.Client):
                 )
                 if forwarded_message:
                     content = f"<|begin_of_fwd|>{parse_discord_content(forwarded_message, pov_user.id, config.em.name)}<|end_of_fwd|>"
+        # todo: replace
+        if author_name == self.iface_config.thinking_user_display:
+            author_name = self.iface_config.thinking_user
+            content = content.removeprefix(".")
         return Message(
             Author(author_name),
             content.strip(),
@@ -590,7 +608,7 @@ class DiscordInterface(discord.Client):
             channel = channel.parent
 
         for webhook in await channel.webhooks():  # perf: uncached
-            if webhook.user is not None and webhook.id == self.user.id:
+            if webhook.user is not None and webhook.user.id == self.user.id:
                 return webhook
         else:
             return await channel.create_webhook(
@@ -879,12 +897,16 @@ class DiscordInterface(discord.Client):
             return True
         elif is_mu_command(message.content):
             return True
-        elif iface_config.ignore_dotted_messages and (
-            re.match(DiscordInterface.DOTTED_MESSAGE_RE, message.content)
-            or message.type == discord.MessageType.thread_starter_message
-            or message.type == discord.MessageType.thread_created
-            or message.type == discord.MessageType.pins_add
-            or message.type == discord.MessageType.channel_name_change
+        elif (
+            iface_config.ignore_dotted_messages
+            and (
+                re.match(DiscordInterface.DOTTED_MESSAGE_RE, message.content)
+                or message.type == discord.MessageType.thread_starter_message
+                or message.type == discord.MessageType.thread_created
+                or message.type == discord.MessageType.pins_add
+                or message.type == discord.MessageType.channel_name_change
+            )
+            and not (message.author.name == iface_config.thinking_user_display)
         ):
             return True
         return False

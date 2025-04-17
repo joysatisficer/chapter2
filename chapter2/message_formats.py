@@ -99,11 +99,14 @@ class IRCMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 
     @staticmethod
     def name_prefix(name):
-        return f"<{name}>"
+        if name is None:
+            return ""
+        else:
+            return f"<{name}>"
 
     def parse(self, continuation):
         result = []
-        pattern = r"^(?:<([^\n]+)> ?)?([^<].*?)\s?(?:\[id:[0-9a-f]+])?$"
+        pattern = r"^(?:<([^\n]+)> ?)?([^<].*?)\s?$"
         for match in re.finditer(pattern, continuation, re.MULTILINE):
             name, content = match.groups()
             if name != "":
