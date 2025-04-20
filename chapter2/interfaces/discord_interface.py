@@ -708,24 +708,7 @@ class DiscordInterface(discord.Client):
 
     async def on_raw_message_edit(self, payload):
         channel = self.get_channel(payload.channel_id)
-        # payload.cached_message might be the old version of the message
-        # get the new one, if already cached
-        if not (
-            (
-                message := discord.utils.find(
-                    lambda m: m.id == payload.message_id, self.cached_messages
-                )
-            )
-            and (timestamp := payload.data.get("edited_timestamp"))
-            and message.edited_at == datetime.fromisoformat(timestamp)
-        ):
-            try:
-                message = await channel.fetch_message(payload.message_id)
-            except discord.NotFound:
-                pass
-        if message:
-            self.cache(channel).update(message, False)
-
+        self.cache(channel).update(payload.message, False)
         if payload.message_id in self.pinned_messages[channel.id]:
             await self.update_pins(channel)
 
@@ -1011,7 +994,11 @@ class ChannelCache:
 
         if old := self.messages.get(message.id):
             # in case of race condition, only record more recent edits
-            if not message.edited_at or message.edited_at <= old.edited_at:
+            if (
+                message.edited_at
+                and old.edited_at
+                and message.edited_at <= old.edited_at
+            ):
                 return
 
         self.messages[message.id] = message
