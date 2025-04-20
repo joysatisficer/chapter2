@@ -994,10 +994,8 @@ class ChannelCache:
 
         if old := self.messages.get(message.id):
             # in case of race condition, only record more recent edits
-            if (
-                message.edited_at
-                and old.edited_at
-                and message.edited_at <= old.edited_at
+            if not message.edited_at or (
+                old.edited_at and message.edited_at <= old.edited_at
             ):
                 return
 
