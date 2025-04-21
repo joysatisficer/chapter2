@@ -303,7 +303,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     end_to_end_test_discord_channel_id: int | None = None
     discord_user_whitelist: list[int] = []
     may_speak: list[str] = []
-    include_images: bool = True
+    include_images: bool | Literal["auto"] = True
     image_limits: ImageLimits = ImageLimits()
     thinking_user: str | None = None
     thinking_user_display: str | None = None

@@ -4,7 +4,6 @@ import re
 import textwrap
 import time
 import random
-from datetime import datetime
 from typing import Self, Tuple, Optional, Union, AsyncIterator
 from collections.abc import Callable
 from collections import defaultdict
@@ -22,6 +21,7 @@ from sortedcontainers import SortedDict
 from aioitertools.more_itertools import take as async_take
 
 import ontology
+from intermodel.callgpt import supports_images
 from message_formats import hashint
 from trace import trace, ot_tracer, log_trace_id_to_console
 from interfaces.deserves_reply import deserves_reply
@@ -35,7 +35,7 @@ class DiscordInterface(discord.Client):
     """Stability: Gold"""
 
     MAX_CONCURRENT_MESSAGES = 100_000
-    DOTTED_MESSAGE_RE = r"^[.,][^\s.,]"
+    DOTTED_MESSAGE_RE = r"^[.,](?!\.\.)"
 
     def __init__(
         self,
@@ -197,7 +197,7 @@ class DiscordInterface(discord.Client):
             ):
                 if this_message.author.id == self.user.id:
                     await this_message.delete()
-                elif re.match("^[.,][^\s.,]", this_message.content):
+                elif re.match(self.DOTTED_MESSAGE_RE, this_message.content):
                     pass
                 else:
                     break
@@ -379,25 +379,33 @@ class DiscordInterface(discord.Client):
             if att_data["type"] == "text":
                 # don't strip leading whitespace; might be ASCII art
                 content += f"\n<|begin_of_attachment|>{(await self.get_attachment_content(attachment)).rstrip()}<|end_of_attachment|>"
-            elif iface_config.include_images and att_data["type"] == "image":
-                if (
-                    attachment.width > iface_config.image_limits.max_width
-                    or attachment.height > iface_config.image_limits.max_height
+            elif att_data["type"] == "image":
+                if iface_config.include_images is True or (
+                    iface_config.include_images == "auto"
+                    and supports_images(self.base_config.em.continuation_model)
                 ):
-                    width_ratio = iface_config.image_limits.max_width / attachment.width
-                    height_ratio = (
-                        iface_config.image_limits.max_height / attachment.height
-                    )
-                    scale_factor = min(width_ratio, height_ratio)
-                    width = int(attachment.width * scale_factor)
-                    height = int(attachment.height * scale_factor)
-                    url = (
-                        attachment.proxy_url.rstrip("&")
-                        + f"&width={width}&height={height}"
-                    )
+                    if (
+                        attachment.width > iface_config.image_limits.max_width
+                        or attachment.height > iface_config.image_limits.max_height
+                    ):
+                        width_ratio = (
+                            iface_config.image_limits.max_width / attachment.width
+                        )
+                        height_ratio = (
+                            iface_config.image_limits.max_height / attachment.height
+                        )
+                        scale_factor = min(width_ratio, height_ratio)
+                        width = int(attachment.width * scale_factor)
+                        height = int(attachment.height * scale_factor)
+                        url = (
+                            attachment.proxy_url.rstrip("&")
+                            + f"&width={width}&height={height}"
+                        )
+                    else:
+                        url = attachment.proxy_url
+                    content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
                 else:
-                    url = attachment.proxy_url
-                content += f"<|begin_of_img_url|>{url}<|end_of_img_url|>"
+                    content += "<|image|>"
         channel = message.channel
 
         if message.reference and content == "":
@@ -717,24 +725,7 @@ class DiscordInterface(discord.Client):
 
     async def on_raw_message_edit(self, payload):
         channel = self.get_channel(payload.channel_id)
-        # payload.cached_message might be the old version of the message
-        # get the new one, if already cached
-        if not (
-            (
-                message := discord.utils.find(
-                    lambda m: m.id == payload.message_id, self.cached_messages
-                )
-            )
-            and (timestamp := payload.data.get("edited_timestamp"))
-            and message.edited_at == datetime.fromisoformat(timestamp)
-        ):
-            try:
-                message = await channel.fetch_message(payload.message_id)
-            except discord.NotFound:
-                pass
-        if message:
-            self.cache(channel).update(message, False)
-
+        self.cache(channel).update(payload.message, False)
         if payload.message_id in self.pinned_messages[channel.id]:
             await self.update_pins(channel)
 
@@ -1024,7 +1015,9 @@ class ChannelCache:
 
         if old := self.messages.get(message.id):
             # in case of race condition, only record more recent edits
-            if not message.edited_at or message.edited_at <= old.edited_at:
+            if not message.edited_at or (
+                old.edited_at and message.edited_at <= old.edited_at
+            ):
                 return
 
         self.messages[message.id] = message

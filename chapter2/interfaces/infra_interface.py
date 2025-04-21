@@ -1202,7 +1202,7 @@ def compile_config_message(
             if target is not None:
                 config_message = (
                     config_message
-                    + f" {target.mention if isinstance(target, discord.User) else target}"
+                    + f" {target.mention if isinstance(target, discord.User) else target.strip()}"
                 )
     config_message = config_message + "\n---\n"
     if codeblock:
