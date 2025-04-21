@@ -35,7 +35,7 @@ class DiscordInterface(discord.Client):
     """Stability: Gold"""
 
     MAX_CONCURRENT_MESSAGES = 100_000
-    DOTTED_MESSAGE_RE = r"^[.,][^\s.,]"
+    DOTTED_MESSAGE_RE = r"^[.,](?!\.\.)"
 
     def __init__(
         self,
@@ -197,7 +197,7 @@ class DiscordInterface(discord.Client):
             ):
                 if this_message.author.id == self.user.id:
                     await this_message.delete()
-                elif re.match("^[.,][^\s.,]", this_message.content):
+                elif re.match(self.DOTTED_MESSAGE_RE, this_message.content):
                     pass
                 else:
                     break
