@@ -21,5 +21,12 @@
 - Documentation: Update documentation when adding features
 - Models: Use pydantic BaseModel for structured data
 
+## Commit Guidelines
+- AI-assisted commits should include a narrative describing the collaboration
+- Identify AI models used (e.g., "Claude 3.7 Sonnet")
+- Describe the specific interaction process between user and AI
+- Include meaningful details about how ideas evolved through feedback
+- Example: "User requested guidelines; Claude 3.7 Sonnet drafted several versions with iterative feedback to refine the approach"
+
 ## Pitfalls
 - Comments and pydantic type hints may be inaccurate or describe unimplemented functionality. Code is the only true source of truth. The code is generally well-written and clear; attend to the code!
