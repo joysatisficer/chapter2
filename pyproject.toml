@@ -1,6 +1,7 @@
 [project]
 name = "chapter2"
 version = "0.1.0"
+license = "Artistic-2.0"
 dependencies = [
     "embedapi @ git+https://github.com/ampdot-io/embedapi",
     "intermodel @ git+https://github.com/ampdot-io/intermodel",

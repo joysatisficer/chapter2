@@ -50,3 +50,13 @@ See `doc/development.md`
 ## Pitfalls
 
 - pytest unittests in files of the form `test_*.py` are broken
+
+## License
+
+If you modify Chapter II, please make sure to document how your modified
+version differs from the original version in CHANGELOG.md. In particular,
+make sure to document any additional / non-standard features, executables,
+or modules. Thank you!
+
+Chapter II's source code is made available under the terms of the
+[Artistic License 2.0](https://opensource.org/license/artistic-2-0).
