@@ -938,7 +938,7 @@ class DiscordInterface(discord.Client):
         return any(
             # name in name_list for name in (self.user.name, self.sysname, *nicknames)
             name in name_list
-            for name in (user.name, config.em.emname, *nicknames)
+            for name in (user.name, config.em.sysname, *nicknames)
         )
 
 

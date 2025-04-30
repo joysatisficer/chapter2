@@ -190,7 +190,7 @@ class DiscordGenerateAvatarAddonConfig(BaseModel):
 
 class EmConfig(BaseModel):
     name: str
-    emname: str
+    sysname: str
     continuation_model: str = "meta-llama/Meta-Llama-3.1-405B"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"

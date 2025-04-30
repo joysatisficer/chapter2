@@ -44,7 +44,7 @@ def load_em_kv(name) -> dict:
             kv[key] = yaml.safe_load(subpath.read_text())
     if "name" not in kv:
         kv["name"] = name
-    kv["emname"] = name
+    kv["sysname"] = name
     # TODO: Replace with defaults versioning system
     return kv
 
