@@ -15,20 +15,20 @@ def get_app_id_from_token(token: str) -> str:
     return str(int(decoded))
 
 
-def get_emname_id_map() -> dict:
+def get_sysname_id_map() -> dict:
     parent_dir = Path(__file__).resolve().parents[2]
     em_folder = parent_dir / "ems"
 
-    emname_to_id = {}
+    sysname_to_id = {}
     # loop through all folders in em_folder
     for em_folder in em_folder.iterdir():
         if em_folder.is_dir():
             # if there is a file called discord_token, read it and add to map
             if (em_folder / "discord_token").exists():
                 token = (em_folder / "discord_token").read_text()
-                emname_to_id[em_folder.name] = get_app_id_from_token(token)
+                sysname_to_id[em_folder.name] = get_app_id_from_token(token)
 
-    return emname_to_id
+    return sysname_to_id
 
 
 def get_steerable_ems() -> list[str]:

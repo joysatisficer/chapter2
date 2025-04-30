@@ -13,7 +13,7 @@ import ontology
 from ontology import Config, DiscordInterfaceConfig
 from load import load_em_kv
 from util.steering_api import INDEX_TO_DESC, USABLE_FEATURES
-from util.app_info import get_emname_id_map, get_steerable_ems
+from util.app_info import get_sysname_id_map, get_steerable_ems
 from generate_response import get_prompt
 
 
@@ -31,8 +31,8 @@ def clean_config_dict(config_dict: dict | list, blacklisted_keys: list[str] = []
     return config_dict
 
 
-async def load_em_configs(emname):
-    config_kv = load_em_kv(emname)
+async def load_em_configs(sysname):
+    config_kv = load_em_kv(sysname)
     defaults = ontology.get_defaults(Config)
     config = ontology.load_config_from_kv(config_kv, defaults)
     iface_config = config.interfaces[0]
@@ -54,8 +54,8 @@ class InfraInterface(DiscordInterface):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tree = app_commands.CommandTree(self)
-        self.emname_to_id = get_emname_id_map()
-        self.id_to_emname = {v: k for k, v in self.emname_to_id.items()}
+        self.sysname_to_id = get_sysname_id_map()
+        self.id_to_sysname = {v: k for k, v in self.sysname_to_id.items()}
         self.steerable_ems = get_steerable_ems()
         self.discord_iface_config = DiscordInterfaceConfig(
             **{
@@ -121,20 +121,20 @@ class InfraInterface(DiscordInterface):
 
     async def load_pov(
         self,
-        emname: Optional[str] = None,
+        sysname: Optional[str] = None,
         message: Optional[discord.Message] = None,
     ):
-        if emname == self.sysname:
-            emname = None
+        if sysname == self.sysname:
+            sysname = None
         config, iface_config = (
-            await load_em_configs(emname)
-            if emname is not None
+            await load_em_configs(sysname)
+            if sysname is not None
             else (self.base_config, self.discord_iface_config)
         )
-        if emname is not None:
-            discord_id = self.emname_to_id[emname]
+        if sysname is not None:
+            discord_id = self.sysname_to_id[sysname]
             if discord_id is None:
-                raise ValueError(f"No discord ID for emname {emname}")
+                raise ValueError(f"No discord ID for sysname {sysname}")
             pov_user = await self.fetch_user(discord_id)
         else:
             pov_user = self.user
@@ -182,13 +182,13 @@ class InfraInterface(DiscordInterface):
 
     async def setup_hook(self):
         em_users = []
-        for discord_id, emname in self.id_to_emname.items():
+        for discord_id, sysname in self.id_to_sysname.items():
             user = await self.fetch_user(discord_id)
             em_users.append(
                 {
                     "user": user,
-                    "emname": emname,
-                    "steerable": emname in self.steerable_ems,
+                    "sysname": sysname,
+                    "steerable": sysname in self.steerable_ems,
                 }
             )
 
@@ -201,12 +201,12 @@ class InfraInterface(DiscordInterface):
             matches = [
                 user
                 for user in matching_em_members
-                if current.lower() in user["emname"].lower()
+                if current.lower() in user["sysname"].lower()
                 or current.lower() in user["user"].display_name.lower()
             ]
             return [
                 app_commands.Choice(
-                    name=user["user"].display_name, value=user["emname"]
+                    name=user["user"].display_name, value=user["sysname"]
                 )
                 for user in matches[:25]
             ]
@@ -223,13 +223,13 @@ class InfraInterface(DiscordInterface):
             matches = [
                 user
                 for user in steerable_users
-                if current.lower() in user["emname"].lower()
+                if current.lower() in user["sysname"].lower()
                 or current.lower() in user["user"].display_name.lower()
             ]
             return [
                 app_commands.Choice(
-                    name=user["emname"] + f" ({user['user'].display_name})",
-                    value=user["emname"],
+                    name=user["sysname"] + f" ({user['user'].display_name})",
+                    value=user["sysname"],
                 )
                 for user in matches[:25]
             ]
@@ -251,9 +251,9 @@ class InfraInterface(DiscordInterface):
         async def current_features_autocomplete(
             interaction: discord.Interaction, current: str
         ):
-            emname = self.steerable_ems[0]
+            sysname = self.steerable_ems[0]
             message = await last_normal_message(interaction.channel)
-            config, _, _ = await self.load_pov(emname, message)
+            config, _, _ = await self.load_pov(sysname, message)
             try:
                 config_dict = config.em.model_dump()
                 current_configuration = config_dict["continuation_options"]["steering"][
@@ -277,16 +277,16 @@ class InfraInterface(DiscordInterface):
             prefix = " ".join(targets[:-1])
             guild = interaction.guild
             matches = [user for user in em_users if user["user"] in guild.members]
-            matches = [user for user in matches if user["emname"] not in prefix]
+            matches = [user for user in matches if user["sysname"] not in prefix]
             matches = [
                 user
                 for user in matches
-                if targets[-1].lower() in user["emname"].lower()
+                if targets[-1].lower() in user["sysname"].lower()
             ]
             return [
                 app_commands.Choice(
-                    name=prefix + f" {user['emname']}",
-                    value=prefix + f" {user['emname']}",
+                    name=prefix + f" {user['sysname']}",
+                    value=prefix + f" {user['sysname']}",
                 )
                 for user in matches[:25]
             ]
@@ -375,8 +375,8 @@ class InfraInterface(DiscordInterface):
                 message = None
                 if message_link is not None and pov is None:
                     message = await self.get_message_from_link(message_link)
-                    if str(message.author.id) in self.id_to_emname:
-                        pov = self.id_to_emname[str(message.author.id)]
+                    if str(message.author.id) in self.id_to_sysname:
+                        pov = self.id_to_sysname[str(message.author.id)]
                 await self.interaction_wrapper(
                     command_name="/get_prompt",
                     func=self.get_context_command,
