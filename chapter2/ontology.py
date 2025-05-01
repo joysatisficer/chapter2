@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import pprint
 import types
 import typing
@@ -188,9 +189,14 @@ class DiscordGenerateAvatarAddonConfig(BaseModel):
                 self.image_model = "dall-e-3"
 
 
+@dataclasses.dataclass
+class DragSpeed:
+    v_speed: float
+
+
 class EmConfig(BaseModel):
     name: str
-    sysname: str
+    sysname: str  # todo: hide
     continuation_model: str = "meta-llama/Meta-Llama-3.1-405B"
     continuation_max_tokens: Annotated[int, Ge(0)] = 120
     representation_model: str = "mixedbread-ai/mxbai-embed-large-v1"
@@ -201,7 +207,7 @@ class EmConfig(BaseModel):
     message_history_separator: str = ""
     message_history_footer: str = ""
     message_history_operator: Literal["prepend"] | Literal["append"] = "prepend"
-    scene_break: str = "###\n"  # todo: remove
+    scene_break: str = "###\n"  # todo: remove, hide
     recency_window: Annotated[int, Gt(0)] = 35
     ensembles: list[EnsembleConfig] = []
     prevent_scene_break: bool = (
@@ -219,11 +225,13 @@ class EmConfig(BaseModel):
     ]  # "context_sentence_repetition"
     trim_final_incomplete_sentence: bool = False
 
-    temperature: Annotated[float, Ge(0)] = 0.95  # todo: vary on model
-    top_p: Annotated[float, Interval(gt=0, le=1)] = 0.995  # ditto
+    temperature: Annotated[float, Ge(0), DragSpeed(0.00015)] = (
+        0.95  # todo: vary on model
+    )
+    top_p: Annotated[float, Interval(gt=0, le=1), DragSpeed(0.0001)] = 0.995  # ditto
     # 0 until a way to adjust it automatically for long context windows is impl'd
-    frequency_penalty: float = 0
-    presence_penalty: float = 0
+    frequency_penalty: Annotated[float, DragSpeed(0.01)] = 0
+    presence_penalty: Annotated[float, DragSpeed(0.01)] = 0
     stop_sequences: list[str] = []
     logit_bias: dict[int | str, float] = {}
     best_of: int | None = None
