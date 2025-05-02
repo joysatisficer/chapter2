@@ -1,3 +1,5 @@
+# See: doc/howto/setup.md for more information
+
 vendors:
   openai-openrouter:
     config:
