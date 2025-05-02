@@ -11,6 +11,7 @@ ems/*/*/*
 .venv/
 .fleet/
 .run/
+!ems/config.example.yaml
 !ems/multiprong
 !ems/multiprong/
 !ems/multiprong/*
