@@ -668,7 +668,7 @@ class DiscordInterface(discord.Client):
             except AttributeError:
                 err_message = (
                     "Please set a Discord bot token in"
-                    f"{self.base_config.em.folder}/discord_token"
+                    f" {self.base_config.em.folder}/discord_token \n"
                     "For more information, please read doc/howto/new-discord-bot.md"
                 )
                 raise RuntimeError(err_message)
