@@ -402,8 +402,10 @@ def overlay(base: dict | list, updates: dict | list, none_clears_array: bool = T
         keyvalues = updates.items()
     if isinstance(base, list):
         keys = list(range(len(base)))
-    else:
+    elif isinstance(base, dict):
         keys = base.keys()
+    else:
+        return result
     for key, value in keyvalues:
         if isinstance(value, dict):
             # recurse inside dicts
