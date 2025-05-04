@@ -369,6 +369,80 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         return messages
 
 
+class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
+    name: Literal["terminal"] = "terminal"
+    context_type: str = "command"
+    directory_indicator: str = "~"
+    prompt_suffix: str = "$"
+
+    def render(self, message: Message) -> str:
+        if message.author is None:
+            return message.content + "\n"
+        
+        if not message.content or message.content.isspace():
+            message_type = message.type if message.type is not None else self.context_type
+            prompt = f"[{message.author.name}@{message_type} {self.directory_indicator}]{self.prompt_suffix} "
+            return prompt + "\n"
+        
+        message_type = message.type if message.type is not None else self.context_type
+
+        prompt = f"[{message.author.name}@{message_type} {self.directory_indicator}]{self.prompt_suffix} "
+        
+        lines = message.content.splitlines()
+        if not lines and not message.content.strip():
+            return prompt + "\n"
+        
+        result = prompt + lines[0]
+        if len(lines) > 1:
+            result += "\n" + "\n".join(lines[1:])
+        
+        return result + "\n"
+    
+    def name_prefix(self, name: str) -> str:
+        message_type = self.context_type
+        return f"[{name}@{message_type} {self.directory_indicator}]{self.prompt_suffix} "
+    
+    def parse(self, continuation: str) -> list[Message]:
+        messages = []
+        current_content = []
+        current_author = None
+        current_type = None
+
+        pattern = rf"^\[([\w:/.-]+)@([\w-]+)\s+{re.escape(self.directory_indicator)}\]{re.escape(self.prompt_suffix)}\s*(.*?)$"
+
+        for line in continuation.splitlines():
+            match = re.match(pattern, line)
+            if match:
+                if current_content and current_author is not None:
+                    messages.append(
+                        Message(
+                            author=current_author,
+                            content="\n".join(current_content),
+                            type=current_type
+                        )
+                    )
+                    current_content = []
+                
+                username, msg_type, content = match.groups()
+                current_author = Author(username)
+                current_type = msg_type if msg_type != self.context_type else None
+                current_content.append(content)
+            else:
+                if current_author is not None:
+                    current_content.append(line)
+
+        if current_content and current_author is not None:
+            messages.append(
+                Message(
+                    author=current_author,
+                    content="\n".join(current_content),
+                    type=current_type
+                )
+            )
+
+        return messages
+
+
 MessageFormat = (
     IRCMessageFormat
     | ColonMessageFormat
@@ -376,4 +450,5 @@ MessageFormat = (
     | PythonREPLMessageFormat
     | InfrastructMessageFormat
     | ChatMessageFormat
+    | TerminalMessageFormat
 )
