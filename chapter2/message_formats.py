@@ -371,25 +371,32 @@ class InfrastructMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 
 class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["terminal"] = "terminal"
-    context_type: str = "command"
+    default_context_type: str = "command"
+    system_context_type: str = "response"
+    default_author_name: str = "history"
     directory_indicator: str = "~"
     prompt_suffix: str = "$"
 
     def render(self, message: Message) -> str:
-        if message.author is None:
-            return message.content + "\n"
+        if message.author is None or message.author.name in ("", None):
+            author_name = self.default_author_name
+        else:
+            author_name = message.author.name
         
-        if not message.content or message.content.isspace():
-            message_type = message.type if message.type is not None else self.context_type
-            prompt = f"[{message.author.name}@{message_type} {self.directory_indicator}]{self.prompt_suffix} "
-            return prompt + "\n"
-        
-        message_type = message.type if message.type is not None else self.context_type
+        if message.type is not None:
+            context_type = message.type
+        elif author_name == "system":
+            context_type = self.system_context_type
+        else:
+            context_type = self.default_context_type
 
-        prompt = f"[{message.author.name}@{message_type} {self.directory_indicator}]{self.prompt_suffix} "
+        prompt = f"[{author_name}@{context_type} {self.directory_indicator}]{self.prompt_suffix} "
         
+        if not message.content or not message.content.strip() or message.content.isspace():
+            return prompt + "\n"
+
         lines = message.content.splitlines()
-        if not lines and not message.content.strip():
+        if not lines:
             return prompt + "\n"
         
         result = prompt + lines[0]
@@ -399,17 +406,22 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         return result + "\n"
     
     def name_prefix(self, name: str) -> str:
-        message_type = self.context_type
-        return f"[{name}@{message_type} {self.directory_indicator}]{self.prompt_suffix} "
+        if name == "system":
+            context_type = self.system_context_type
+        else:
+            context_type = self.default_context_type
+
+        return f"[{name}@{context_type} {self.directory_indicator}]{self.prompt_suffix} "
     
     def parse(self, continuation: str) -> list[Message]:
         messages = []
         current_content = []
         current_author = None
         current_type = None
+        collecting_for_prior_prompt = False
 
-        pattern = rf"^\[([\w:/.-]+)@([\w-]+)\s+{re.escape(self.directory_indicator)}\]{re.escape(self.prompt_suffix)}\s*(.*?)$"
-
+        pattern = r"^\[([\w:/.-]+)@([\w-]+)\s+(\S+)\](\S+)\s*(.*?)$"
+        
         for line in continuation.splitlines():
             match = re.match(pattern, line)
             if match:
@@ -422,11 +434,20 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                         )
                     )
                     current_content = []
+                    collecting_for_prior_prompt = False
                 
-                username, msg_type, content = match.groups()
+                username, msg_type, dir_indicator, prompt_suffix, content = match.groups()
+                
+                if username.lower() == "none":
+                    username = self.default_author_name
+                
                 current_author = Author(username)
-                current_type = msg_type if msg_type != self.context_type else None
-                current_content.append(content)
+                current_type = msg_type if msg_type != self.default_context_type else None
+
+                if content.strip() == "":
+                    collecting_for_prior_prompt = True
+                else:
+                    current_content.append(content)
             else:
                 if current_author is not None:
                     current_content.append(line)
