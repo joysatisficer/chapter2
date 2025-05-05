@@ -392,7 +392,7 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
 
         prompt = f"[{author_name}@{context_type} {self.directory_indicator}]{self.prompt_suffix} "
         
-        if not message.content or not message.content.strip() or message.content.isspace():
+        if not message.content or not message.content.strip():
             return prompt + "\n"
 
         lines = message.content.splitlines()
@@ -406,11 +406,7 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         return result + "\n"
     
     def name_prefix(self, name: str) -> str:
-        if name == "system":
-            context_type = self.system_context_type
-        else:
-            context_type = self.default_context_type
-
+        context_type = self.system_context_type if name == "system" else self.default_context_type
         return f"[{name}@{context_type} {self.directory_indicator}]{self.prompt_suffix} "
     
     def parse(self, continuation: str) -> list[Message]:
@@ -418,9 +414,8 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         current_content = []
         current_author = None
         current_type = None
-        collecting_for_prior_prompt = False
 
-        pattern = r"^\[([\w:/.-]+)@([\w-]+)\s+(\S+)\](\S+)\s*(.*?)$"
+        pattern = r"^\[([\w:/.-]+)@([\w-]+) ~\]\$ (.*?)$"
         
         for line in continuation.splitlines():
             match = re.match(pattern, line)
@@ -434,9 +429,8 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                         )
                     )
                     current_content = []
-                    collecting_for_prior_prompt = False
                 
-                username, msg_type, dir_indicator, prompt_suffix, content = match.groups()
+                username, msg_type, content = match.groups()
                 
                 if username.lower() == "none":
                     username = self.default_author_name
@@ -444,9 +438,7 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                 current_author = Author(username)
                 current_type = msg_type if msg_type != self.default_context_type else None
 
-                if content.strip() == "":
-                    collecting_for_prior_prompt = True
-                else:
+                if content.strip():
                     current_content.append(content)
             else:
                 if current_author is not None:
