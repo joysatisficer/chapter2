@@ -373,13 +373,14 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["terminal"] = "terminal"
     default_context_type: str = "command"
     system_context_type: str = "response"
-    default_author_name: str = "history"
+    em_name: str | None = None
+    fallback_author_name: str = "history"
     directory_indicator: str = "~"
     prompt_suffix: str = "$"
 
     def render(self, message: Message) -> str:
         if message.author is None or message.author.name in ("", None):
-            author_name = self.default_author_name
+            author_name = self.em_name if self.em_name is not None else self.fallback_author_name
         else:
             author_name = message.author.name
         
@@ -433,7 +434,7 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                 username, msg_type, content = match.groups()
                 
                 if username.lower() == "none":
-                    username = self.default_author_name
+                    username = self.em_name if self.em_name is not None else self.fallback_author_name
                 
                 current_author = Author(username)
                 current_type = msg_type if msg_type != self.default_context_type else None
