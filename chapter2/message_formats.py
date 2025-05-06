@@ -373,25 +373,21 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
     name: Literal["terminal"] = "terminal"
     default_context_type: str = "command"
     system_context_type: str = "response"
-    em_name: str | None = None
-    fallback_author_name: str = "history"
     directory_indicator: str = "~"
     prompt_suffix: str = "$"
 
     def render(self, message: Message) -> str:
         if message.author is None or message.author.name in ("", None):
-            author_name = self.em_name if self.em_name is not None else self.fallback_author_name
-        else:
-            author_name = message.author.name
+            return message.content.rstrip() + "\n"
         
         if message.type is not None:
             context_type = message.type
-        elif author_name == "system":
+        elif message.author.name == "system":
             context_type = self.system_context_type
         else:
             context_type = self.default_context_type
 
-        prompt = f"[{author_name}@{context_type} {self.directory_indicator}]{self.prompt_suffix} "
+        prompt = f"[{message.author.name}@{context_type} {self.directory_indicator}]{self.prompt_suffix} "
         
         if not message.content or not message.content.strip():
             return prompt + "\n"
@@ -415,13 +411,14 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
         current_content = []
         current_author = None
         current_type = None
+        first_message = True
 
         pattern = r"^\[([\w:/.-]+)@([\w-]+) ~\]\$ (.*?)$"
         
         for line in continuation.splitlines():
             match = re.match(pattern, line)
             if match:
-                if current_content and current_author is not None:
+                if not first_message and current_content and current_author is not None:
                     messages.append(
                         Message(
                             author=current_author,
@@ -431,10 +428,8 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                     )
                     current_content = []
                 
+                first_message = False
                 username, msg_type, content = match.groups()
-                
-                if username.lower() == "none":
-                    username = self.em_name if self.em_name is not None else self.fallback_author_name
                 
                 current_author = Author(username)
                 current_type = msg_type if msg_type != self.default_context_type else None
@@ -442,10 +437,10 @@ class TerminalMessageFormat(AbstractMessageFormat, pydantic.BaseModel):
                 if content.strip():
                     current_content.append(content)
             else:
-                if current_author is not None:
+                if not first_message and current_author is not None:
                     current_content.append(line)
 
-        if current_content and current_author is not None:
+        if not first_message and current_content and current_author is not None:
             messages.append(
                 Message(
                     author=current_author,
