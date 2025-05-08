@@ -19,7 +19,7 @@ async def character_faculty(
     em: EmConfig, faculty_config: CharacterFacultyConfig, history: ActionHistory
 ):
     if faculty_config.name is None:
-        character_name = em.name
+        character_name = em.emname
     else:
         character_name = faculty_config.name
     strings = load_chr(

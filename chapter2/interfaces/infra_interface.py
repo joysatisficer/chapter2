@@ -933,7 +933,7 @@ class InfraInterface(DiscordInterface):
             )
         )
 
-        prompt = await get_prompt(history, config.em)
+        _, prompt = await get_prompt(history, config.em)
 
         file = discord.File(
             StringIO(prompt),

@@ -41,9 +41,10 @@ class LayerOfEnsembleFormat(BaseModel):
 EnsembleFormat = list[LayerOfEnsembleFormat]
 
 
-class FacultyConfig(BaseModel):
+class AbstractFacultyConfig(BaseModel):
     faculty: str
     input_format: MessageFormat = IRCMessageFormat()
+    input_ensembles: list[EnsembleConfig] | None = None
     ensemble_format: EnsembleFormat
     recent_message_attention: int | float | float
 
@@ -66,7 +67,7 @@ class UltratrieverConfig(BaseModel):
     # reranker
 
 
-class CharacterFacultyConfig(FacultyConfig):
+class CharacterFacultyConfig(AbstractFacultyConfig):
     faculty: Literal["character"] = "character"
     name: str | None = None  # defaults to config.em_name
     chunk_size: int = 3
@@ -81,9 +82,11 @@ class CharacterFacultyConfig(FacultyConfig):
     ]
 
 
-class SimFacultyConfig(FacultyConfig):
+class SimFacultyConfig(AbstractFacultyConfig):
     faculty: Literal["sim"] = "sim"
-    em: EmConfig
+    inherit: bool = True
+    inline: bool = False  # todo: rename
+    em: dict  # todo: add validation
     recent_message_attention: int | float = infinity
     ensemble_format: EnsembleFormat = [
         LayerOfEnsembleFormat(format=IRCMessageFormat(), operator="prepend"),
@@ -93,7 +96,7 @@ class SimFacultyConfig(FacultyConfig):
     ]
 
 
-class HistoryFacultyConfig(FacultyConfig):
+class HistoryFacultyConfig(AbstractFacultyConfig):
     faculty: Literal["history"] = "history"
     filename: str = "history.txt"
     nickname: str | None = None
@@ -121,7 +124,7 @@ class ExaSearchHighlightsConfig(BaseModel):
     sentences_per_highlight: int = 3
 
 
-class ExaSearchFacultyConfig(FacultyConfig):
+class ExaSearchFacultyConfig(AbstractFacultyConfig):
     faculty: Literal["metaphor_search"] | Literal["exa_search"] = "exa_search"
     include_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
@@ -154,13 +157,13 @@ class AirtableConfig(pydantic.BaseModel):
     api_token: SecretStr
 
 
-class AirtableNotesFacultyConfig(FacultyConfig):
+class AirtableNotesFacultyConfig(AbstractFacultyConfig):
     faculty: Literal["airtable_notes"] = "airtable_notes"
     recent_message_attention: int = 0
     airtable: AirtableConfig
 
 
-EnsembleConfig = Annotated[
+FacultyConfig = Annotated[
     CharacterFacultyConfig
     | HistoryFacultyConfig
     | ExaSearchFacultyConfig
@@ -168,6 +171,21 @@ EnsembleConfig = Annotated[
     | AirtableNotesFacultyConfig,
     Field(..., discriminator="faculty"),
 ]
+
+
+class MotifFileConfig(pydantic.BaseModel):
+    file: str
+
+
+class MotifConfig(pydantic.BaseModel):
+    motif: str | MotifFileConfig
+
+
+class MessageHistoryEnsembleConfig(pydantic.BaseModel):
+    ensemble: str = "message_history"
+
+
+EnsembleConfig = FacultyConfig | MotifConfig | MessageHistoryEnsembleConfig
 
 
 class DiscordGenerateAvatarAddonConfig(BaseModel):
@@ -287,7 +305,8 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     may_speak: list[str] = []
     include_images: bool | Literal["auto"] = True
     image_limits: ImageLimits = ImageLimits()
-    airtable: AirtableConfig | None = None
+    thinking_user: str | None = None
+    thinking_user_display: str | None = None
 
 
 class RPCInterfaceConfig(SharedInterfaceConfig):
@@ -491,8 +510,9 @@ for interface_config_subclass in get_union_members(InterfaceConfig):
 def transpose_keys(kv: dict, defaults: dict = DEFAULTS):
     result = {
         "em": {},
-        "interfaces": kv.get("interfaces", defaults["interfaces"]),
     }
+    if "interfaces" in defaults:
+        result["interfaces"] = kv.get("interfaces", defaults["interfaces"])
     for key in kv.copy():
         if key in EM_KEYS:
             result["em"][key] = kv[key]
@@ -526,4 +546,11 @@ def load_config_from_kv(kv: dict | None, defaults: dict = DEFAULTS) -> Config:
         kv["interfaces"] = interfaces
         del kv["active_interfaces"]
     dictionary = overlay(defaults, transpose_keys(rename_keys(kv, ALIASES), defaults))
-    return Config(**dictionary)
+    config = Config(**dictionary)
+    # append a message history ensemble if not already present
+    for ensemble in config.em.ensembles:
+        if isinstance(ensemble, MessageHistoryEnsembleConfig):
+            return config
+    else:
+        config.em.ensembles.append(MessageHistoryEnsembleConfig())
+        return config

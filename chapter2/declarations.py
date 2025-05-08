@@ -4,7 +4,7 @@ import pydantic.dataclasses
 from typing import Callable, Union, AsyncIterable, TYPE_CHECKING, Awaitable
 
 if TYPE_CHECKING:
-    from ontology import Config, FacultyConfig
+    from ontology import Config, EmConfig, AbstractFacultyConfig
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
@@ -27,4 +27,6 @@ ActionHistory = AsyncIterable[Action]
 Ensemble = AsyncIterable[Action | AsyncIterable["Ensemble"]]
 JSON = dict[str, Union[str, int, float, bool, list, dict]]
 GenerateResponse = Callable[["EmConfig", ActionHistory], AsyncIterable[Action]]
-Faculty = Callable[["EmConfig", "FacultyConfig", ActionHistory], AsyncIterable[Message]]
+Faculty = Callable[
+    ["EmConfig", "AbstractFacultyConfig", ActionHistory], AsyncIterable[Message]
+]

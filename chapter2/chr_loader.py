@@ -68,17 +68,7 @@ def process_file(string: str, chunker: Callable = None):
     )
 
     if "\n---\n" in string:
-        if "chunking" in metadata and metadata["chunking"] is False:
-            chunked = unique_same_order(contents.split("\n---\n"))
-        else:
-            chunked = unique_same_order(
-                flatten(
-                    [
-                        chunker(section.splitlines())
-                        for section in filter_blank(contents.split("\n---\n"))
-                    ]
-                )
-            )
+        chunked = unique_same_order(contents.split("\n---\n"))
     else:
         chunked = deepcopy(unchunked)
 

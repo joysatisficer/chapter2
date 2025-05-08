@@ -10,13 +10,23 @@ from aioitertools.more_itertools import take as async_take
 from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
 
-from declarations import ActionHistory, Author, Ensemble, Action
+from declarations import ActionHistory, Author, Ensemble, Action, Message
 from faculties import FACULTY_NAME_TO_FUNCTION
 from mufflers import mufflers, divide_sentences
-from ontology import LayerOfEnsembleFormat, EnsembleFormat, EmConfig
+from ontology import (
+    LayerOfEnsembleFormat,
+    EnsembleFormat,
+    EmConfig,
+    FacultyConfig,
+    MotifConfig,
+    MessageHistoryEnsembleConfig,
+    AbstractFacultyConfig,
+)
 from trace import trace, log_trace_id_to_console
 
 
+# todo: rename
+# todo: this setup breaks tracing, fix
 @trace
 async def get_prompt(em: EmConfig, history: ActionHistory):
     count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
@@ -28,9 +38,8 @@ async def get_prompt(em: EmConfig, history: ActionHistory):
         min(max_token_length(em.continuation_model), em.total_max_tokens)
         - em.continuation_max_tokens
     )
-    message_history_ensemble = (
-        (em.message_history_header.format(**ctx_vars))
-        + await format_ensemble(
+    message_history_ensemble = (em.message_history_header.format(**ctx_vars)) + (
+        await format_ensemble(
             history,
             # todo: move to ontology
             [
@@ -46,55 +55,106 @@ async def get_prompt(em: EmConfig, history: ActionHistory):
             em.continuation_model,
             ctx_vars,
         )
-        + completion_prefix
+    )[1]
+    # todo: make get_prompt and evaluate_ensembles lazy/streaming to allow
+    # streaming prompt UI
+    include_in_responses, ensembles = await evaluate_ensembles(
+        count_continuation_model_tokens,
+        ctx_vars,
+        em,
+        em.ensembles,
+        history,
+        max_prompt_length,
+        message_history_ensemble,
     )
-    ensembles = []
+    prompt = "".join(ensembles) + completion_prefix
+    return include_in_responses, prompt
+
+
+async def evaluate_ensembles(
+    count_continuation_model_tokens,
+    ctx_vars,
+    em,
+    ensembles_config,
+    history,
+    max_prompt_length,
+    message_history_ensemble,
+) -> tuple[list[Message], list[str]]:
+    ensembles: list[str] = []
+    include_in_responses: list[Message] = []
     # TODO: Filter for empty ensembles
-    for faculty_config in em.ensembles:
-        faculty_results = FACULTY_NAME_TO_FUNCTION[faculty_config.faculty](
-            em, faculty_config, history
-        )
-        local_max_tokens = min(
-            (
-                max_prompt_length
-                - sum(
-                    [
-                        count_continuation_model_tokens(ensemble)
-                        for ensemble in ensembles + [message_history_ensemble]
-                    ]
+    for ensemble_config in ensembles_config:
+        if isinstance(ensemble_config, AbstractFacultyConfig):
+            if ensemble_config.input_ensembles:
+                input_include_in_responses, input_ensembles = await evaluate_ensembles(
+                    count_continuation_model_tokens,
+                    ctx_vars,
+                    em,
+                    ensemble_config.input_ensembles,
+                    history,
+                    max_prompt_length,
+                    message_history_ensemble,
                 )
-            ),
-            faculty_config.ensemble_format[0].max_tokens,
-        )
-        if faculty_config.faculty == "history":
-            ensemble_format = [
-                faculty_config.ensemble_format[0].model_copy(
-                    update=dict(
-                        max_tokens=local_max_tokens,
-                        format=em.message_history_format,
-                        separator=em.message_history_separator,
-                        operator=em.message_history_operator,
+                include_in_responses.extend(input_include_in_responses)
+            else:
+                input_ensembles = history
+            faculty_results = FACULTY_NAME_TO_FUNCTION[ensemble_config.faculty](
+                em, ensemble_config, input_ensembles
+            )
+            local_max_tokens = min(
+                (
+                    max_prompt_length
+                    - sum(
+                        [
+                            count_continuation_model_tokens(ensemble)
+                            for ensemble in ensembles + [message_history_ensemble]
+                        ]
                     )
-                )
-            ]
+                ),
+                ensemble_config.ensemble_format[0].max_tokens,
+            )
+            if ensemble_config.faculty == "history":
+                ensemble_format = [
+                    ensemble_config.ensemble_format[0].model_copy(
+                        update=dict(
+                            max_tokens=local_max_tokens,
+                            format=em.message_history_format,
+                            separator=em.message_history_separator,
+                            operator=em.message_history_operator,
+                        )
+                    )
+                ]
+            else:
+                ensemble_format = [
+                    ensemble_config.ensemble_format[0].model_copy(
+                        update=dict(max_tokens=local_max_tokens)
+                    )
+                ] + ensemble_config.ensemble_format[1:]
+            underlying_messages, ensemble = await format_ensemble(
+                faculty_results, ensemble_format, em.continuation_model, ctx_vars
+            )
+            # todo: generalize beyond sim faculty
+            if ensemble_config.faculty == "sim" and ensemble_config.inline:
+                include_in_responses.extend(underlying_messages)
+            ensembles.append(ensemble)
+        elif isinstance(ensemble_config, MotifConfig):
+            if isinstance(ensemble_config.motif, str):
+                ensembles.append(ensemble_config.motif)
+            else:
+                with open(em.folder / ensemble_config.motif.file) as f:
+                    ensembles.append(f.read())
+        elif isinstance(ensemble_config, MessageHistoryEnsembleConfig):
+            ensembles.append(message_history_ensemble)
+            after_message_history = True
         else:
-            ensemble_format = [
-                faculty_config.ensemble_format[0].model_copy(
-                    update=dict(max_tokens=local_max_tokens)
-                )
-            ] + faculty_config.ensemble_format[1:]
-        ensemble = await format_ensemble(
-            faculty_results, ensemble_format, em.continuation_model, ctx_vars
-        )
-        ensembles.append(ensemble)
-    prompt = "".join(ensembles + [message_history_ensemble])
-    return prompt
+            raise NotImplementedError(f"{type(ensemble_config)} is not implemented")
+    return include_in_responses, ensembles
 
 
 @trace
 async def generate_response(em: EmConfig, history: ActionHistory):
     author = Author(em.name)
-    prompt = await get_prompt(em, history)
+    include_in_responses, prompt = await get_prompt(em, history)
     completion_prefix = (
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
@@ -112,6 +172,8 @@ async def generate_response(em: EmConfig, history: ActionHistory):
             if message.author.name != em.name
         ]
     )
+    for message in include_in_responses:
+        yield message
     retry = True
     tries = 0
     while retry and tries < 3:
@@ -205,9 +267,9 @@ async def get_replies(
                 f"tokenizers/punkt/english.pickle"
             )
             if not tokenizer.text_contains_sentbreak(sentences[-1]):
-                completion = "".join(
+                completion = completion.removesuffix(
                     tokenizer.sentences_from_text(completion, realign_boundaries=True)[
-                        :-1
+                        -1
                     ]
                 )
     messages = []
@@ -218,6 +280,7 @@ async def get_replies(
             and message.content.strip() == em.scene_break.strip()
         ):
             break
+        # todo: upgrade to support a whitelist
         elif em.name_prefix_optional or (
             message.author is None or message.author.name == my_name
         ):
@@ -237,18 +300,21 @@ async def format_ensemble(
     ensemble_format: EnsembleFormat,
     tokenization_model: str,
     ctx_vars: dict,
-) -> str:
+) -> tuple[list[Message], str]:
     prompt = None
     local_format = ensemble_format[0]
+    underlying_messages = []
     async for i, subensemble in asyncstdlib.enumerate(ensemble):
         if i >= local_format.max_items:
             break
         if isinstance(subensemble, Action):
+            underlying_messages.append(subensemble)
             string = local_format.format.render(subensemble)
         else:
-            string = await format_ensemble(
+            inner_underlying_messages, string = await format_ensemble(
                 subensemble, ensemble_format[1:], tokenization_model, ctx_vars
             )
+            underlying_messages.extend(inner_underlying_messages)
         if prompt is None:
             new_prompt = string
         else:
@@ -270,9 +336,9 @@ async def format_ensemble(
             prompt = new_prompt
     if prompt is None:
         # if ensemble has no members, don't include header or footer
-        return ""
+        return underlying_messages, ""
     else:
-        return (
+        return underlying_messages, (
             local_format.header.format(**ctx_vars)
             + prompt
             + local_format.footer.format(**ctx_vars)
