@@ -5,22 +5,33 @@ Chapter II ems
 Two layout modes will be possible:
 
 - Canvas, where you can lay out multiple windows on an infinite canvas / node editor
-- Tile, a traditional that allows docking panels to the side and as tabs, similar to
-most IDEs.
+- IDE, a traditional layout that allows docking panels to the side and as tabs
+- OS, a layout similar to a modern desktop environment
+
 
 Some elements will be shared between both layout modes:
 
 - A status bar, displaying the status of any currently-running language model
 continuations, web searches, or representation embedding requests.
 
-Some of the windows that will eventually be added:
+Some of the windows that I hope to eventually see added:
 
 - A window for inspecting the state of a currently running language model
-- A process manager for managing system daemons
+ - and other interpretability tools
+- A process manager for managing system daemons like embed_server, conduit, & llama.cpp
 - A window for creating and modifying individual ems like Arago
 - A Loom– a window for exploring possible completions using a prefix tree structure
 - A window that displays the code corresponding to the option user currently hovers over
+- A tool for importing from SillyTavern/Loomsidian/other tools
+- A control panel for changing theme and font settings
+- A window for inspecting gguf/safetensors structure
+- A tool for merging models
+- A backrooms implementations
+
+It will also be available as a ZFS-based ISO
 """
+
+from typing import Union
 
 import pydantic
 from annotated_types import Interval
@@ -28,7 +39,7 @@ from imgui_bundle import imgui, immapp
 from pydantic.fields import FieldInfo
 
 from load import load_em
-from ontology import EmConfig, DragSpeed
+from ontology import EmConfig, DragSpeed, MultiLineText, infinity
 
 
 # todo: allow annotating in ontology.py which options should show up in which set
@@ -38,12 +49,31 @@ from ontology import EmConfig, DragSpeed
 def render_EmConfig(em: EmConfig):
     for field_name, field in em.model_fields.items():
         if field.annotation == str:
-            modified, new = imgui.input_text(field_name, getattr(em, field_name))
+            match field.metadata:
+                case [MultiLineText(), *_]:
+                    modified, new = imgui.input_text_multiline(
+                        field_name, getattr(em, field_name)
+                    )
+                case _:
+                    modified, new = imgui.input_text(
+                        field_name, getattr(em, field_name)
+                    )
             if modified:
                 setattr(em, field_name, new)
         elif field.annotation == int:
             modified, new = imgui.input_int(field_name, getattr(em, field_name))
             if modified:
+                setattr(em, field_name, new)
+        elif field.annotation == Union[int, float]:
+            inf_pressed = imgui.button(f"infinity##{field_name}")
+            imgui.same_line()
+            if (value := getattr(em, field_name)) != infinity:
+                modified, new = imgui.input_int(field_name, value)
+            else:
+                modified, new = imgui.input_float(field_name, value)
+            if inf_pressed:
+                setattr(em, field_name, infinity)
+            elif modified:
                 setattr(em, field_name, new)
         elif field.annotation == bool:
             modified, new = imgui.checkbox(field_name, getattr(em, field_name))
@@ -82,9 +112,15 @@ def render_EmConfig(em: EmConfig):
 
 class GUI:
     def __init__(self):
-        self.em = load_em("arago").em
+        self.em = load_em("simspode").em
+        self.set_up = False
+
+    def setup(self):
+        pass
 
     def render(self):
+        if not self.set_up:
+            self.setup()
         render_EmConfig(self.em)
 
 

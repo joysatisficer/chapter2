@@ -94,6 +94,11 @@ class SimFacultyConfig(FacultyConfig):
     ]
 
 
+class EpisodicMemoryFacultyConfig(FacultyConfig):
+    faculty: Literal["memory"] = "episodic_memory"
+    name: str = "memory"
+
+
 class HistoryFacultyConfig(FacultyConfig):
     faculty: Literal["history"] = "history"
     filename: str = "history.txt"
@@ -194,6 +199,11 @@ class DragSpeed:
     v_speed: float
 
 
+@dataclasses.dataclass
+class MultiLineText:
+    pass
+
+
 class EmConfig(BaseModel):
     name: str
     sysname: str  # todo: hide
@@ -203,9 +213,9 @@ class EmConfig(BaseModel):
     # todo: make message_history coequal with other ensembles
     message_history_max_tokens: int | float = infinity
     message_history_format: MessageFormat = IRCMessageFormat()
-    message_history_header: str = ""
+    message_history_header: Annotated[str, MultiLineText()] = ""
     message_history_separator: str = ""
-    message_history_footer: str = ""
+    message_history_footer: Annotated[str, MultiLineText()] = ""
     message_history_operator: Literal["prepend"] | Literal["append"] = "prepend"
     scene_break: str = "###\n"  # todo: remove, hide
     recency_window: Annotated[int, Gt(0)] = 35
@@ -218,7 +228,12 @@ class EmConfig(BaseModel):
     name_prefix: bool = True
     name_prefix_optional: bool = True
     split_message: bool = True
-    mufflers: list[str] = [
+    mufflers: list[
+        Literal["has_url"]
+        | Literal["has_pump_fun_ca"]
+        | Literal["has_img_url_token"]
+        | Literal["context_sentence_repetition"]
+    ] = [
         "has_url",
         "has_pump_fun_ca",
         "has_img_url_token",
