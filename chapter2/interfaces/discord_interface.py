@@ -343,21 +343,6 @@ class DiscordInterface(discord.Client):
                     )
                 except discord.errors.NotFound:
                     referenced_message = None
-            if referenced_message is None or isinstance(
-                referenced_message, discord.DeletedReferencedMessage
-            ):
-                prefix = "@deleted-message "
-            else:
-                prefix = (
-                    resolve_member(
-                        message,
-                        referenced_message.author.id,
-                        self.user.id,
-                        config.em.name,
-                    )
-                    + " "
-                )
-            content = prefix + content
         for attachment in message.attachments:
             att_data = await self.parse_attachment(attachment)
             if iface_config.ignore_dotted_messages and (
