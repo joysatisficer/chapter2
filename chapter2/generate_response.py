@@ -25,12 +25,11 @@ from ontology import (
 from trace import trace, log_trace_id_to_console
 
 
-# todo: rename
 # todo: this setup breaks tracing, fix
 @trace
-async def get_prompt(em: EmConfig, history: ActionHistory):
+async def prompt_from(em: EmConfig, history: ActionHistory):
     count_continuation_model_tokens = partial(count_tokens, em.continuation_model)
-    completion_prefix = (
+    continuation_prefix = (
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
     ctx_vars = {"now": datetime.now(), "hostname": platform.node()}
@@ -56,7 +55,7 @@ async def get_prompt(em: EmConfig, history: ActionHistory):
             ctx_vars,
         )
     )[1]
-    # todo: make get_prompt and evaluate_ensembles lazy/streaming to allow
+    # todo: make prompt_from and evaluate_ensembles lazy/streaming to allow
     # streaming prompt UI
     include_in_responses, ensembles = await evaluate_ensembles(
         count_continuation_model_tokens,
@@ -67,7 +66,7 @@ async def get_prompt(em: EmConfig, history: ActionHistory):
         max_prompt_length,
         message_history_ensemble,
     )
-    prompt = "".join(ensembles) + completion_prefix
+    prompt = "".join(ensembles) + continuation_prefix
     return include_in_responses, prompt
 
 
@@ -133,8 +132,7 @@ async def evaluate_ensembles(
             underlying_messages, ensemble = await format_ensemble(
                 faculty_results, ensemble_format, em.continuation_model, ctx_vars
             )
-            # todo: generalize beyond sim faculty
-            if ensemble_config.faculty == "sim" and ensemble_config.inline:
+            if ensemble_config.include_in_responses:
                 include_in_responses.extend(underlying_messages)
             ensembles.append(ensemble)
         elif isinstance(ensemble_config, MotifConfig):
@@ -145,7 +143,6 @@ async def evaluate_ensembles(
                     ensembles.append(f.read())
         elif isinstance(ensemble_config, MessageHistoryEnsembleConfig):
             ensembles.append(message_history_ensemble)
-            after_message_history = True
         else:
             raise NotImplementedError(f"{type(ensemble_config)} is not implemented")
     return include_in_responses, ensembles
@@ -154,19 +151,19 @@ async def evaluate_ensembles(
 @trace
 async def generate_response(em: EmConfig, history: ActionHistory):
     author = Author(em.name)
-    include_in_responses, prompt = await get_prompt(em, history)
-    completion_prefix = (
+    include_in_responses, prompt = await prompt_from(em, history)
+    continuation_prefix = (
         em.message_history_format.name_prefix(em.name) if em.name_prefix else ""
     )
     recent_messages = await async_take(em.recency_window, history)
     stop_sequences = unique(
         em.stop_sequences
         + [
-            # if the completion prefix is an empty string,
+            # if the continuation prefix is an empty string,
             # it's possible for a stop sequence to be generated
             # immediately. if that's the case, we don't want to
             # prepend a newline to author-based stop sequences
-            ("" if completion_prefix == "" else "\n")
+            ("" if continuation_prefix == "" else "\n")
             + em.message_history_format.name_prefix(message.author.name)
             for message in recent_messages
             if message.author.name != em.name
@@ -179,9 +176,8 @@ async def generate_response(em: EmConfig, history: ActionHistory):
     while retry and tries < 3:
         tries += 1
         retry = False
-
         async for reply in get_replies(
-            em, prompt, completion_prefix, em.name, author, stop_sequences
+            em, prompt, continuation_prefix, em.name, author, stop_sequences
         ):
             for muffler in em.mufflers:
                 if mufflers[muffler](prompt, reply.content):
@@ -196,7 +192,7 @@ async def generate_response(em: EmConfig, history: ActionHistory):
 async def get_replies(
     em: EmConfig,
     prompt: str,
-    completion_prefix: str,
+    continuation_prefix: str,
     my_name: str,
     author: Author,
     stop_sequences: list[str] = None,
@@ -235,45 +231,32 @@ async def get_replies(
         best_of=em.best_of,
         **em.continuation_options,
     )
-    completion = response["completions"][0]["text"]
+    continuation = response["completions"][0]["text"]
     if (
         callgpt.pick_vendor(em.continuation_model, em.vendors.get_secret_value())
         == "fake-local"
     ):
-        print(
-            "Continues>>",
-            "{",
-            callgpt.count_tokens(em.continuation_model, completion),
-            "tokens omitted}",
-            "<<Continues",
-            sep="",
-            flush=True,
-        )
+        to_print = f"{{{callgpt.count_tokens(em.continuation_model, continuation)} tokens omitted}}"
     else:
-        trace.continuation(completion, attr=True)
-        print(
-            "Continues>>",
-            completion.replace("\n", r"\n"),
-            "<<Continues",
-            sep="",
-            flush=True,
-        )
+        trace.continuation(continuation, attr=True)
+        to_print = continuation.replace("\n", r"\n")
+    print("Continues>>", to_print, "<<Continues", sep="", flush=True)
     log_trace_id_to_console()
     # Todo: Client-side stop sequences
     if em.trim_final_incomplete_sentence:
         if response["completions"][0]["finish_reason"]["reason"] == "length":
-            sentences = divide_sentences(completion)
+            sentences = divide_sentences(continuation)
             tokenizer: nltk.PunktSentenceTokenizer = nltk.data.load(
                 f"tokenizers/punkt/english.pickle"
             )
             if not tokenizer.text_contains_sentbreak(sentences[-1]):
-                completion = completion.removesuffix(
-                    tokenizer.sentences_from_text(completion, realign_boundaries=True)[
-                        -1
-                    ]
+                continuation = continuation.removesuffix(
+                    tokenizer.sentences_from_text(
+                        continuation, realign_boundaries=True
+                    )[-1]
                 )
     messages = []
-    for message in em.message_history_format.parse(completion_prefix + completion):
+    for message in em.message_history_format.parse(continuation_prefix + continuation):
         # accept messages from myself or without prefixes
         if (
             em.prevent_gpt_topic_change
@@ -281,8 +264,11 @@ async def get_replies(
         ):
             break
         # todo: upgrade to support a whitelist
-        elif em.name_prefix_optional or (
-            message.author is None or message.author.name == my_name
+        elif (
+            em.name_prefix_optional
+            or message.author is None
+            or message.author.name == my_name
+            or message.author.name in em.extra_valid_output_names
         ):
             if em.split_message:
                 yield dataclasses.replace(message, author=author)

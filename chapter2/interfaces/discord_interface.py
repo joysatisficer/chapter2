@@ -794,7 +794,7 @@ class DiscordInterface(discord.Client):
             try:
                 return DiscordInterface.parse_yaml_config(topic) or {}
             except Exception as e:
-                print(f"Error parsing YAML in channel {channel.name}: {e}")
+                trace.log(f"Error parsing YAML in channel {channel.name}: {e}")
                 return {}
         else:
             return {}
@@ -815,7 +815,7 @@ class DiscordInterface(discord.Client):
             try:
                 yaml_content = DiscordInterface.parse_yaml_config(message.content)
             except Exception as e:
-                print(f"Error parsing YAML")
+                trace.log(f"Error parsing YAML")
                 yaml_content = {}
             return {
                 "command": match.group(1),

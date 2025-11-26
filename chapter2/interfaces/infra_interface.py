@@ -14,7 +14,7 @@ from ontology import Config, DiscordInterfaceConfig
 from load import load_em_kv
 from util.steering_api import INDEX_TO_DESC, USABLE_FEATURES
 from util.app_info import get_emname_id_map, get_steerable_ems
-from generate_response import get_prompt
+from generate_response import prompt_from
 
 
 def clean_config_dict(config_dict: dict | list, blacklisted_keys: list[str] = []):
@@ -933,7 +933,7 @@ class InfraInterface(DiscordInterface):
             )
         )
 
-        _, prompt = await get_prompt(history, config.em)
+        _, prompt = await prompt_from(history, config.em)
 
         file = discord.File(
             StringIO(prompt),

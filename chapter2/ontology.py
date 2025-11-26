@@ -47,6 +47,7 @@ class AbstractFacultyConfig(BaseModel):
     input_ensembles: list[EnsembleConfig] | None = None
     ensemble_format: EnsembleFormat
     recent_message_attention: int | float | float
+    include_in_responses: bool = False  # include in response
 
 
 class FixedSizeChunker(BaseModel):
@@ -84,8 +85,8 @@ class CharacterFacultyConfig(AbstractFacultyConfig):
 
 class SimFacultyConfig(AbstractFacultyConfig):
     faculty: Literal["sim"] = "sim"
+    include_in_responses: bool = True
     inherit: bool = True
-    inline: bool = False  # todo: rename
     em: dict  # todo: add validation
     recent_message_attention: int | float = infinity
     ensemble_format: EnsembleFormat = [
@@ -229,6 +230,7 @@ class EmConfig(BaseModel):
     total_max_tokens: int | float = 31_900
     name_prefix: bool = True
     name_prefix_optional: bool = True
+    extra_valid_output_names: list[str] = []
     split_message: bool = True
     mufflers: list[str] = [
         "has_url",
