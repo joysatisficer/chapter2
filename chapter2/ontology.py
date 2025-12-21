@@ -25,7 +25,7 @@ from message_formats import (
 class LayerOfEnsembleFormat(BaseModel):
     format: MessageFormat
     separator: str = "###\n"
-    max_tokens: int | float = infinity  # todo: parsing inf from yaml
+    max_tokens: int | float = infinity
     max_items: int | float = infinity
     header: str = ""
     footer: str = "###\n"
@@ -204,9 +204,7 @@ class EmConfig(BaseModel):
     scene_break: str = "###\n"  # todo: remove
     recency_window: Annotated[int, Gt(0)] = 35
     ensembles: list[EnsembleConfig] = []
-    prevent_scene_break: bool = (
-        False  # not the same thing as suppress_topic_break (prevent_gpt_topic_change
-    )
+    prevent_scene_break: bool = False
     prevent_gpt_topic_change: bool = True
     total_max_tokens: int | float = 31_900
     name_prefix: bool = True
