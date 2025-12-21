@@ -11,7 +11,6 @@ from declarations import Message, Author
 
 
 # todo: refactor message formats to support returning an index for where parsing stopped
-# and to be a class instead
 # https://github.com/pydantic/pydantic/issues/1932
 class AbstractMessageFormat:
     """In the future, this could format all actions, not just messages, such as inner
