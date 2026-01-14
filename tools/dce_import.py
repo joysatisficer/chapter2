@@ -12,16 +12,15 @@ from chapter2.declarations import Author, Message
 from chapter2.message_formats import IRCMessageFormat
 
 
+def parse_date_to_unix_timestamp(date_str):
+    return datetime.fromisoformat(date_str.replace("Z", "+00:00")).timestamp()
+
+
 def process_messages(jsonobj):
     prev_timestamp = None
     for message, current_timestamp in sorted(
         (
-            (
-                m,
-                datetime.fromisoformat(
-                    m["timestamp"].replace("Z", "+00:00")
-                ).timestamp(),
-            )
+            (m, parse_date_to_unix_timestamp(m["timestamp"]))
             for m in jsonobj.get("messages", [])
         ),
         key=lambda x: x[1],
