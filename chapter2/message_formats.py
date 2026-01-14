@@ -7,7 +7,7 @@ from datetime import datetime
 
 import pydantic
 
-from declarations import Message, Author
+from chapter2.declarations import Message, Author
 
 
 # todo: refactor message formats to support returning an index for where parsing stopped
