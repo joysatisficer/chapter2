@@ -24,9 +24,13 @@ import ontology
 from intermodel.callgpt import supports_images
 from message_formats import hashint
 from trace import trace, ot_tracer, log_trace_id_to_console
-from interfaces.deserves_reply import deserves_reply
-from util.asyncutil import async_generator_to_reusable_async_iterable, run_task
-from util.discord_improved import ScheduleTyping, parse_discord_content, resolve_member
+from chapter2.interfaces.deserves_reply import deserves_reply
+from chapter2.util.asyncutil import async_generator_to_reusable_async_iterable, run_task
+from chapter2.util.discord_improved import (
+    ScheduleTyping,
+    parse_discord_content,
+    resolve_member,
+)
 from declarations import GenerateResponse, Message, Author, JSON, ActionHistory
 from ontology import Config, DiscordInterfaceConfig
 

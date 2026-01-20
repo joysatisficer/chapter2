@@ -8,7 +8,7 @@ from declarations import GenerateResponse
 from ontology import Config, CompletionsInterfaceConfig
 from message_formats import IRCMessageFormat
 from abstractinterface import AbstractInterface
-from util.asyncutil import to_async_iterable
+from chapter2.util.asyncutil import to_async_iterable
 
 
 class CompletionRequest(BaseModel):

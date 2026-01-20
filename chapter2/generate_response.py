@@ -10,10 +10,10 @@ from aioitertools.more_itertools import take as async_take
 from intermodel import callgpt
 from intermodel.callgpt import count_tokens, max_token_length
 
-from declarations import ActionHistory, Author, Ensemble, Action, Message
-from faculties import FACULTY_NAME_TO_FUNCTION
-from mufflers import mufflers, divide_sentences
-from ontology import (
+from chapter2.declarations import ActionHistory, Author, Ensemble, Action, Message
+from chapter2.faculties import FACULTY_NAME_TO_FUNCTION
+from chapter2.mufflers import mufflers, divide_sentences
+from chapter2.ontology import (
     LayerOfEnsembleFormat,
     EnsembleFormat,
     EmConfig,
@@ -22,7 +22,7 @@ from ontology import (
     MessageHistoryEnsembleConfig,
     AbstractFacultyConfig,
 )
-from trace import trace, log_trace_id_to_console
+from chapter2.trace import trace, log_trace_id_to_console
 
 
 # todo: this setup breaks tracing, fix

@@ -84,18 +84,20 @@ def import_to_character(
             character_dir, os.path.splitext(os.path.basename(fname))[0] + ".txt"
         )
         with open(output_path, "w") as outf:
-            first = True
-            chunk_marker_sent = False
+            first_chunk = True
+            has_separator = False
             for item in process_messages(jsonobj, after_timestamp, required_user):
                 if item == "---":
-                    if not first:
+                    if not first_chunk:
                         outf.write("---\n")
-                    first = False
-                    chunk_marker_sent = True
+                        has_separator = True
+                    first_chunk = False
                 else:
                     outf.write(irc.render(item))
-            if not chunk_marker_sent:
+            if not has:
                 outf.write("---\n")
+        if open(output_path).read() in ("", "---\n"):
+            os.remove(output_path)
 
 
 if __name__ == "__main__":

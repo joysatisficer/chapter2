@@ -14,7 +14,7 @@ from annotated_types import Gt, Ge, Interval
 from pydantic import field_validator, SecretStr, Secret, BaseModel, Field
 from pydantic_core import PydanticUndefined
 
-from message_formats import (
+from chapter2.message_formats import (
     MessageFormat,
     IRCMessageFormat,
     WebDocumentMessageFormat,

@@ -1,9 +1,9 @@
-from interfaces.chatcompletions_interface import ChatCompletionsInterface
-from interfaces.completions_interface import CompletionsInterface
-from interfaces.discord_interface import DiscordInterface
-from interfaces.rpc_interface import RPCInterface
-from interfaces.addons.discord_generate_avatar import discord_generate_avatar
-from interfaces.infra_interface import InfraInterface
+from chapter2.interfaces.chatcompletions_interface import ChatCompletionsInterface
+from chapter2.interfaces.completions_interface import CompletionsInterface
+from chapter2.interfaces.discord_interface import DiscordInterface
+from chapter2.interfaces.rpc_interface import RPCInterface
+from chapter2.interfaces.addons.discord_generate_avatar import discord_generate_avatar
+from chapter2.interfaces.infra_interface import InfraInterface
 
 INTERFACE_NAME_TO_INTERFACE = {
     "discord": DiscordInterface,

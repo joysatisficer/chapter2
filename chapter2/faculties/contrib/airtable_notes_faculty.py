@@ -1,7 +1,7 @@
-from declarations import ActionHistory, Message, Author
-from ontology import AirtableNotesFacultyConfig, EmConfig, AirtableConfig
+from chapter2.declarations import ActionHistory, Message, Author
+from chapter2.ontology import AirtableNotesFacultyConfig, EmConfig, AirtableConfig
 from asgiref.sync import sync_to_async
-from trace import trace
+from chapter2.trace import trace
 
 
 def get_airtable(airtable_config: AirtableConfig):

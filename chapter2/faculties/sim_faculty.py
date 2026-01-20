@@ -1,5 +1,5 @@
-from declarations import ActionHistory
-from ontology import SimFacultyConfig, EmConfig, get_defaults
+from chapter2.declarations import ActionHistory
+from chapter2.ontology import SimFacultyConfig, EmConfig, get_defaults
 
 
 async def sim_faculty(

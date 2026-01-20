@@ -11,15 +11,15 @@ from functools import cache
 from exa_py import Exa
 from intermodel import callgpt
 
-from declarations import ActionHistory, Message, Author
-from message_formats import MessageFormat, IRCMessageFormat
-from ontology import (
+from chapter2.declarations import ActionHistory, Message, Author
+from chapter2.message_formats import MessageFormat, IRCMessageFormat
+from chapter2.ontology import (
     ExaSearchFacultyConfig,
     ExaSearchFullTextConfig,
     ExaSearchHighlightsConfig,
     EmConfig,
 )
-from trace import trace
+from chapter2.trace import trace
 
 SharedExa = cache(Exa)
 

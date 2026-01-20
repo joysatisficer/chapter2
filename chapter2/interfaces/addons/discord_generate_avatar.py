@@ -6,7 +6,7 @@ import intermodel.callgpt
 import openai
 import aiohttp
 
-from interfaces.discord_interface import DiscordInterface
+from chapter2.interfaces.discord_interface import DiscordInterface
 from ontology import DiscordGenerateAvatarAddonConfig
 
 

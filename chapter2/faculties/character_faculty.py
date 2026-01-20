@@ -3,13 +3,13 @@ from functools import cache
 from asyncstdlib.functools import cache as async_cache
 from aioitertools.more_itertools import take as async_take
 
-from declarations import Message, Author, ActionHistory, Faculty
-from ontology import CharacterFacultyConfig, EmConfig
-from chr_loader import load_chr
-from retriever import KNNIndex, SVMIndex
-from message_formats import ColonMessageFormat
-from util.asyncutil import to_async_iterable
-from trace import trace
+from chapter2.declarations import Message, Author, ActionHistory, Faculty
+from chapter2.ontology import CharacterFacultyConfig, EmConfig
+from chapter2.chr_loader import load_chr
+from chapter2.retriever import KNNIndex, SVMIndex
+from chapter2.message_formats import ColonMessageFormat
+from chapter2.util.asyncutil import to_async_iterable
+from chapter2.trace import trace
 
 # todo: read character folder in the impure shell
 

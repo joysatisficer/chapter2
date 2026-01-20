@@ -1,4 +1,4 @@
-from retriever import SVMIndex
+from chapter2.retriever import SVMIndex
 
 
 class TestSVMIndex:

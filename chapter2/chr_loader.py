@@ -5,11 +5,13 @@ import yaml
 import glob
 
 
-def load_chr(dir, size=3) -> list[str]:
+def load_chr(dir, chunk_size=3) -> list[str]:
     chunks = []
     for file_contents in load_directory(dir):
         chunks.extend(
-            process_file(file_contents, lambda x: make_fixed_size_chunks(size, x))[1]
+            process_file(
+                file_contents, lambda x: make_fixed_size_chunks(chunk_size, x)
+            )[1]
         )
     return chunks
 

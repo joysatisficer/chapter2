@@ -9,7 +9,7 @@ from declarations import GenerateResponse, Message, Author
 from abstractinterface import AbstractInterface
 from ontology import Config, ChatCompletionsInterfaceConfig
 from util import asyncutil
-from util.asyncutil import async_generator_to_reusable_async_iterable
+from chapter2.util.asyncutil import async_generator_to_reusable_async_iterable
 
 Role = Literal["system", "user", "assistant"]
 

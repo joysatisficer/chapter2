@@ -6,7 +6,7 @@ import embedapi
 import numpy as np
 from asgiref.sync import sync_to_async as asyncify
 
-from chr_loader import load_chr
+from chapter2.chr_loader import load_chr
 
 EMPTY = tuple()
 

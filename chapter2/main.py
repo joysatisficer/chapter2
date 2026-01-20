@@ -11,10 +11,10 @@ import ontology
 from pydantic import Secret, SecretStr
 from generate_response import generate_response
 from interfaces import INTERFACE_NAME_TO_INTERFACE, INTERFACE_ADDON_NAME_TO_ADDON
-from interfaces.deserves_reply import deserves_reply
+from chapter2.interfaces.deserves_reply import deserves_reply
 from ontology import Config
 from declarations import Message, Author
-from util.asyncutil import to_async_iterable
+from chapter2.util.asyncutil import to_async_iterable
 from load import load_em
 
 

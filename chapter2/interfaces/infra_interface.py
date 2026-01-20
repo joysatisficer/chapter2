@@ -6,14 +6,14 @@ from io import StringIO
 import yaml
 from aioitertools.more_itertools import take as async_take
 
-from interfaces.discord_interface import DiscordInterface, ConfigError
-from util.asyncutil import async_generator_to_reusable_async_iterable
-from util.discord_improved import parse_discord_content
+from chapter2.interfaces.discord_interface import DiscordInterface, ConfigError
+from chapter2.util.asyncutil import async_generator_to_reusable_async_iterable
+from chapter2.util.discord_improved import parse_discord_content
 import ontology
 from ontology import Config, DiscordInterfaceConfig
 from load import load_em_kv
-from util.steering_api import INDEX_TO_DESC, USABLE_FEATURES
-from util.app_info import get_emname_id_map, get_steerable_ems
+from chapter2.util.steering_api import INDEX_TO_DESC, USABLE_FEATURES
+from chapter2.util.app_info import get_emname_id_map, get_steerable_ems
 from generate_response import prompt_from
 
 

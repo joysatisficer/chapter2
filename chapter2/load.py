@@ -1,6 +1,6 @@
 #!/usr/bin/env -S python -u
 
-from ontology import (
+from chapter2.ontology import (
     Config,
     ALIASES,
     EM_KEYS,
