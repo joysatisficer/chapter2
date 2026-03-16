@@ -205,9 +205,9 @@ async def get_replies(
                 f"tokenizers/punkt/english.pickle"
             )
             if not tokenizer.text_contains_sentbreak(sentences[-1]):
-                completion = "".join(
+                completion = completion.removesuffix(
                     tokenizer.sentences_from_text(completion, realign_boundaries=True)[
-                        :-1
+                        -1
                     ]
                 )
     messages = []
