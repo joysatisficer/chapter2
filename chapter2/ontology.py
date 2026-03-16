@@ -288,6 +288,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     include_images: bool | Literal["auto"] = True
     image_limits: ImageLimits = ImageLimits()
     airtable: AirtableConfig | None = None
+    use_nicknames: bool = False
 
 
 class RPCInterfaceConfig(SharedInterfaceConfig):

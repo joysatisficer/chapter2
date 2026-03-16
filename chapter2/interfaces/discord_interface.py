@@ -329,7 +329,10 @@ class DiscordInterface(discord.Client):
         if message.author.id == pov_user.id:
             author_name = config.em.name
         else:
-            author_name = message.author.name
+            if iface_config.use_nicknames:
+                author_name = message.author.display_name
+            else:
+                author_name = message.author.name
         content = parse_discord_content(message, pov_user.id, config.em.name)
         if message.reference is not None and not message.is_system():  # is it a reply?
             if message.reference.resolved is not None:
