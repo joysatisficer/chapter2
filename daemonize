@@ -19,6 +19,8 @@ Environment=\"PYTHONUNBUFFERED=1\"
 Environment=\"OTEL_SERVICE_NAME=$ENV_PREFIX-$EM_NAME\"
 Environment=\"OTEL_BSP_SCHEDULE_DELAY=11\"
 Environment=\"OTEL_EXPORTER_OTLP_TRACES_COMPRESSION=gzip\"
+; prevent <0> and <1> from being interpreted as emergency and warning by systemd
+SyslogLevelPrefix=false
 
 [Install]
 WantedBy=default.target" > ~/.config/systemd/user/"$SERVICE_NAME".service
