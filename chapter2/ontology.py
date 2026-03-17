@@ -285,7 +285,7 @@ class DiscordInterfaceConfig(SharedInterfaceConfig):
     end_to_end_test_discord_channel_id: int | None = None
     discord_user_whitelist: list[int] = []
     may_speak: list[str] = []
-    include_images: bool | Literal["auto"] = True
+    include_images: bool | Literal["auto"] = "auto"
     image_limits: ImageLimits = ImageLimits()
     airtable: AirtableConfig | None = None
     use_nicknames: bool = False
