@@ -55,7 +55,9 @@ def resolve_channel(message: discord.Message, id: int, _, __) -> str:
     return "#deleted-channel"
 
 
-def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) -> str:
+def _clean_content_with_username(
+    self: discord.Message, my_user_id: int, my_name: str
+) -> str:
     """discord.Message.clean_content() where "name" is used in place of display_name"""
     transforms = {
         "@": resolve_member,
@@ -78,3 +80,12 @@ def parse_discord_content(self: discord.Message, my_user_id: int, my_name: str) 
     )
 
     return discord.utils.escape_mentions(result)
+
+
+def parse_discord_content(
+    self: discord.Message, my_user_id: int, my_name: str, use_nicknames: bool = False
+) -> str:
+    if use_nicknames:
+        return self.clean_content
+    else:
+        return _clean_content_with_username(self, my_user_id, my_name)

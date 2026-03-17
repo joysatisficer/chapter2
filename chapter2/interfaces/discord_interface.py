@@ -302,7 +302,10 @@ class DiscordInterface(discord.Client):
                                 content = reply_message.content
                                 await message.channel.send(
                                     self.realize_discord_formatting(
-                                        content, message.guild, mentions
+                                        content,
+                                        message.guild,
+                                        mentions,
+                                        replace_nicknames=iface_config.use_nicknames,
                                     ),
                                 )
                                 await self.respond_to_tools(
@@ -754,12 +757,15 @@ class DiscordInterface(discord.Client):
         message_content: str,
         guild: discord.Guild,
         mentions: set[Union[discord.User, discord.Member]],
+        replace_nicknames: bool = False,
     ):
         for member in mentions:
-            if "@" + member.name in message_content:
-                message_content = message_content.replace(
-                    "@" + member.name, f"<@!{member.id}>"
-                )
+            if replace_nicknames:
+                look_for = "@" + member.display_name
+            else:
+                look_for = "@" + member.name
+            if look_for in message_content:
+                message_content = message_content.replace(look_for, f"<@!{member.id}>")
         return re.sub(
             r":([a-zA-Z0-9_~]{2,32}):",
             lambda match: str(
