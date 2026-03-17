@@ -11,6 +11,7 @@ from functools import lru_cache
 
 import aiohttp
 import discord
+import discord.enums
 import discord.http
 import discord.threads
 import yaml
@@ -385,18 +386,27 @@ class DiscordInterface(discord.Client):
                     content += "<|image|>"
         channel = message.channel
 
-        if message.reference and content == "":
-            # hacky check for forwarded message; discord.py version 2.5 has a type for it but that doesnt seem to be out yet
+        if (
+            message.reference
+            and message.reference == discord.enums.MessageReferenceType.forward
+        ):
             if (
                 message.reference.channel_id is not None
                 and message.reference.message_id is not None
             ):
-                thread = await self.get_channel_cached(message.reference.channel_id)
-                forwarded_message = await thread.fetch_message(
-                    message.reference.message_id
-                )
-                if forwarded_message:
-                    content = f"<|begin_of_fwd|>{parse_discord_content(forwarded_message, pov_user.id, config.em.name)}<|end_of_fwd|>"
+                try:
+                    thread = await self.get_channel_cached(message.reference.channel_id)
+                except discord.Forbidden:
+                    # forwarded message is from a channel we can access
+                    if len(message.message_snapshots) > 0:
+                        content = f"<|begin_of_fwd|>message.message_snapshots[0].content<|end_of_fwd|>"
+                else:
+                    # forwarded message is from a channel we can't access
+                    forwarded_message = await thread.fetch_message(
+                        message.reference.message_id
+                    )
+                    if forwarded_message:
+                        content = f"<|begin_of_fwd|>{parse_discord_content(forwarded_message, pov_user.id, config.em.name)}<|end_of_fwd|>"
         return Message(
             Author(author_name),
             content.strip(),

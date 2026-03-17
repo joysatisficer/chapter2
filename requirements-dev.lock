@@ -122,7 +122,7 @@ deprecated==1.2.14
     # via opentelemetry-exporter-otlp-proto-grpc
     # via opentelemetry-exporter-otlp-proto-http
     # via opentelemetry-semantic-conventions
-discord-py==2.5.2
+discord-py==2.7.1
     # via chapter2
     # via opentelemetry-instrumentation-discordpy
 distlib==0.3.8
@@ -210,7 +210,7 @@ iniconfig==2.0.0
     # via pytest
 installer==0.7.0
     # via poetry
-intermodel @ git+https://github.com/ampdot-io/intermodel@efee754bc56154d939f3104249b60d42604b8562
+intermodel @ git+https://github.com/ampdot-io/intermodel@b46383ddfaa80d165bd25d41d5cdbd1d2e9b1b6f
     # via chapter2
 iso8601==2.1.0
     # via axiom-py
